@@ -1,0 +1,62 @@
+name: Copia de seguridad semanal (y mantener Supabase activo)
+
+# El plan gratuito de Supabase pausa el proyecto tras ~7 días sin actividad.
+# Este workflow hace una petición cada semana (lo mantiene activo) y guarda una copia
+# CIFRADA de todos los datos como artefacto del workflow (90 días).
+# Secretos necesarios (Settings → Secrets and variables → Actions → Secrets):
+#   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, BACKUP_PASSPHRASE
+
+on:
+  schedule:
+    - cron: '17 4 * * 1' # lunes 04:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comprobar secretos
+        id: check
+        env:
+          URL: ${{ secrets.SUPABASE_URL }}
+          KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          PASS: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          if [ -z "$URL" ] || [ -z "$KEY" ] || [ -z "$PASS" ]; then
+            echo "::warning::Faltan secretos; no se hace la copia."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Descargar datos
+        if: steps.check.outputs.ok == 'true'
+        env:
+          URL: ${{ secrets.SUPABASE_URL }}
+          KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p copia
+          for t in config months incomes expenses expense_entries savings; do
+            curl -sSf "$URL/rest/v1/$t?select=*" \
+              -H "apikey: $KEY" -H "Authorization: Bearer $KEY" \
+              -H "Range-Unit: items" -H "Range: 0-99999" > "copia/$t.json"
+            echo "$t: $(jq length "copia/$t.json") filas"
+          done
+      - name: Cifrar
+        if: steps.check.outputs.ok == 'true'
+        env:
+          PASS: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          tar czf copia.tgz copia
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$PASS" --symmetric --cipher-algo AES256 -o copia.tgz.gpg copia.tgz
+          rm -rf copia copia.tgz
+      - uses: actions/upload-artifact@v4
+        if: steps.check.outputs.ok == 'true'
+        with:
+          name: copia-presupuesto-${{ github.run_id }}
+          path: copia.tgz.gpg
+          retention-days: 90

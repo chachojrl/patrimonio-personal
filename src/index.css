@@ -1,0 +1,47 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-marino: #1F3864;
+  --color-marino-claro: #2E5597;
+  --color-verde-excel: #70AD47;
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+:root {
+  color-scheme: light;
+  --surface: #ffffff;
+  --text-secondary: #52514e;
+  --grid: #e5e7eb;
+  --series-1: #2a78d6; /* azul */
+  --series-2: #eb6834; /* naranja */
+  --series-3: #1baf7a; /* aqua */
+}
+.dark {
+  color-scheme: dark;
+  --surface: #111827;
+  --text-secondary: #c3c2b7;
+  --grid: #374151;
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+}
+
+body {
+  @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 antialiased;
+}
+
+.num { font-variant-numeric: tabular-nums; }
+
+/* Inputs tipo hoja de cálculo */
+.celda {
+  @apply w-full rounded-md border border-transparent bg-transparent px-2 py-1.5 outline-none transition
+    hover:border-slate-300 focus:border-marino-claro focus:bg-white focus:ring-2 focus:ring-marino-claro/20
+    dark:hover:border-slate-600 dark:focus:bg-slate-900 disabled:cursor-default disabled:hover:border-transparent;
+}
+.celda-invalida { @apply border-red-500 bg-red-50 dark:bg-red-950/40; }
+.campo {
+  @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 outline-none focus:border-marino-claro focus:ring-2
+    focus:ring-marino-claro/20 dark:border-slate-600 dark:bg-slate-900 disabled:opacity-60;
+}
+.recharts-wrapper *:focus { outline: none; }

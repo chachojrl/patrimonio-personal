@@ -1,0 +1,20 @@
+import type { Config, Datos, Tabla } from '../lib/tipos'
+import type { PlanMesNuevo } from '../lib/operaciones'
+
+/** Capa de persistencia. La lógica vive en el cliente; el repositorio solo guarda. */
+export interface Repo {
+  modo: 'supabase' | 'local'
+  cargar(): Promise<Datos>
+  insertar(tabla: Tabla, filas: object[]): Promise<void>
+  actualizar(tabla: Tabla, id: string, patch: Record<string, unknown>): Promise<void>
+  actualizarConfig(patch: Partial<Config>): Promise<void>
+  borrar(tabla: Tabla, ids: string[]): Promise<void>
+  crearMes(plan: PlanMesNuevo): Promise<void>
+  reemplazarTodo(datos: Datos): Promise<void>
+}
+
+export class NoAutorizadoError extends Error {
+  constructor() {
+    super('Tu usuario no está autorizado para usar esta aplicación.')
+  }
+}
