@@ -143,9 +143,6 @@ function DatosCard() {
           />
           <div className="flex flex-wrap gap-2">
             <Boton onClick={() => archivo.current?.click()}>📂 Restaurar copia JSON…</Boton>
-            {datos.months.length === 0 && (
-              <Boton onClick={() => setPendiente({ titulo: 'Cargar datos iniciales', datos: datosIniciales() })}>Cargar datos iniciales (Oct–Nov 2026)</Boton>
-            )}
           </div>
         </div>
       </div>
