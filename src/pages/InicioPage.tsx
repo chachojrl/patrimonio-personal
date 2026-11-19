@@ -50,8 +50,8 @@ export function InicioPage() {
         <Card>
           <p className="mb-2 font-medium">Todavía no hay ningún mes.</p>
           <p className="mb-4 text-sm text-slate-500">
-            Crea el primer mes o, si quieres empezar con tus datos de Octubre y Noviembre de 2026, ve a{' '}
-            <Link to="/ajustes" className="text-sky-700 underline dark:text-sky-400">Ajustes → Cargar datos iniciales</Link>.
+            Crea tu primer mes para empezar. Si ya tienes ahorros o inversiones, puedes indicar los saldos iniciales en{' '}
+            <Link to="/ajustes" className="text-sky-700 underline dark:text-sky-400">Ajustes</Link>.
             {modo === 'local' && ' (Ahora estás en modo local.)'}
           </p>
           <CrearMesBoton />
