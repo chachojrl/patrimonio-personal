@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useStore } from '../data/store'
 import { BadgeEstado, Card, Dinero, Kpi, cx } from '../components/ui'
 import { CrearMesBoton } from '../components/CrearMes'
+import { InversionesKpi } from '../components/InversionesKpi'
 import { aniosConMeses, resumenAnual } from '../lib/calculos'
 import { partes } from '../lib/fechas'
 import type { EstadoMes } from '../lib/tipos'
@@ -41,7 +42,7 @@ export function InicioPage() {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi titulo="Dinero total actual" valor={k.dineroTotalActual} grande />
         <Kpi titulo="Último mes registrado" valor={k.ultimoMes ?? '–'} grande />
-        <Kpi titulo="Total en inversiones" valor={k.totalInversiones} />
+        <InversionesKpi />
         <Kpi titulo="Total en cuenta remunerada" valor={k.totalCuentaRem} />
       </div>
 

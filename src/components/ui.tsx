@@ -100,10 +100,11 @@ export function Info({ texto }: { texto: string }) {
  * Llama a onCambio en cada pulsación válida para recalcular en tiempo real.
  */
 export function CeldaImporte({
-  valor, onCambio, disabled, permitirVacio, permitirNegativo, className, ariaLabel, autoFocus, placeholder,
+  valor, onCambio, onSalir, disabled, permitirVacio, permitirNegativo, className, ariaLabel, autoFocus, placeholder,
 }: {
   valor: Cents | null
   onCambio: (c: Cents | null) => void
+  onSalir?: () => void
   disabled?: boolean
   permitirVacio?: boolean
   permitirNegativo?: boolean
@@ -141,6 +142,7 @@ export function CeldaImporte({
       onBlur={() => {
         setFoco(false)
         setInvalido(false)
+        onSalir?.()
       }}
       onKeyDown={(e) => {
         if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur()

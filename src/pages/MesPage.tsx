@@ -101,6 +101,27 @@ function VistaMes({ mes, c }: { mes: Mes; c: NonNullable<ReturnType<ReturnType<t
                 onCambio={(v) => actualizar('months', mes.id, { saldo_real_cuenta: v })}
               />
             </div>
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Inversiones acumuladas
+                <Info texto="Si escribes el valor real de tu cartera, sustituye a la estimación (última valoración + aportaciones) y se recalculan el ahorro acumulado, el dinero total y la ganancia/pérdida, también de los meses siguientes." />
+              </div>
+              <div className="mt-1 text-lg font-semibold"><Dinero c={c.inversionesAcum} dash={false} /></div>
+              <div className="text-xs text-slate-500">{mes.valor_real_inversiones === null ? 'Estimado' : 'Valor real'}</div>
+            </div>
+            <div>
+              <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                Valor real de inversiones (opcional)
+              </label>
+              <CeldaImporte
+                ariaLabel="Valor real de inversiones"
+                valor={mes.valor_real_inversiones}
+                permitirVacio
+                placeholder="Vacío"
+                className="mt-1 border-slate-300 bg-white text-left dark:border-slate-600 dark:bg-slate-900"
+                onCambio={(v) => actualizar('months', mes.id, { valor_real_inversiones: v })}
+              />
+            </div>
           </div>
         </Card>
         <Card titulo="Ingresos vs gastos">

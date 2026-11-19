@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useStore } from '../data/store'
 import { BadgeEstado, Card, CeldaImporte, Dinero, Info, Kpi, cx } from '../components/ui'
 import { LineaDineroTotal } from '../components/Graficos'
+import { InversionesKpi } from '../components/InversionesKpi'
 import { MESES_CORTOS, formatFecha, partes } from '../lib/fechas'
 
 const TOOLTIP_VALOR =
@@ -36,7 +37,7 @@ export function HistorialPage() {
         </Card>
         <Card titulo="Inversiones">
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-1 xl:grid-cols-2">
-            <Kpi titulo="Total en inversiones" valor={k.totalInversiones} grande />
+            <InversionesKpi grande />
             <Kpi titulo="Total invertido (aportado)" valor={k.totalInvertido} />
             <Kpi titulo="Ganancia / pérdida" valor={k.gananciaInversiones} verde />
           </div>
