@@ -6,7 +6,8 @@ import { BarrasIngresosGastos, DonutGastado } from '../components/Graficos'
 import { CrearMesBoton } from '../components/CrearMes'
 import { formatEUR, parseImporte } from '../lib/money'
 import { formatFechaHora, nombreMes, hoyISO } from '../lib/fechas'
-import { anadirGasto, borrarCreaHueco, deshacerApunte, mesesOrdenados, uid } from '../lib/operaciones'
+import { anadirGasto, borrarCreaHueco, deshacerApunte, estadoPresupuesto, mesesOrdenados, reordenar, uid } from '../lib/operaciones'
+import { Asa, useOrdenable } from '../components/Ordenable'
 import type { Ahorro, Gasto, Ingreso, Mes, OrigenAhorro, TipoAhorro } from '../lib/tipos'
 
 export function MesPage() {
@@ -164,15 +165,19 @@ function TablaIngresos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
   const filas = datos.incomes.filter((x) => x.month_id === mes.id).sort((a, b) => a.orden - b.orden)
   const total = filas.reduce((a, b) => a + b.importe, 0)
   const focoNomina = params.get('foco') === 'nomina'
+  const ord = useOrdenable(filas.length, (desde, hasta) => {
+    for (const c of reordenar(filas, desde, hasta)) actualizar('incomes', c.id, { orden: c.orden })
+  })
   return (
     <Card titulo="Ingresos mensuales" accion={!cerrado && (
       <Boton variante="fantasma" className="text-xs" onClick={() => insertar('incomes', { id: uid(), month_id: mes.id, concepto: 'Nuevo ingreso', importe: 0, orden: (filas.at(-1)?.orden ?? -1) + 1 } satisfies Ingreso)}>＋ Añadir ingreso</Boton>
     )}>
-      <div className="grid grid-cols-[1fr_9rem_2rem] gap-x-1 px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-        <span>Concepto</span><span className="text-right">Importe</span><span />
+      <div className="grid grid-cols-[1.25rem_1fr_9rem_2rem] gap-x-1 px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+        <span /><span>Concepto</span><span className="text-right">Importe</span><span />
       </div>
       {filas.map((f, i) => (
-        <div key={f.id} className="grid grid-cols-[1fr_9rem_2rem] items-center gap-x-1 border-b border-slate-100 dark:border-slate-800">
+        <div key={f.id} ref={ord.refFila(i)} style={ord.estilo(i)} className="grid grid-cols-[1.25rem_1fr_9rem_2rem] items-center gap-x-1 border-b border-slate-100 dark:border-slate-800">
+          {!cerrado ? <Asa {...ord.asa(i)} /> : <span />}
           <CeldaTexto ariaLabel="Concepto de ingreso" valor={f.concepto} disabled={cerrado} onCambio={(v) => actualizar('incomes', f.id, { concepto: v })} />
           <CeldaImporte ariaLabel={`Importe ${f.concepto}`} valor={f.importe} disabled={cerrado} autoFocus={focoNomina && i === 0} onCambio={(v) => actualizar('incomes', f.id, { importe: v ?? 0 })} />
           {!cerrado ? <BotonBorrar onClick={() => borrar('incomes', f.id)} /> : <span />}
@@ -191,6 +196,24 @@ function BotonBorrar({ onClick, etiqueta = 'Borrar fila' }: { onClick: () => voi
   )
 }
 
+/** Barra de presupuesto: gastado frente al límite del concepto. */
+function BarraPresupuesto({ g }: { g: Gasto }) {
+  const e = estadoPresupuesto(g)
+  if (!e || g.presupuesto === null) return null
+  const color = e.exceso > 0 ? 'bg-red-500' : e.pct >= 0.9 ? 'bg-amber-500' : 'bg-emerald-500'
+  return (
+    <div className="px-2 pb-1">
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700" role="progressbar" aria-valuenow={Math.round(e.pct * 100)} aria-valuemin={0} aria-valuemax={100} aria-label={`Barra de presupuesto de ${g.concepto}`}>
+        <div className={cx('h-full rounded-full', color)} style={{ width: `${Math.min(100, e.pct * 100)}%` }} />
+      </div>
+      <div className={cx('num mt-0.5 text-[11px]', e.exceso > 0 ? 'font-semibold text-red-600 dark:text-red-400' : 'text-slate-500')}>
+        {formatEUR(g.importe, { dash: false })} de {formatEUR(g.presupuesto, { dash: false })}
+        {e.exceso > 0 ? ` · te has pasado ${formatEUR(e.exceso)}` : ` · quedan ${formatEUR(g.presupuesto - g.importe, { dash: false })}`}
+      </div>
+    </div>
+  )
+}
+
 // ---------------- Gastos (con la columna "Añadir gasto") ----------------
 function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
   const { datos, actualizar, insertar, borrar, aplicar, repo, avisar, obtener } = useStore()
@@ -199,7 +222,15 @@ function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
   const [pendientes, setPendientes] = useState<Record<string, string>>({})
   const [errores, setErrores] = useState<Record<string, string>>({})
   const [desglose, setDesglose] = useState<Gasto | null>(null)
+  const [opcionesId, setOpcionesId] = useState<string | null>(null)
+  const opciones = filas.find((g) => g.id === opcionesId) ?? null
   const nPend = Object.values(pendientes).filter((v) => v.trim() !== '').length
+  const conPresupuesto = filas.filter((g) => g.presupuesto !== null)
+  const totalPresupuesto = conPresupuesto.reduce((a, g) => a + (g.presupuesto ?? 0), 0)
+  const gastadoConPresupuesto = conPresupuesto.reduce((a, g) => a + g.importe, 0)
+  const ord = useOrdenable(filas.length, (desde, hasta) => {
+    for (const c of reordenar(filas, desde, hasta)) actualizar('expenses', c.id, { orden: c.orden })
+  })
 
   function deshacer(apunteId: string) {
     const r = deshacerApunte(obtener(), apunteId)
@@ -221,7 +252,11 @@ function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
     actualizar('expenses', g.id, { importe: r.gasto.importe })
     setPendientes((p) => ({ ...p, [g.id]: '' }))
     setErrores((e) => ({ ...e, [g.id]: '' }))
-    if (!silencioso) avisar({ texto: `Añadido ${formatEUR(c)} a ${g.concepto}`, accion: { texto: 'Deshacer', fn: () => deshacer(r.apunte.id) } })
+    if (!silencioso) {
+      const e = estadoPresupuesto(r.gasto)
+      const aviso = e && e.exceso > 0 ? ` (te has pasado del presupuesto en ${formatEUR(e.exceso)})` : ''
+      avisar({ texto: `Añadido ${formatEUR(c)} a ${g.concepto}${aviso}`, tipo: aviso ? 'error' : 'ok', accion: { texto: 'Deshacer', fn: () => deshacer(r.apunte.id) } })
+    }
     return true
   }
 
@@ -231,7 +266,7 @@ function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
     avisar({ texto: `${n} gasto(s) añadido(s).` })
   }
 
-  const columnas = 'md:grid-cols-[minmax(0,1fr)_9.5rem_9rem_10rem_2rem]'
+  const columnas = 'md:grid-cols-[1.25rem_minmax(0,1fr)_9.5rem_9rem_10rem_2rem]'
   return (
     <Card
       titulo="Gastos mensuales"
@@ -242,7 +277,7 @@ function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
             <Boton
               variante="fantasma"
               className="text-xs"
-              onClick={() => insertar('expenses', { id: uid(), month_id: mes.id, concepto: 'Nuevo gasto', fecha_vencimiento: null, importe: 0, orden: (filas.at(-1)?.orden ?? -1) + 1 } satisfies Gasto)}
+              onClick={() => insertar('expenses', { id: uid(), month_id: mes.id, concepto: 'Nuevo gasto', fecha_vencimiento: null, importe: 0, orden: (filas.at(-1)?.orden ?? -1) + 1, fijo: false, presupuesto: null } satisfies Gasto)}
             >
               ＋ Nueva fila de gasto
             </Boton>
@@ -250,7 +285,15 @@ function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
         )
       }
     >
+      {conPresupuesto.length > 0 && (
+        <div className="mb-3 rounded-lg bg-slate-50 px-3 py-2 text-xs dark:bg-slate-800/60">
+          🎯 Conceptos con presupuesto: <strong className="num">{formatEUR(gastadoConPresupuesto, { dash: false })}</strong> gastados de{' '}
+          <strong className="num">{formatEUR(totalPresupuesto, { dash: false })}</strong>
+          {gastadoConPresupuesto > totalPresupuesto && <span className="font-semibold text-red-600 dark:text-red-400"> · {formatEUR(gastadoConPresupuesto - totalPresupuesto)} por encima</span>}
+        </div>
+      )}
       <div className={cx('hidden gap-x-1 px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500 md:grid', columnas)}>
+        <span />
         <span>Concepto</span>
         <span>Vencimiento</span>
         <span className="text-right">Importe</span>
@@ -260,22 +303,34 @@ function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
         </span>
         <span />
       </div>
-      {filas.map((g) => {
+      {filas.map((g, i) => {
         const apuntes = datos.expense_entries.filter((a) => a.expense_id === g.id)
         return (
-          <div key={g.id} className={cx('grid grid-cols-[minmax(0,1fr)_7.5rem_2rem] items-center gap-x-1 border-b border-slate-100 py-1 dark:border-slate-800 md:py-0', columnas)}>
+          <div
+            key={g.id}
+            ref={ord.refFila(i)}
+            style={ord.estilo(i)}
+            className={cx('grid grid-cols-[1.25rem_minmax(0,1fr)_7.5rem_2rem] items-center gap-x-1 border-b border-slate-100 py-1 dark:border-slate-800 md:py-0', columnas)}
+          >
+            <div className="row-span-2 self-start pt-1 md:row-span-1 md:self-center md:pt-0">{!cerrado && <Asa {...ord.asa(i)} />}</div>
             <div className="min-w-0">
               <CeldaTexto ariaLabel="Concepto de gasto" valor={g.concepto} disabled={cerrado} onCambio={(v) => actualizar('expenses', g.id, { concepto: v })} />
-              {apuntes.length > 0 && (
-                <button type="button" onClick={() => setDesglose(g)} className="ml-2 text-[11px] text-sky-700 hover:underline dark:text-sky-400">
-                  {apuntes.length} apunte{apuntes.length > 1 ? 's' : ''}
-                </button>
+              {(g.fijo || apuntes.length > 0) && (
+                <div className="flex flex-wrap gap-2 px-2">
+                  {g.fijo && <span className="rounded bg-sky-100 px-1.5 text-[10px] font-semibold text-sky-800 dark:bg-sky-900/50 dark:text-sky-300" title="Se copia con el mismo importe al crear el mes siguiente">📌 Fijo</span>}
+                  {apuntes.length > 0 && (
+                    <button type="button" onClick={() => setDesglose(g)} className="text-[11px] text-sky-700 hover:underline dark:text-sky-400">
+                      {apuntes.length} apunte{apuntes.length > 1 ? 's' : ''}
+                    </button>
+                  )}
+                </div>
               )}
+              <BarraPresupuesto g={g} />
             </div>
             <div className="order-4 md:order-none">
               <CeldaFecha ariaLabel={`Vencimiento ${g.concepto}`} valor={g.fecha_vencimiento} disabled={cerrado} onCambio={(v) => actualizar('expenses', g.id, { fecha_vencimiento: v })} />
             </div>
-            <div className="order-2 md:order-none">
+            <div className="order-2 self-start md:order-none md:self-center">
               <CeldaImporte ariaLabel={`Importe ${g.concepto}`} valor={g.importe} disabled={cerrado} onCambio={(v) => actualizar('expenses', g.id, { importe: v ?? 0 })} />
             </div>
             <div className="order-5 col-span-2 md:order-none md:col-span-1">
@@ -308,11 +363,60 @@ function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
               )}
               {errores[g.id] && <div className="px-2 text-[11px] text-red-600">{errores[g.id]}</div>}
             </div>
-            <div className="order-3 justify-self-end md:order-none">{!cerrado && <BotonBorrar onClick={() => borrar('expenses', g.id)} />}</div>
+            <div className="order-3 self-start justify-self-end md:order-none md:self-center">
+              {!cerrado && (
+                <button
+                  type="button"
+                  aria-label={`Opciones de ${g.concepto}`}
+                  title="Fijo, presupuesto y borrar"
+                  onClick={() => setOpcionesId(g.id)}
+                  className="flex h-8 w-8 items-center justify-center rounded-md text-lg leading-none text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  ⋯
+                </button>
+              )}
+            </div>
           </div>
         )
       })}
       <Total etiqueta="Total gastos" valor={total} />
+      {!cerrado && filas.length > 1 && <p className="mt-2 text-[11px] text-slate-500">Arrastra ⋮⋮ para reordenar. En ⋯ puedes marcar un gasto como fijo o ponerle un presupuesto.</p>}
+
+      <Modal abierto={!!opciones} onCerrar={() => setOpcionesId(null)} titulo={opciones ? `Opciones de «${opciones.concepto}»` : ''} pie={<Boton variante="primario" onClick={() => setOpcionesId(null)}>Listo</Boton>}>
+        {opciones && (
+          <>
+            <label className="flex items-start gap-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+              <input type="checkbox" className="mt-0.5 h-4 w-4" checked={opciones.fijo} onChange={(e) => actualizar('expenses', opciones.id, { fijo: e.target.checked })} />
+              <span>
+                <span className="font-medium">📌 Gasto fijo</span>
+                <span className="block text-xs text-slate-500">Al crear el mes siguiente se copia con el mismo importe ({formatEUR(opciones.importe, { dash: false })}) y su fecha de vencimiento un mes después.</span>
+              </span>
+            </label>
+            <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+              <label htmlFor="presupuesto-gasto" className="font-medium">🎯 Presupuesto mensual</label>
+              <span className="block text-xs text-slate-500">Límite para este concepto. Déjalo vacío para no tener límite. Se mantiene en los meses siguientes.</span>
+              <CeldaImporte
+                ariaLabel={`Presupuesto de ${opciones.concepto}`}
+                valor={opciones.presupuesto}
+                permitirVacio
+                placeholder="Sin límite"
+                className="campo mt-2 text-left"
+                onCambio={(v) => actualizar('expenses', opciones.id, { presupuesto: v })}
+              />
+            </div>
+            <Boton
+              variante="fantasma"
+              className="w-full text-red-600"
+              onClick={() => {
+                borrar('expenses', opciones.id)
+                setOpcionesId(null)
+              }}
+            >
+              🗑 Borrar esta fila
+            </Boton>
+          </>
+        )}
+      </Modal>
 
       <Modal abierto={!!desglose} onCerrar={() => setDesglose(null)} titulo={`Apuntes de ${desglose?.concepto ?? ''}`} pie={<Boton onClick={() => setDesglose(null)}>Cerrar</Boton>}>
         {desglose && (

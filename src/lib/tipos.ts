@@ -39,6 +39,10 @@ export interface Gasto {
   fecha_vencimiento: string | null
   importe: Cents
   orden: number
+  /** Gasto fijo: al crear el mes siguiente se copia con el mismo importe. */
+  fijo: boolean
+  /** Límite de presupuesto para este concepto (null = sin límite). */
+  presupuesto: Cents | null
 }
 
 export interface ApunteGasto {
@@ -88,4 +92,13 @@ export const CONFIG_INICIAL: Config = {
 
 export function datosVacios(): Datos {
   return { config: { ...CONFIG_INICIAL }, months: [], incomes: [], expenses: [], expense_entries: [], savings: [] }
+}
+
+/** Completa campos que pueden faltar en datos antiguos (copias JSON o modo local de versiones previas). */
+export function normalizarDatos(d: Datos): Datos {
+  return {
+    ...d,
+    expenses: d.expenses.map((g) => ({ ...g, fijo: g.fijo ?? false, presupuesto: g.presupuesto ?? null })),
+    expense_entries: d.expense_entries ?? [],
+  }
 }

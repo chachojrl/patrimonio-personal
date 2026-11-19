@@ -1,5 +1,5 @@
 import type { Datos } from './tipos'
-import { CONFIG_INICIAL } from './tipos'
+import { CONFIG_INICIAL, normalizarDatos } from './tipos'
 import { calcular, aniosConMeses, resumenAnual } from './calculos'
 import { MESES, formatFecha, nombreMes } from './fechas'
 
@@ -19,7 +19,7 @@ const sello = () => new Date().toISOString().slice(0, 10)
 
 // ---------- JSON (copia completa; importes en euros con 2 decimales) ----------
 
-const DINERO = ['importe', 'saldo_real_cuenta', 'valor_real_inversiones', 'ajuste_cuenta_gastos_inicial', 'inversiones_iniciales', 'aportado_inicial_inversiones', 'cuenta_remunerada_inicial']
+const DINERO = ['importe', 'presupuesto', 'saldo_real_cuenta', 'valor_real_inversiones', 'ajuste_cuenta_gastos_inicial', 'inversiones_iniciales', 'aportado_inicial_inversiones', 'cuenta_remunerada_inicial']
 
 function mapDinero(obj: unknown, fn: (v: number) => number): unknown {
   if (Array.isArray(obj)) return obj.map((x) => mapDinero(x, fn))
@@ -46,7 +46,7 @@ export function importarJSON(texto: string): Datos {
   d.config = { ...CONFIG_INICIAL, ...d.config }
   const ids = new Set(d.months.map((m) => m.id))
   if ([...d.incomes, ...d.expenses, ...d.savings].some((x) => !ids.has(x.month_id))) throw new Error('El archivo tiene filas que no pertenecen a ningún mes.')
-  return d
+  return normalizarDatos(d)
 }
 
 // ---------- CSV ----------
@@ -83,7 +83,7 @@ export function exportarCSV(d: Datos, tabla: 'incomes' | 'expenses' | 'savings' 
   } else if (tabla === 'incomes') {
     filas = d.incomes.map((x) => ({ mes: nombreDe.get(x.month_id), concepto: x.concepto, importe: eurCsv(x.importe) }))
   } else if (tabla === 'expenses') {
-    filas = d.expenses.map((x) => ({ mes: nombreDe.get(x.month_id), concepto: x.concepto, vencimiento: formatFecha(x.fecha_vencimiento), importe: eurCsv(x.importe) }))
+    filas = d.expenses.map((x) => ({ mes: nombreDe.get(x.month_id), concepto: x.concepto, vencimiento: formatFecha(x.fecha_vencimiento), importe: eurCsv(x.importe), presupuesto: eurCsv(x.presupuesto), fijo: x.fijo ? 'Sí' : '' }))
   } else {
     filas = d.savings.map((x) => ({ mes: nombreDe.get(x.month_id), fecha: formatFecha(x.fecha), importe: eurCsv(x.importe), tipo: x.tipo, origen: x.origen }))
   }
@@ -162,12 +162,12 @@ export async function exportarExcel(d: Datos) {
     ]
     const pctFila = 10
     for (const x of d.incomes.filter((i) => i.month_id === id).sort((a, b) => a.orden - b.orden)) filas.push([x.concepto, e(x.importe)])
-    filas.push(['Total', e(m.sumIngresos)], [], ['GASTOS MENSUALES', 'Importe', 'Vencimiento'])
-    for (const x of d.expenses.filter((i) => i.month_id === id).sort((a, b) => a.orden - b.orden)) filas.push([x.concepto, e(x.importe), formatFecha(x.fecha_vencimiento)])
+    filas.push(['Total', e(m.sumIngresos)], [], ['GASTOS MENSUALES', 'Importe', 'Vencimiento', 'Presupuesto', 'Fijo'])
+    for (const x of d.expenses.filter((i) => i.month_id === id).sort((a, b) => a.orden - b.orden)) filas.push([x.concepto, e(x.importe), formatFecha(x.fecha_vencimiento), e(x.presupuesto), x.fijo ? 'Sí' : ''])
     filas.push(['Total', e(m.sumGastos)], [], ['AHORRO MENSUAL', 'Importe', 'Fecha', 'Tipo', 'Origen'])
     for (const x of d.savings.filter((i) => i.month_id === id)) filas.push(['', e(x.importe), formatFecha(x.fecha), x.tipo, x.origen])
     filas.push(['Total', e(m.ahorroTotal)])
-    hoja(m.nombre, filas, [30, 16, 14, 18, 20, 18], [1], [], 3)
+    hoja(m.nombre, filas, [30, 16, 14, 18, 20, 18], [1, 3], [], 3)
     const ws = wb.Sheets[m.nombre.slice(0, 31)]
     const ref = XLSX.utils.encode_cell({ r: pctFila, c: 1 })
     if (ws[ref]) ws[ref].z = FMT_PCT

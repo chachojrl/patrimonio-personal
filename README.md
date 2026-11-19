@@ -97,6 +97,14 @@ Debe responder `OK` en todas las tablas: sin sesión no se lee nada y el registr
 | `SincronizarHistorial`, `ActualizarIndice`, `IndiceDesactualizado` | No hacen falta: Historial e Índice se calculan siempre al momento y no tienen límite de años |
 | `Workbook_Open`, `ReactivarEventos`, `DiagnosticoEventos` | No aplican: no hay eventos de Excel que se desactiven |
 
+- **Gastos fijos:** en ⋯ de cada gasto, marca «Gasto fijo». Al crear el mes siguiente se copia con
+  el mismo importe y el vencimiento un mes después.
+- **Presupuesto por concepto:** en ⋯ pon un límite. Debajo del concepto aparece una barra (verde,
+  ámbar desde el 90 %, roja si te pasas) y un resumen arriba de la tabla. Se mantiene en los meses siguientes.
+- **Reordenar filas:** arrastra el asa ⋮⋮ (con el ratón o con el dedo). Con el teclado: enfoca el asa
+  y usa ↑ / ↓.
+- **Contraseña:** se cambia en *Ajustes → Seguridad y sesión*. Si la olvidas, pulsa «¿Has olvidado tu
+  contraseña?» en el login (ver *Emails* más abajo).
 - **Mes cerrado:** todo pasa a solo lectura, también en la base de datos. Usa **Reabrir mes**.
 - **Saldo real en cuenta:** si lo rellenas, la diferencia con el saldo calculado se apunta sola
   como ingreso extra o como gasto no registrado.
@@ -104,6 +112,27 @@ Debe responder `OK` en todas las tablas: sin sesión no se lee nada y el registr
   ganancia.
 - **Exportar:** en Ajustes puedes descargar Excel (.xlsx, una hoja por mes + Índice + Historial +
   Resumen), una copia completa en JSON o CSV.
+
+## Actualizaciones de la base de datos
+
+Cuando una versión nueva trae un archivo nuevo en `supabase/migrations/`, hay que ejecutarlo **una
+vez** en *Supabase → SQL Editor*, en orden. Se pueden repetir sin problema.
+
+| Archivo | Qué hace |
+|---|---|
+| `0001_esquema.sql` | Tablas, seguridad y reglas (instalación inicial) |
+| `0002_usuarios_nuevos_en_blanco.sql` | Los usuarios nuevos empiezan con saldos a 0 |
+| `0003_fijos_presupuestos.sql` | Gastos fijos y presupuesto por concepto |
+
+## Emails (recuperar contraseña)
+
+- En *Authentication → URL Configuration*, la **Site URL** y las **Redirect URLs** deben incluir la
+  dirección de la app (`https://TU_USUARIO.github.io/presupuesto/`).
+- El servidor de email gratuito de Supabase solo envía a los miembros de tu organización de Supabase
+  y muy pocos emails por hora. Para que llegue a otras personas, configura un SMTP propio en
+  *Authentication → Emails → SMTP Settings*. Por ejemplo, Resend o Brevo tienen planes gratuitos.
+- Mientras tanto, también puedes cambiar la contraseña de cualquier usuario desde *Authentication →
+  Users*.
 
 ## Copias de seguridad
 

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { calcular, resumenAnual } from './calculos'
-import { anadirGasto, aplicarPlan, borrarMes, datosIniciales, deshacerApunte, planMesNuevo, validarAhorro } from './operaciones'
+import { anadirGasto, aplicarPlan, borrarMes, datosIniciales, deshacerApunte, estadoPresupuesto, planMesNuevo, reordenar, sumarUnMes, validarAhorro } from './operaciones'
 import { formatEUR, formatPct, parseImporte, toCents, centsToDecimal } from './money'
 import type { Datos } from './tipos'
-import { datosVacios } from './tipos'
+import { datosVacios, normalizarDatos } from './tipos'
 
 const eur = (c: number | null | undefined) => formatEUR(c ?? 0, { dash: false })
 
@@ -278,5 +278,59 @@ describe('Importes', () => {
     expect(toCents('5.4')).toBe(540)
     expect(centsToDecimal(-32796)).toBe('-327.96')
     expect(centsToDecimal(5)).toBe('0.05')
+  })
+})
+
+describe('Gastos fijos y presupuestos', () => {
+  it('al crear el mes, los fijos copian importe y vencimiento +1 mes; el resto a 0; el presupuesto se mantiene', () => {
+    const d = datosIniciales()
+    const nov = d.months[1].id
+    const tel = d.expenses.find((x) => x.month_id === nov && x.concepto === 'Teléfono móvil/WiFi')!
+    tel.fijo = true
+    tel.fecha_vencimiento = '2026-11-30'
+    const sup = d.expenses.find((x) => x.month_id === nov && x.concepto === 'Supermercado')!
+    sup.presupuesto = 20000
+    const p = planMesNuevo(d, true)
+    const tel2 = p.expenses.find((x) => x.concepto === 'Teléfono móvil/WiFi')!
+    expect(tel2).toMatchObject({ fijo: true, importe: 4788, fecha_vencimiento: '2026-12-30' })
+    const sup2 = p.expenses.find((x) => x.concepto === 'Supermercado')!
+    expect(sup2).toMatchObject({ fijo: false, importe: 0, presupuesto: 20000, fecha_vencimiento: null })
+    // El saldo del mes nuevo ya descuenta el gasto fijo
+    const dic = calcular(aplicarPlan(d, p)).meses[2]
+    expect(dic.sumGastos).toBe(4788)
+  })
+
+  it('sumarUnMes ajusta a fin de mes y cambia de año', () => {
+    expect(sumarUnMes('2026-01-31')).toBe('2026-02-28')
+    expect(sumarUnMes('2028-01-31')).toBe('2028-02-29')
+    expect(sumarUnMes('2026-12-15')).toBe('2027-01-15')
+  })
+
+  it('estadoPresupuesto', () => {
+    expect(estadoPresupuesto({ importe: 5000, presupuesto: null })).toBeNull()
+    expect(estadoPresupuesto({ importe: 5000, presupuesto: 20000 })).toEqual({ pct: 0.25, exceso: 0 })
+    expect(estadoPresupuesto({ importe: 25000, presupuesto: 20000 })).toEqual({ pct: 1.25, exceso: 5000 })
+  })
+})
+
+describe('Reordenar filas', () => {
+  const filas = ['a', 'b', 'c', 'd'].map((id, orden) => ({ id, orden }))
+  it('mover hacia abajo y hacia arriba solo cambia las filas afectadas', () => {
+    expect(reordenar(filas, 0, 2)).toEqual([{ id: 'b', orden: 0 }, { id: 'c', orden: 1 }, { id: 'a', orden: 2 }])
+    expect(reordenar(filas, 3, 1)).toEqual([{ id: 'd', orden: 1 }, { id: 'b', orden: 2 }, { id: 'c', orden: 3 }])
+    expect(reordenar(filas, 1, 1)).toEqual([])
+  })
+  it('funciona aunque los órdenes no sean consecutivos', () => {
+    const f = [{ id: 'x', orden: 0 }, { id: 'y', orden: 10 }, { id: 'z', orden: 20 }]
+    expect(reordenar(f, 2, 0)).toEqual([{ id: 'z', orden: 0 }, { id: 'x', orden: 1 }, { id: 'y', orden: 2 }])
+  })
+})
+
+describe('Copias antiguas', () => {
+  it('normalizarDatos rellena fijo y presupuesto', () => {
+    const d = datosIniciales() as unknown as { expenses: Record<string, unknown>[] }
+    for (const g of d.expenses) { delete g.fijo; delete g.presupuesto }
+    const n = normalizarDatos(d as unknown as Datos)
+    expect(n.expenses.every((g) => g.fijo === false && g.presupuesto === null)).toBe(true)
   })
 })

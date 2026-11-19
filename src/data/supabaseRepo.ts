@@ -6,14 +6,14 @@ import { centsToDecimal, toCents, toCentsOrNull } from '../lib/money'
 
 // Campos que son importes (céntimos en la app, NUMERIC(12,2) en la BD)
 const CAMPOS_DINERO = new Set([
-  'importe', 'saldo_real_cuenta', 'valor_real_inversiones',
+  'importe', 'presupuesto', 'saldo_real_cuenta', 'valor_real_inversiones',
   'ajuste_cuenta_gastos_inicial', 'inversiones_iniciales', 'aportado_inicial_inversiones', 'cuenta_remunerada_inicial',
 ])
 // Columnas que existen en cada tabla (lo demás no se envía)
 const COLUMNAS: Record<Tabla, string[]> = {
   months: ['id', 'fecha', 'titulo', 'estado', 'ultimo_cambio', 'saldo_real_cuenta', 'valor_real_inversiones'],
   incomes: ['id', 'month_id', 'concepto', 'importe', 'orden'],
-  expenses: ['id', 'month_id', 'concepto', 'fecha_vencimiento', 'importe', 'orden'],
+  expenses: ['id', 'month_id', 'concepto', 'fecha_vencimiento', 'importe', 'orden', 'fijo', 'presupuesto'],
   expense_entries: ['id', 'expense_id', 'importe', 'creado_en', 'nota'],
   savings: ['id', 'month_id', 'fecha', 'importe', 'tipo', 'origen'],
 }
@@ -95,6 +95,7 @@ export function crearSupabaseRepo(sb: SupabaseClient): Repo {
         expenses: expenses.map((x): Gasto => ({
           id: x.id as string, month_id: x.month_id as string, concepto: x.concepto as string,
           fecha_vencimiento: (x.fecha_vencimiento as string) ?? null, importe: toCents(x.importe as string), orden: x.orden as number,
+          fijo: (x.fijo as boolean) ?? false, presupuesto: toCentsOrNull(x.presupuesto as string),
         })),
         expense_entries: entries.map((x): ApunteGasto => ({ id: x.id as string, expense_id: x.expense_id as string, importe: toCents(x.importe as string), creado_en: x.creado_en as string, nota: (x.nota as string) ?? null })),
         savings: savings.map((x): Ahorro => ({
@@ -128,7 +129,11 @@ export function crearSupabaseRepo(sb: SupabaseClient): Repo {
       const { error } = await sb.rpc('insertar_mes', {
         p_mes: { id: plan.mes.id, fecha: plan.mes.fecha, titulo: plan.mes.titulo },
         p_incomes: plan.incomes.map((x) => ({ id: x.id, concepto: x.concepto, orden: x.orden })),
-        p_expenses: plan.expenses.map((x) => ({ id: x.id, concepto: x.concepto, orden: x.orden })),
+        p_expenses: plan.expenses.map((x) => ({
+          id: x.id, concepto: x.concepto, orden: x.orden, fijo: x.fijo,
+          importe: centsToDecimal(x.importe), fecha_vencimiento: x.fecha_vencimiento,
+          presupuesto: x.presupuesto === null ? null : centsToDecimal(x.presupuesto),
+        })),
         p_cerrar: plan.cerrarMesId,
       })
       lanzar(error)

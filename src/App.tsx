@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
-import { supabase } from './data/supabase'
+import { supabase, urlDeLaApp, vieneDeRecuperacion } from './data/supabase'
 import { crearLocalRepo } from './data/localRepo'
 import { crearSupabaseRepo } from './data/supabaseRepo'
 import { NoAutorizadoError, type Repo } from './data/repo'
@@ -9,6 +9,7 @@ import { StoreProvider } from './data/store'
 import type { Datos } from './lib/tipos'
 import { Layout } from './components/Layout'
 import { Boton, Spinner } from './components/ui'
+import { FormularioContrasena } from './components/FormularioContrasena'
 import { InicioPage } from './pages/InicioPage'
 import { MesPage } from './pages/MesPage'
 import { HistorialPage } from './pages/HistorialPage'
@@ -70,12 +71,13 @@ function ConDatos({ repo }: { repo: Repo }) {
   )
 }
 
-type EstadoAuth = { fase: 'cargando' } | { fase: 'fuera' } | { fase: 'mfa'; factorId: string } | { fase: 'dentro'; session: Session }
+type EstadoAuth = { fase: 'cargando' } | { fase: 'fuera' } | { fase: 'mfa'; factorId: string } | { fase: 'nueva-clave' } | { fase: 'dentro'; session: Session }
 
 function ConLogin() {
   const sb = supabase!
   const [auth, setAuth] = useState<EstadoAuth>({ fase: 'cargando' })
   const repo = useMemo(() => crearSupabaseRepo(sb), [sb])
+  const recuperando = useRef(vieneDeRecuperacion)
 
   async function evaluar(session: Session | null) {
     if (!session) return setAuth({ fase: 'fuera' })
@@ -85,13 +87,17 @@ function ConLogin() {
       const totp = f.data?.totp.find((x) => x.status === 'verified')
       if (totp) return setAuth({ fase: 'mfa', factorId: totp.id })
     }
+    if (recuperando.current) return setAuth({ fase: 'nueva-clave' })
     setAuth({ fase: 'dentro', session })
   }
 
   useEffect(() => {
     sb.auth.getSession().then(({ data }) => evaluar(data.session))
     const { data: sub } = sb.auth.onAuthStateChange((evento, session) => {
-      if (evento === 'SIGNED_OUT') setAuth({ fase: 'fuera' })
+      if (evento === 'PASSWORD_RECOVERY') {
+        recuperando.current = true
+        setTimeout(() => evaluar(session), 0)
+      } else if (evento === 'SIGNED_OUT') setAuth({ fase: 'fuera' })
       else if (evento === 'SIGNED_IN' || evento === 'MFA_CHALLENGE_VERIFIED') setTimeout(() => evaluar(session), 0)
     })
     return () => sub.subscription.unsubscribe()
@@ -101,6 +107,16 @@ function ConLogin() {
   if (auth.fase === 'cargando') return <Spinner />
   if (auth.fase === 'fuera') return <Login />
   if (auth.fase === 'mfa') return <SegundoFactor factorId={auth.factorId} />
+  if (auth.fase === 'nueva-clave')
+    return (
+      <NuevaContrasena
+        onHecho={async () => {
+          recuperando.current = false
+          const { data } = await sb.auth.getSession()
+          evaluar(data.session)
+        }}
+      />
+    )
   return <ConDatos key={auth.session.user.id} repo={repo} />
 }
 
@@ -123,6 +139,8 @@ function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
+  const [modo, setModo] = useState<'entrar' | 'olvido' | 'enviado'>('entrar')
+
   async function entrar(e: FormEvent) {
     e.preventDefault()
     setOcupado(true)
@@ -131,6 +149,49 @@ function Login() {
     if (error) setError(error.message === 'Invalid login credentials' ? 'Email o contraseña incorrectos.' : error.message)
     setOcupado(false)
   }
+
+  async function enviarEnlace(e: FormEvent) {
+    e.preventDefault()
+    setOcupado(true)
+    setError(null)
+    const { error } = await supabase!.auth.resetPasswordForEmail(email.trim(), { redirectTo: urlDeLaApp() })
+    setOcupado(false)
+    if (error) {
+      setError(/rate limit/i.test(error.message) ? 'Se han enviado demasiados emails. Espera un rato y vuelve a intentarlo.' : error.message)
+      return
+    }
+    setModo('enviado')
+  }
+
+  if (modo === 'enviado') {
+    return (
+      <Pantalla titulo="Revisa tu email">
+        <p className="text-sm text-slate-600 dark:text-slate-300">
+          Si <strong>{email}</strong> tiene cuenta, recibirás un enlace para crear una contraseña nueva. Ábrelo en este dispositivo o en cualquier otro.
+        </p>
+        <p className="text-xs text-slate-500">¿No llega? Mira en la carpeta de spam. El enlace caduca en una hora.</p>
+        <Boton className="w-full" onClick={() => setModo('entrar')}>Volver</Boton>
+      </Pantalla>
+    )
+  }
+
+  if (modo === 'olvido') {
+    return (
+      <Pantalla titulo="Recuperar contraseña">
+        <form onSubmit={enviarEnlace} className="space-y-3">
+          <p className="text-sm text-slate-600 dark:text-slate-300">Escribe tu email y te enviaremos un enlace para crear una contraseña nueva.</p>
+          <label className="block text-sm">
+            Email
+            <input className="campo mt-1" type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} />
+          </label>
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          <Boton type="submit" variante="primario" className="w-full" disabled={ocupado}>{ocupado ? 'Enviando…' : 'Enviar enlace'}</Boton>
+          <Boton variante="fantasma" className="w-full" onClick={() => { setModo('entrar'); setError(null) }}>Volver</Boton>
+        </form>
+      </Pantalla>
+    )
+  }
+
   return (
     <Pantalla titulo="Presupuesto personal">
       <form onSubmit={entrar} className="space-y-3">
@@ -144,8 +205,22 @@ function Login() {
         </label>
         {error && <p className="text-sm text-red-600">{error}</p>}
         <Boton type="submit" variante="primario" className="w-full" disabled={ocupado}>{ocupado ? 'Entrando…' : 'Entrar'}</Boton>
+        <button type="button" className="w-full text-center text-sm text-sky-700 hover:underline dark:text-sky-400" onClick={() => { setModo('olvido'); setError(null) }}>
+          ¿Has olvidado tu contraseña?
+        </button>
       </form>
       <p className="text-xs text-slate-500">Acceso privado. No se admiten registros.</p>
+    </Pantalla>
+  )
+}
+
+/** Formulario de contraseña nueva (tras abrir el enlace de recuperación). */
+function NuevaContrasena({ onHecho }: { onHecho: () => void }) {
+  return (
+    <Pantalla titulo="Nueva contraseña">
+      <p className="text-sm text-slate-600 dark:text-slate-300">Elige una contraseña nueva para tu cuenta.</p>
+      <FormularioContrasena textoBoton="Guardar y entrar" onHecho={onHecho} />
+      <Boton variante="fantasma" className="w-full" onClick={() => supabase!.auth.signOut()}>Cancelar</Boton>
     </Pantalla>
   )
 }

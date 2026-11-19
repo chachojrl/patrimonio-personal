@@ -3,6 +3,7 @@ import { useStore } from '../data/store'
 import { Boton, Card, CeldaImporte, Modal } from '../components/ui'
 import { descargar, exportarCSV, exportarExcel, exportarJSON, importarJSON } from '../lib/exportar'
 import { supabase } from '../data/supabase'
+import { FormularioContrasena } from '../components/FormularioContrasena'
 import type { Config, Datos } from '../lib/tipos'
 
 export function AjustesPage() {
@@ -234,6 +235,10 @@ function SeguridadCard() {
     <Card titulo="Seguridad y sesión">
       <div className="space-y-4 text-sm">
         <p>Sesión iniciada como <strong>{email}</strong>.</p>
+        <div>
+          <h3 className="mb-2 font-medium">Cambiar contraseña</h3>
+          <FormularioContrasena />
+        </div>
         <div>
           <h3 className="mb-1 font-medium">Verificación en dos pasos (TOTP)</h3>
           {activo ? (

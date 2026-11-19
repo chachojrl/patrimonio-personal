@@ -39,10 +39,20 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p copia
+          # Supabase devuelve como máximo 1.000 filas por petición: se descarga por páginas
           for t in config months incomes expenses expense_entries savings; do
-            curl -sSf "$URL/rest/v1/$t?select=*" \
-              -H "apikey: $KEY" -H "Authorization: Bearer $KEY" \
-              -H "Range-Unit: items" -H "Range: 0-99999" > "copia/$t.json"
+            echo "[]" > "copia/$t.json"
+            offset=0
+            clave=id; [ "$t" = config ] && clave=user_id
+            while :; do
+              curl -sSf "$URL/rest/v1/$t?select=*&order=$clave.asc&limit=1000&offset=$offset" \
+                -H "apikey: $KEY" -H "Authorization: Bearer $KEY" > pagina.json
+              n=$(jq length pagina.json)
+              jq -s '.[0] + .[1]' "copia/$t.json" pagina.json > tmp.json && mv tmp.json "copia/$t.json"
+              [ "$n" -lt 1000 ] && break
+              offset=$((offset + 1000))
+            done
+            rm -f pagina.json
             echo "$t: $(jq length "copia/$t.json") filas"
           done
       - name: Cifrar

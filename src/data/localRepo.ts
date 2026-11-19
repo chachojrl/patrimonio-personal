@@ -1,7 +1,7 @@
 // Modo local (sin Supabase): los datos se guardan en este navegador. Útil para probar la app.
 import type { Repo } from './repo'
 import type { Datos, Tabla } from '../lib/tipos'
-import { datosVacios } from '../lib/tipos'
+import { datosVacios, normalizarDatos } from '../lib/tipos'
 import { aplicarPlan, borrarMes } from '../lib/operaciones'
 
 const CLAVE = 'presupuesto-local-v1'
@@ -9,7 +9,7 @@ const CLAVE = 'presupuesto-local-v1'
 function leer(): Datos {
   try {
     const s = localStorage.getItem(CLAVE)
-    if (s) return { ...datosVacios(), ...JSON.parse(s) }
+    if (s) return normalizarDatos({ ...datosVacios(), ...JSON.parse(s) })
   } catch {
     /* sin almacenamiento */
   }
