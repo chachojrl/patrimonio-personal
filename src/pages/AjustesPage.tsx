@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../data/store'
 import { Boton, Card, CeldaImporte, Modal } from '../components/ui'
-import { datosIniciales } from '../lib/operaciones'
 import { descargar, exportarCSV, exportarExcel, exportarJSON, importarJSON } from '../lib/exportar'
 import { supabase } from '../data/supabase'
 import type { Config, Datos } from '../lib/tipos'
