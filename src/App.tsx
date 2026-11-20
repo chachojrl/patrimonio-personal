@@ -15,6 +15,8 @@ import { MesPage } from './pages/MesPage'
 import { HistorialPage } from './pages/HistorialPage'
 import { ResumenPage } from './pages/ResumenPage'
 import { AjustesPage } from './pages/AjustesPage'
+import { BuscarPage } from './pages/BuscarPage'
+import { TeDebenPage } from './pages/TeDebenPage'
 
 export default function App() {
   return supabase ? <ConLogin /> : <ConLocal />
@@ -35,6 +37,8 @@ function Rutas() {
           <Route path="historial" element={<HistorialPage />} />
           <Route path="resumen" element={<ResumenPage />} />
           <Route path="resumen/:anio" element={<ResumenPage />} />
+          <Route path="buscar" element={<BuscarPage />} />
+          <Route path="te-deben" element={<TeDebenPage />} />
           <Route path="ajustes" element={<AjustesPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

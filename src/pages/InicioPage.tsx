@@ -20,7 +20,7 @@ interface FilaIndice {
 
 /** Índice de hojas (equivale a la macro ActualizarIndice, pero siempre al día). */
 export function InicioPage() {
-  const { calc, modo } = useStore()
+  const { calc, datos, modo } = useStore()
   const filas: FilaIndice[] = []
   for (const anio of aniosConMeses(calc)) {
     const r = resumenAnual(calc, anio)
@@ -32,6 +32,9 @@ export function InicioPage() {
   if (calc.meses.length > 0) filas.push({ clave: 'hist', hoja: 'Historial', tipo: 'Historial', to: '/historial' })
 
   const k = calc.kpis
+  const pendientes = datos.debts.filter((x) => !x.devuelto_en)
+  const totalDeben = pendientes.reduce((a, x) => a + x.importe, 0)
+  const nPersonas = new Set(pendientes.map((x) => x.persona.trim().toLowerCase())).size
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -45,6 +48,19 @@ export function InicioPage() {
         <InversionesKpi />
         <Kpi titulo="Total en cuenta remunerada" valor={k.totalCuentaRem} />
       </div>
+
+      {pendientes.length > 0 && (
+        <Link
+          to="/te-deben"
+          className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm hover:bg-amber-100 dark:border-amber-900 dark:bg-amber-950/30 dark:hover:bg-amber-950/50"
+        >
+          <span>
+            🤝 Te deben <strong><Dinero c={totalDeben} dash={false} /></strong>{' '}
+            <span className="text-slate-500">({nPersonas === 1 ? '1 persona' : `${nPersonas} personas`})</span>
+          </span>
+          <span className="text-sky-700 dark:text-sky-400">Ver →</span>
+        </Link>
+      )}
 
       {filas.length === 0 ? (
         <Card>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react'
 import { formatEUR, formatInput, parseImporte, type Cents } from '../lib/money'
 import type { EstadoMes } from '../lib/tipos'
+import { OCULTO, setDiscreto, useDiscreto } from '../lib/discreto'
 
 export function cx(...c: (string | false | null | undefined)[]) {
   return c.filter(Boolean).join(' ')
@@ -52,7 +53,9 @@ export function BadgeEstado({ estado }: { estado: EstadoMes }) {
 
 /** Importe con signo de color: rojo si es negativo; verde opcional si es positivo. */
 export function Dinero({ c, verde, dash = true, className }: { c: Cents | null | undefined; verde?: boolean; dash?: boolean; className?: string }) {
+  const discreto = useDiscreto()
   if (c === null || c === undefined) return <span className={className} />
+  if (discreto) return <span className={cx('num whitespace-nowrap text-slate-400 dark:text-slate-500', className)} aria-label="Importe oculto">{c === 0 && dash ? '–' : OCULTO}</span>
   return (
     <span className={cx('num whitespace-nowrap', c < 0 && 'text-red-600 dark:text-red-400', verde && c > 0 && 'text-emerald-700 dark:text-emerald-400', className)}>
       {formatEUR(c, { dash })}
@@ -69,6 +72,28 @@ export function Kpi({ titulo, valor, sub, verde, grande }: { titulo: string; val
       </div>
       {sub && <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{sub}</div>}
     </div>
+  )
+}
+
+/** Botón 👁 para activar o quitar el modo discreto (oculta las cifras en pantalla). */
+export function BotonDiscreto({ className }: { className?: string }) {
+  const activo = useDiscreto()
+  const txt = activo ? 'Mostrar cifras' : 'Ocultar cifras'
+  return (
+    <button
+      type="button"
+      aria-pressed={activo}
+      aria-label={txt}
+      title={txt}
+      onClick={() => setDiscreto(!activo)}
+      className={cx(
+        'flex h-8 w-8 items-center justify-center rounded-lg text-base',
+        activo ? 'bg-marino text-white dark:bg-sky-800' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800',
+        className,
+      )}
+    >
+      <span aria-hidden>{activo ? '🙈' : '👁'}</span>
+    </button>
   )
 }
 
@@ -122,7 +147,8 @@ export function CeldaImporte({
     if (autoFocus) ref.current?.focus()
   }, [autoFocus])
 
-  const mostrar = foco ? texto : valor === null ? '' : formatEUR(valor)
+  const discreto = useDiscreto()
+  const mostrar = foco ? texto : valor === null ? '' : discreto && valor !== 0 ? OCULTO : formatEUR(valor)
   return (
     <input
       ref={ref}

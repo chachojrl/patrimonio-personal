@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { NoAutorizadoError, type Repo } from './repo'
-import type { Ahorro, ApunteGasto, Config, Gasto, Ingreso, Mes, Tabla } from '../lib/tipos'
+import type { Ahorro, ApunteGasto, Config, Deuda, Gasto, Ingreso, Mes, Tabla } from '../lib/tipos'
 import { CONFIG_INICIAL } from '../lib/tipos'
 import { centsToDecimal, toCents, toCentsOrNull } from '../lib/money'
 
@@ -16,6 +16,7 @@ const COLUMNAS: Record<Tabla, string[]> = {
   expenses: ['id', 'month_id', 'concepto', 'fecha_vencimiento', 'importe', 'orden', 'fijo', 'presupuesto'],
   expense_entries: ['id', 'expense_id', 'importe', 'creado_en', 'nota'],
   savings: ['id', 'month_id', 'fecha', 'importe', 'tipo', 'origen'],
+  debts: ['id', 'persona', 'concepto', 'importe', 'fecha', 'devuelto_en'],
 }
 
 function aBD(tabla: Tabla | 'config', obj: Record<string, unknown>): Record<string, unknown> {
@@ -38,6 +39,20 @@ async function leerTodo(sb: SupabaseClient, tabla: string, orden: string): Promi
     if (error) throw error
     res.push(...(data as Fila[]))
     if (!data || data.length < PAG) return res
+  }
+}
+
+/** Lee las deudas. Si la migración 0004 aún no se ha ejecutado, devuelve [] para que la app siga funcionando. */
+async function leerDeudas(sb: SupabaseClient): Promise<Fila[]> {
+  try {
+    return await leerTodo(sb, 'debts', 'fecha')
+  } catch (e) {
+    const err = e as { code?: string; message?: string }
+    if (err.code === '42P01' || err.code === 'PGRST205') {
+      console.warn('Falta la tabla "debts": ejecuta supabase/migrations/0004_deudas.sql')
+      return []
+    }
+    throw e
   }
 }
 
@@ -64,12 +79,13 @@ export function crearSupabaseRepo(sb: SupabaseClient): Repo {
     modo: 'supabase',
     async cargar() {
       const cfg = await asegurarConfig()
-      const [months, incomes, expenses, entries, savings] = await Promise.all([
+      const [months, incomes, expenses, entries, savings, debts] = await Promise.all([
         leerTodo(sb, 'months', 'fecha'),
         leerTodo(sb, 'incomes', 'orden'),
         leerTodo(sb, 'expenses', 'orden'),
         leerTodo(sb, 'expense_entries', 'creado_en'),
         leerTodo(sb, 'savings', 'fecha'),
+        leerDeudas(sb),
       ])
       const config: Config = {
         mes_inicio: String(cfg.mes_inicio),
@@ -101,6 +117,10 @@ export function crearSupabaseRepo(sb: SupabaseClient): Repo {
         savings: savings.map((x): Ahorro => ({
           id: x.id as string, month_id: x.month_id as string, fecha: (x.fecha as string) ?? null, importe: toCents(x.importe as string),
           tipo: x.tipo as Ahorro['tipo'], origen: x.origen as Ahorro['origen'],
+        })),
+        debts: debts.map((x): Deuda => ({
+          id: x.id as string, persona: (x.persona as string) ?? '', concepto: (x.concepto as string) ?? '',
+          importe: toCents(x.importe as string), fecha: x.fecha as string, devuelto_en: (x.devuelto_en as string) ?? null,
         })),
       }
     },
@@ -139,14 +159,16 @@ export function crearSupabaseRepo(sb: SupabaseClient): Repo {
       lanzar(error)
     },
     async reemplazarTodo(d) {
-      // 1) borrar todos los meses (en cascada se borra todo lo demás)
+      // 1) borrar todos los meses (en cascada se borra todo lo demás) y las deudas
       const del = await sb.from('months').delete().not('id', 'is', null)
       lanzar(del.error)
+      const delDeudas = await sb.from('debts').delete().not('id', 'is', null)
+      if (delDeudas.error && d.debts.length > 0) lanzar(delDeudas.error)
       // 2) configuración
       await this.actualizarConfig(d.config)
       // 3) meses abiertos primero (los cerrados no admiten hijos), luego hijos, luego estados
       await this.insertar('months', d.months.map((m) => ({ ...m, estado: 'Abierto' })))
-      for (const tabla of ['incomes', 'expenses', 'expense_entries', 'savings'] as const) {
+      for (const tabla of ['incomes', 'expenses', 'expense_entries', 'savings', 'debts'] as const) {
         const filas = d[tabla] as object[]
         for (let i = 0; i < filas.length; i += 500) await this.insertar(tabla, filas.slice(i, i + 500))
       }

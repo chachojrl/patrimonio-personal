@@ -43,6 +43,7 @@ export function importarJSON(texto: string): Datos {
     if (!Array.isArray(d[k])) throw new Error(`Falta la lista "${k}" en el archivo.`)
   }
   d.expense_entries = d.expense_entries ?? []
+  d.debts = d.debts ?? []
   d.config = { ...CONFIG_INICIAL, ...d.config }
   const ids = new Set(d.months.map((m) => m.id))
   if ([...d.incomes, ...d.expenses, ...d.savings].some((x) => !ids.has(x.month_id))) throw new Error('El archivo tiene filas que no pertenecen a ningún mes.')

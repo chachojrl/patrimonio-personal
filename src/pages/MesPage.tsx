@@ -4,7 +4,8 @@ import { useStore } from '../data/store'
 import { BadgeEstado, Boton, Card, CeldaFecha, CeldaImporte, CeldaTexto, Dinero, Info, Modal, cx } from '../components/ui'
 import { BarrasIngresosGastos, DonutGastado } from '../components/Graficos'
 import { CrearMesBoton } from '../components/CrearMes'
-import { formatEUR, parseImporte } from '../lib/money'
+import { parseImporte } from '../lib/money'
+import { useEur } from '../lib/discreto'
 import { formatFechaHora, nombreMes, hoyISO } from '../lib/fechas'
 import { anadirGasto, borrarCreaHueco, deshacerApunte, estadoPresupuesto, mesesOrdenados, reordenar, uid } from '../lib/operaciones'
 import { Asa, useOrdenable } from '../components/Ordenable'
@@ -31,6 +32,7 @@ export function MesPage() {
 function VistaMes({ mes, c }: { mes: Mes; c: NonNullable<ReturnType<ReturnType<typeof useStore>['calc']['porId']['get']>> }) {
   const { datos, actualizar } = useStore()
   const cerrado = mes.estado === 'Cerrado'
+  const eur = useEur()
   const ordenados = mesesOrdenados(datos)
   const idx = ordenados.findIndex((m) => m.id === mes.id)
   const prev = ordenados[idx - 1]
@@ -62,7 +64,7 @@ function VistaMes({ mes, c }: { mes: Mes; c: NonNullable<ReturnType<ReturnType<t
 
       {exceso > 0 && (
         <div role="alert" className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
-          ⚠ Exceso de gasto: {formatEUR(exceso)}
+          ⚠ Exceso de gasto: {eur(exceso)}
         </div>
       )}
 
@@ -85,7 +87,7 @@ function VistaMes({ mes, c }: { mes: Mes; c: NonNullable<ReturnType<ReturnType<t
                 <Info texto="Diferencia entre el saldo real que escribas y el calculado. Si es positiva cuenta como ingreso extra; si es negativa, como gasto no registrado." />
               </div>
               <div className="mt-1 text-lg font-semibold"><Dinero c={c.ajuste} verde /></div>
-              <div className="text-xs text-slate-500">Calculado: {formatEUR(c.saldoCalculado, { dash: false })}</div>
+              <div className="text-xs text-slate-500">Calculado: {eur(c.saldoCalculado, { dash: false })}</div>
             </div>
             <div>
               <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500" htmlFor="saldo-real">
@@ -198,6 +200,7 @@ function BotonBorrar({ onClick, etiqueta = 'Borrar fila' }: { onClick: () => voi
 
 /** Barra de presupuesto: gastado frente al límite del concepto. */
 function BarraPresupuesto({ g }: { g: Gasto }) {
+  const eur = useEur()
   const e = estadoPresupuesto(g)
   if (!e || g.presupuesto === null) return null
   const color = e.exceso > 0 ? 'bg-red-500' : e.pct >= 0.9 ? 'bg-amber-500' : 'bg-emerald-500'
@@ -207,8 +210,8 @@ function BarraPresupuesto({ g }: { g: Gasto }) {
         <div className={cx('h-full rounded-full', color)} style={{ width: `${Math.min(100, e.pct * 100)}%` }} />
       </div>
       <div className={cx('num mt-0.5 text-[11px]', e.exceso > 0 ? 'font-semibold text-red-600 dark:text-red-400' : 'text-slate-500')}>
-        {formatEUR(g.importe, { dash: false })} de {formatEUR(g.presupuesto, { dash: false })}
-        {e.exceso > 0 ? ` · te has pasado ${formatEUR(e.exceso)}` : ` · quedan ${formatEUR(g.presupuesto - g.importe, { dash: false })}`}
+        {eur(g.importe, { dash: false })} de {eur(g.presupuesto, { dash: false })}
+        {e.exceso > 0 ? ` · te has pasado ${eur(e.exceso)}` : ` · quedan ${eur(g.presupuesto - g.importe, { dash: false })}`}
       </div>
     </div>
   )
@@ -217,6 +220,7 @@ function BarraPresupuesto({ g }: { g: Gasto }) {
 // ---------------- Gastos (con la columna "Añadir gasto") ----------------
 function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
   const { datos, actualizar, insertar, borrar, aplicar, repo, avisar, obtener } = useStore()
+  const eur = useEur()
   const filas = datos.expenses.filter((x) => x.month_id === mes.id).sort((a, b) => a.orden - b.orden)
   const total = filas.reduce((a, b) => a + b.importe, 0)
   const [pendientes, setPendientes] = useState<Record<string, string>>({})
@@ -254,8 +258,8 @@ function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
     setErrores((e) => ({ ...e, [g.id]: '' }))
     if (!silencioso) {
       const e = estadoPresupuesto(r.gasto)
-      const aviso = e && e.exceso > 0 ? ` (te has pasado del presupuesto en ${formatEUR(e.exceso)})` : ''
-      avisar({ texto: `Añadido ${formatEUR(c)} a ${g.concepto}${aviso}`, tipo: aviso ? 'error' : 'ok', accion: { texto: 'Deshacer', fn: () => deshacer(r.apunte.id) } })
+      const aviso = e && e.exceso > 0 ? ` (te has pasado del presupuesto en ${eur(e.exceso)})` : ''
+      avisar({ texto: `Añadido ${eur(c)} a ${g.concepto}${aviso}`, tipo: aviso ? 'error' : 'ok', accion: { texto: 'Deshacer', fn: () => deshacer(r.apunte.id) } })
     }
     return true
   }
@@ -287,9 +291,9 @@ function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
     >
       {conPresupuesto.length > 0 && (
         <div className="mb-3 rounded-lg bg-slate-50 px-3 py-2 text-xs dark:bg-slate-800/60">
-          🎯 Conceptos con presupuesto: <strong className="num">{formatEUR(gastadoConPresupuesto, { dash: false })}</strong> gastados de{' '}
-          <strong className="num">{formatEUR(totalPresupuesto, { dash: false })}</strong>
-          {gastadoConPresupuesto > totalPresupuesto && <span className="font-semibold text-red-600 dark:text-red-400"> · {formatEUR(gastadoConPresupuesto - totalPresupuesto)} por encima</span>}
+          🎯 Conceptos con presupuesto: <strong className="num">{eur(gastadoConPresupuesto, { dash: false })}</strong> gastados de{' '}
+          <strong className="num">{eur(totalPresupuesto, { dash: false })}</strong>
+          {gastadoConPresupuesto > totalPresupuesto && <span className="font-semibold text-red-600 dark:text-red-400"> · {eur(gastadoConPresupuesto - totalPresupuesto)} por encima</span>}
         </div>
       )}
       <div className={cx('hidden gap-x-1 px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500 md:grid', columnas)}>
@@ -389,7 +393,7 @@ function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
               <input type="checkbox" className="mt-0.5 h-4 w-4" checked={opciones.fijo} onChange={(e) => actualizar('expenses', opciones.id, { fijo: e.target.checked })} />
               <span>
                 <span className="font-medium">📌 Gasto fijo</span>
-                <span className="block text-xs text-slate-500">Al crear el mes siguiente se copia con el mismo importe ({formatEUR(opciones.importe, { dash: false })}) y su fecha de vencimiento un mes después.</span>
+                <span className="block text-xs text-slate-500">Al crear el mes siguiente se copia con el mismo importe ({eur(opciones.importe, { dash: false })}) y su fecha de vencimiento un mes después.</span>
               </span>
             </label>
             <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
@@ -435,7 +439,7 @@ function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
               ))}
           </ul>
         )}
-        <p className="text-xs text-slate-500">Importe actual de la fila: {formatEUR(datos.expenses.find((e) => e.id === desglose?.id)?.importe ?? 0, { dash: false })}. Si lo editas a mano, los apuntes quedan solo como historial.</p>
+        <p className="text-xs text-slate-500">Importe actual de la fila: {eur(datos.expenses.find((e) => e.id === desglose?.id)?.importe ?? 0, { dash: false })}. Si lo editas a mano, los apuntes quedan solo como historial.</p>
       </Modal>
     </Card>
   )
