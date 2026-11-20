@@ -212,6 +212,20 @@ Sin el archivo `.env.local`, la app arranca en **modo local**: los datos se guar
 navegador y no hay login. Para conectarla a Supabase, copia `.env.example` a `.env.local` y
 rellénalo.
 
+### Pruebas de la base de datos
+
+`supabase/tests/` prueba las migraciones en un PostgreSQL desechable que simula lo mínimo de
+Supabase (roles, `auth.uid()`, usuarios de prueba): privacidad entre cuentas, cuenta compartida,
+aportaciones automáticas y borrados. GitHub las ejecuta solas en cada pull request y en cada cambio
+en `main` (*Actions → Pruebas*), junto con los tests de la app. Para ejecutarlas a mano hace falta
+un PostgreSQL 16 de pruebas (**nunca** el de Supabase):
+
+```bash
+PGHOST=localhost PGPORT=5432 PGUSER=postgres PGPASSWORD=postgres ./supabase/tests/ejecutar.sh
+```
+
+Si añades una migración, añade también sus comprobaciones en un archivo nuevo de `supabase/tests/`.
+
 ## Estructura
 
 ```
