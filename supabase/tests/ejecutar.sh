@@ -73,6 +73,15 @@ ejecutar 02_borrar_cuenta.sql
 ejecutar 04_tiempo_real.sql
 ejecutar 05_historial_compra_viajes.sql
 
+# La copia semanal tiene que incluir TODAS las tablas de datos (si añades una, añádela allí)
+lista_copia=$(grep -m1 -E '^\s*for t in config ' .github/workflows/backup.yml)
+faltan=""
+for t in $(ow_psql -A -c "select tablename from pg_tables where schemaname = 'public' and tablename <> 'app_owner' order by 1"); do
+  grep -qw "$t" <<<"$lista_copia" || faltan="$faltan $t"
+done
+if [ -n "$faltan" ]; then echo "  ✗ la copia de seguridad (backup.yml) no incluye:$faltan"; exit 1; fi
+echo "  ✓ la copia de seguridad incluye todas las tablas"
+
 echo "▶ 3. Sin las migraciones 0003 ni 0004 (la 0005 tiene que bastarse sola)"
 preparar
 migrar 0001_esquema.sql 0002_usuarios_nuevos_en_blanco.sql

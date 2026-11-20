@@ -40,15 +40,15 @@ jobs:
           set -euo pipefail
           mkdir -p copia
           # Supabase devuelve como máximo 1.000 filas por petición: se descarga por páginas
-          for t in config months incomes expenses expense_entries savings debts cuentas cuenta_miembros; do
+          for t in config months incomes expenses expense_entries savings debts cuentas cuenta_miembros lista_compra viajes viaje_gastos cambios; do
             echo "[]" > "copia/$t.json"
             offset=0
             clave=id; [ "$t" = config ] && clave=user_id
             while :; do
               if ! curl -sSf "$URL/rest/v1/$t?select=*&order=$clave.asc&limit=1000&offset=$offset" \
                 -H "apikey: $KEY" -H "Authorization: Bearer $KEY" > pagina.json; then
-                # debts (0004) y cuentas (0005) llegan con migraciones: si aún no existen, se sigue sin ellas
-                case "$t" in debts|cuentas|cuenta_miembros) ;; *) exit 1 ;; esac
+                # debts (0004), cuentas (0005) y las de la 0009 llegan con migraciones: si aún no existen, se sigue sin ellas
+                case "$t" in debts|cuentas|cuenta_miembros|lista_compra|viajes|viaje_gastos|cambios) ;; *) exit 1 ;; esac
                 echo "::warning::No existe la tabla $t (ejecuta la migración que la crea)."
                 echo "[]" > pagina.json
               fi
