@@ -92,13 +92,54 @@ export async function actualizarMiembro(sb: SupabaseClient, id: string, nombre: 
   lanzar(error)
 }
 
+// ---------- Filas de la BD → tipos de la app (al cargar y al recibir cambios en tiempo real) ----------
+// Los importes llegan como NUMERIC: cadena "123.45" (o número): se pasan a céntimos.
+
 function mapGasto(x: Fila): Gasto {
   return {
     id: x.id as string, month_id: x.month_id as string, concepto: x.concepto as string,
-    fecha_vencimiento: (x.fecha_vencimiento as string) ?? null, importe: toCents(x.importe as string), orden: x.orden as number,
+    fecha_vencimiento: (x.fecha_vencimiento as string) ?? null, importe: toCents(x.importe as string), orden: Number(x.orden),
     fijo: (x.fijo as boolean) ?? false, presupuesto: toCentsOrNull(x.presupuesto as string),
     aportacion_cuenta: (x.aportacion_cuenta as string) ?? null,
   }
+}
+
+export function mapConfig(cfg: Fila): Config {
+  return {
+    mes_inicio: String(cfg.mes_inicio),
+    ajuste_cuenta_gastos_inicial: toCents(cfg.ajuste_cuenta_gastos_inicial as string),
+    inversiones_iniciales: toCents(cfg.inversiones_iniciales as string),
+    aportado_inicial_inversiones: toCents(cfg.aportado_inicial_inversiones as string),
+    cuenta_remunerada_inicial: toCents(cfg.cuenta_remunerada_inicial as string),
+    plantilla_ingresos: (cfg.plantilla_ingresos as string[]) ?? CONFIG_INICIAL.plantilla_ingresos,
+    plantilla_gastos: (cfg.plantilla_gastos as string[]) ?? CONFIG_INICIAL.plantilla_gastos,
+  }
+}
+
+export const MAPEOS: { [T in Tabla]: (x: Fila) => Datos[T][number] } = {
+  months: (m): Mes => ({
+    id: m.id as string,
+    fecha: m.fecha as string,
+    titulo: m.titulo as string,
+    estado: m.estado as Mes['estado'],
+    ultimo_cambio: (m.ultimo_cambio as string) ?? null,
+    saldo_real_cuenta: toCentsOrNull(m.saldo_real_cuenta as string),
+    valor_real_inversiones: toCentsOrNull(m.valor_real_inversiones as string),
+  }),
+  incomes: (x): Ingreso => ({
+    id: x.id as string, month_id: x.month_id as string, concepto: x.concepto as string, importe: toCents(x.importe as string), orden: Number(x.orden),
+    aportacion_de: (x.aportacion_de as string) ?? null,
+  }),
+  expenses: mapGasto,
+  expense_entries: (x): ApunteGasto => ({ id: x.id as string, expense_id: x.expense_id as string, importe: toCents(x.importe as string), creado_en: x.creado_en as string, nota: (x.nota as string) ?? null }),
+  savings: (x): Ahorro => ({
+    id: x.id as string, month_id: x.month_id as string, fecha: (x.fecha as string) ?? null, importe: toCents(x.importe as string),
+    tipo: x.tipo as Ahorro['tipo'], origen: x.origen as Ahorro['origen'],
+  }),
+  debts: (x): Deuda => ({
+    id: x.id as string, persona: (x.persona as string) ?? '', concepto: (x.concepto as string) ?? '',
+    importe: toCents(x.importe as string), fecha: x.fecha as string, devuelto_en: (x.devuelto_en as string) ?? null,
+  }),
 }
 
 /**
@@ -155,40 +196,14 @@ export function crearSupabaseRepo(sb: SupabaseClient, cuentaId: string | null): 
         leerTodo('savings', 'fecha'),
         leerDeudas(),
       ])
-      const config: Config = {
-        mes_inicio: String(cfg.mes_inicio),
-        ajuste_cuenta_gastos_inicial: toCents(cfg.ajuste_cuenta_gastos_inicial as string),
-        inversiones_iniciales: toCents(cfg.inversiones_iniciales as string),
-        aportado_inicial_inversiones: toCents(cfg.aportado_inicial_inversiones as string),
-        cuenta_remunerada_inicial: toCents(cfg.cuenta_remunerada_inicial as string),
-        plantilla_ingresos: (cfg.plantilla_ingresos as string[]) ?? CONFIG_INICIAL.plantilla_ingresos,
-        plantilla_gastos: (cfg.plantilla_gastos as string[]) ?? CONFIG_INICIAL.plantilla_gastos,
-      }
       return {
-        config,
-        months: months.map((m): Mes => ({
-          id: m.id as string,
-          fecha: m.fecha as string,
-          titulo: m.titulo as string,
-          estado: m.estado as Mes['estado'],
-          ultimo_cambio: (m.ultimo_cambio as string) ?? null,
-          saldo_real_cuenta: toCentsOrNull(m.saldo_real_cuenta as string),
-          valor_real_inversiones: toCentsOrNull(m.valor_real_inversiones as string),
-        })),
-        incomes: incomes.map((x): Ingreso => ({
-          id: x.id as string, month_id: x.month_id as string, concepto: x.concepto as string, importe: toCents(x.importe as string), orden: x.orden as number,
-          aportacion_de: (x.aportacion_de as string) ?? null,
-        })),
-        expenses: expenses.map(mapGasto),
-        expense_entries: entries.map((x): ApunteGasto => ({ id: x.id as string, expense_id: x.expense_id as string, importe: toCents(x.importe as string), creado_en: x.creado_en as string, nota: (x.nota as string) ?? null })),
-        savings: savings.map((x): Ahorro => ({
-          id: x.id as string, month_id: x.month_id as string, fecha: (x.fecha as string) ?? null, importe: toCents(x.importe as string),
-          tipo: x.tipo as Ahorro['tipo'], origen: x.origen as Ahorro['origen'],
-        })),
-        debts: debts.map((x): Deuda => ({
-          id: x.id as string, persona: (x.persona as string) ?? '', concepto: (x.concepto as string) ?? '',
-          importe: toCents(x.importe as string), fecha: x.fecha as string, devuelto_en: (x.devuelto_en as string) ?? null,
-        })),
+        config: mapConfig(cfg),
+        months: months.map(MAPEOS.months),
+        incomes: incomes.map(MAPEOS.incomes),
+        expenses: expenses.map(MAPEOS.expenses),
+        expense_entries: entries.map(MAPEOS.expense_entries),
+        savings: savings.map(MAPEOS.savings),
+        debts: debts.map(MAPEOS.debts),
       }
     },
     async insertar(tabla, filas) {
@@ -232,6 +247,30 @@ export function crearSupabaseRepo(sb: SupabaseClient, cuentaId: string | null): 
       }
       const { error } = await sb.rpc('insertar_mes', cuentaId ? { p_cuenta: cuentaId, ...args } : args)
       lanzar(error)
+    },
+    suscribir(alCambiar) {
+      if (!cuentaId) return () => undefined
+      const canal = sb.channel(`cuenta-${cuentaId}`)
+      const filtro = `cuenta_id=eq.${cuentaId}`
+      for (const tabla of Object.keys(MAPEOS) as Tabla[]) {
+        for (const tipo of ['INSERT', 'UPDATE'] as const) {
+          canal.on('postgres_changes', { event: tipo, schema: 'public', table: tabla, filter: filtro }, (p) => {
+            alCambiar({ tabla, tipo, fila: MAPEOS[tabla](p.new as Fila) })
+          })
+        }
+        // Los borrados no se pueden filtrar por cuenta: llega solo el id y se ignora si no es nuestro
+        canal.on('postgres_changes', { event: 'DELETE', schema: 'public', table: tabla }, (p) => {
+          const id = (p.old as Fila)?.id
+          if (typeof id === 'string') alCambiar({ tabla, tipo: 'DELETE', id })
+        })
+      }
+      canal.on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'config', filter: filtro }, (p) => {
+        alCambiar({ tabla: 'config', tipo: 'UPDATE', config: mapConfig(p.new as Fila) })
+      })
+      canal.subscribe()
+      return () => {
+        sb.removeChannel(canal)
+      }
     },
     async leerAportaciones() {
       if (!cuentaId) return []

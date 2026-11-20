@@ -116,6 +116,9 @@ Debe responder `OK` en todas las tablas: sin sesión no se lee nada y el registr
   suma al dinero total ni a los gastos del mes. Si hay algo pendiente, aparece un aviso en Inicio.
 - **Modo discreto** (👁): oculta todas las cifras en pantalla (•••• €). Se recuerda en cada
   dispositivo y no afecta a las exportaciones.
+- **Tiempo real:** lo que se apunta en un dispositivo aparece solo en los demás que tengan la app
+  abierta (por ejemplo, un gasto que apunta tu pareja en la cuenta compartida), sin recargar. Si
+  estás escribiendo en una fila, no se te pisa. Necesita la migración `0008_tiempo_real.sql`.
 - **Exportar:** en Ajustes puedes descargar Excel (.xlsx, una hoja por mes + Índice + Historial +
   Resumen), una copia completa en JSON o CSV.
 
@@ -133,6 +136,7 @@ vez** en *Supabase → SQL Editor*, en orden. Se pueden repetir sin problema.
 | `0005_cuentas_compartidas.sql` | Cuentas: tu cuenta personal y, opcionalmente, una compartida. Tus datos pasan a tu cuenta personal sin cambios |
 | `0006_borrar_cuenta_compartida.sql` | Permite borrar una cuenta compartida (con confirmación) |
 | `0007_borrar_mes_compartido.sql` | Al borrar un mes de la cuenta compartida, desaparece la aportación de ese mes en las cuentas personales |
+| `0008_tiempo_real.sql` | Tiempo real: los cambios aparecen al momento en los demás dispositivos |
 
 ## Cuenta compartida (opcional)
 
@@ -211,6 +215,20 @@ npm run dev
 Sin el archivo `.env.local`, la app arranca en **modo local**: los datos se guardan en el
 navegador y no hay login. Para conectarla a Supabase, copia `.env.example` a `.env.local` y
 rellénalo.
+
+### Pruebas de la base de datos
+
+`supabase/tests/` prueba las migraciones en un PostgreSQL desechable que simula lo mínimo de
+Supabase (roles, `auth.uid()`, usuarios de prueba): privacidad entre cuentas, cuenta compartida,
+aportaciones automáticas y borrados. GitHub las ejecuta solas en cada pull request y en cada cambio
+en `main` (*Actions → Pruebas*), junto con los tests de la app. Para ejecutarlas a mano hace falta
+un PostgreSQL 16 de pruebas (**nunca** el de Supabase):
+
+```bash
+PGHOST=localhost PGPORT=5432 PGUSER=postgres PGPASSWORD=postgres ./supabase/tests/ejecutar.sh
+```
+
+Si añades una migración, añade también sus comprobaciones en un archivo nuevo de `supabase/tests/`.
 
 ## Estructura
 

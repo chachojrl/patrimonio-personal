@@ -108,6 +108,12 @@ export interface Datos {
 
 export type Tabla = 'months' | 'incomes' | 'expenses' | 'expense_entries' | 'savings' | 'debts'
 
+/** Un cambio hecho desde otro dispositivo (o por el servidor), recibido en tiempo real. */
+export type CambioRemoto =
+  | { tabla: Tabla; tipo: 'INSERT' | 'UPDATE'; fila: Datos[Tabla][number] }
+  | { tabla: Tabla; tipo: 'DELETE'; id: string }
+  | { tabla: 'config'; tipo: 'UPDATE'; config: Config }
+
 export const PLANTILLA_INGRESOS = ['Nomina', 'Fuente de ingresos 2', 'Fuente de ingresos 3', 'Fuente de ingresos 4', 'Otros']
 export const PLANTILLA_GASTOS = [
   'Alquiler/hipoteca', 'Electricidad', 'Gas', 'Teléfono móvil/WiFi', 'Supermercado', 'Pago del coche',

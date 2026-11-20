@@ -1,6 +1,6 @@
 // Operaciones puras que transforman los datos (sin red). Las usan la UI y los tests.
 import type { Cents } from './money'
-import type { Ahorro, ApunteGasto, Datos, Gasto, Ingreso, Mes } from './tipos'
+import type { Ahorro, ApunteGasto, CambioRemoto, Datos, Gasto, Ingreso, Mes } from './tipos'
 import { CONFIG_INICIAL, PLANTILLA_GASTOS, PLANTILLA_INGRESOS } from './tipos'
 import { indiceMes, mesSiguiente, nombreMes } from './fechas'
 
@@ -216,4 +216,32 @@ export function datosIniciales(): Datos {
       { id: uid(), month_id: nov.id, fecha: '2026-11-16', importe: 119900, tipo: 'Inversiones', origen: 'Ingresos mensuales' },
     ],
   }
+}
+
+// ---------- Tiempo real ----------
+
+const igual = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
+
+/**
+ * Aplica un cambio recibido en tiempo real. Devuelve el MISMO objeto si no cambia nada
+ * (por ejemplo, el eco de un cambio hecho en este dispositivo), para no repintar.
+ */
+export function aplicarCambioRemoto(d: Datos, c: CambioRemoto): Datos {
+  if (c.tabla === 'config') {
+    if (!('config' in c)) return d
+    return igual(d.config, c.config) ? d : { ...d, config: c.config }
+  }
+  const tabla = c.tabla
+  const filas = d[tabla] as unknown as { id: string }[]
+  if (c.tipo === 'DELETE') {
+    if (!filas.some((x) => x.id === c.id)) return d
+    if (tabla === 'months') return borrarMes(d, c.id)
+    const sin = { ...d, [tabla]: filas.filter((x) => x.id !== c.id) } as Datos
+    return tabla === 'expenses' ? { ...sin, expense_entries: sin.expense_entries.filter((a) => a.expense_id !== c.id) } : sin
+  }
+  if (!('fila' in c)) return d
+  const i = filas.findIndex((x) => x.id === c.fila.id)
+  if (i >= 0 && igual(filas[i], c.fila)) return d
+  const nuevas = i >= 0 ? filas.map((x, j) => (j === i ? c.fila : x)) : [...filas, c.fila]
+  return { ...d, [tabla]: nuevas } as Datos
 }

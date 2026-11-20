@@ -141,6 +141,28 @@ function ConCuentas({ session }: { session: Session }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Tiempo real: si cambian las cuentas o sus miembros (porcentaje, invitación aceptada,
+  // cuenta borrada desde el otro móvil…), se recargan.
+  const hayCuentas = !!cuentas
+  useEffect(() => {
+    if (!hayCuentas) return
+    let t: ReturnType<typeof setTimeout> | undefined
+    const recargar = () => {
+      clearTimeout(t)
+      t = setTimeout(() => recargarCuentas().catch(() => undefined), 400)
+    }
+    const canal = sb
+      .channel('mis-cuentas')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cuentas' }, recargar)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cuenta_miembros' }, recargar)
+      .subscribe()
+    return () => {
+      clearTimeout(t)
+      sb.removeChannel(canal)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hayCuentas])
+
   const activa = cuentas ? (cuentas.find((c) => c.id === activaId) ?? cuentas[0] ?? null) : null
   const repo = useMemo(() => crearSupabaseRepo(sb, activa?.id ?? null), [sb, activa?.id])
 
