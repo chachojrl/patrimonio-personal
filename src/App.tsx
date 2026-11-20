@@ -23,6 +23,7 @@ import { ActividadPage } from './pages/ActividadPage'
 import { CompraPage } from './pages/CompraPage'
 import { ViajesPage } from './pages/ViajesPage'
 import { ViajePage } from './pages/ViajePage'
+import { ApuntarPage } from './pages/ApuntarPage'
 
 export default function App() {
   return supabase ? <ConLogin /> : <ConLocal />
@@ -49,6 +50,7 @@ function Rutas() {
           <Route path="compra" element={<CompraPage />} />
           <Route path="viajes" element={<ViajesPage />} />
           <Route path="viajes/:id" element={<ViajePage />} />
+          <Route path="apuntar" element={<ApuntarPage />} />
           <Route path="ajustes" element={<AjustesPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

@@ -3,6 +3,7 @@ import { useStore } from '../data/store'
 import { BadgeEstado, Card, CeldaImporte, Dinero, Info, Kpi, cx } from '../components/ui'
 import { LineaDineroTotal } from '../components/Graficos'
 import { InversionesKpi } from '../components/InversionesKpi'
+import { ColchonCard } from '../components/ColchonCard'
 import { MESES_CORTOS, formatFecha, partes } from '../lib/fechas'
 
 const TOOLTIP_VALOR =
@@ -33,6 +34,7 @@ export function HistorialPage() {
             <Kpi titulo="Dinero total actual" valor={k.dineroTotalActual} grande />
             <Kpi titulo="Saldo inicial total" valor={k.saldoInicialTotal} />
             <Kpi titulo="Último mes registrado" valor={k.ultimoMes ?? '–'} />
+            <ColchonCard compacta />
           </div>
         </Card>
         <Card titulo="Inversiones">

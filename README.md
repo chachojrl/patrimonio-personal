@@ -135,6 +135,21 @@ Debe responder `OK` en todas las tablas: sin sesión no se lee nada y el registr
   al abrir la app y al volver a ella tras más de un minuto. Es por dispositivo; la app no ve ni guarda
   tu cara ni tu huella. Si algún día falla, en la pantalla de bloqueo puedes cerrar sesión y entrar
   con tu contraseña (eso quita el bloqueo en ese dispositivo).
+- **Colchón de emergencia** (Inicio e Historial): cuántos meses podrías vivir sin ingresos con tu saldo
+  y tu cuenta remunerada, según lo que gastas de media (las inversiones no cuentan).
+- **¿En qué se va?** (cada mes): necesidades, caprichos y ahorro frente a la regla 50/30/20. Clasifica
+  cada concepto una vez con un toque; se recuerda para los meses siguientes. La aportación a la cuenta
+  compartida cuenta como necesidad.
+- **Avisos** («🔎 Revisa», arriba del mes): un concepto que va más de 2,5 veces por encima de su media
+  (con al menos 3 meses de historia y 30 € o más) o dos apuntes iguales casi seguidos.
+- **Cerrar mes guiado:** «✓ Cerrar mes…» repasa el saldo real del banco, el valor de las inversiones,
+  lo pendiente (presupuestos, avisos, lo que te deben) y el resumen frente al mes anterior.
+- **Apuntar con Siri o Atajos:** *Ajustes → Apuntar con Siri o Atajos* genera un enlace
+  (`#/apuntar?gasto=Supermercado&importe=…`) y explica cómo crear el atajo. El enlace abre la app con
+  el gasto puesto y siempre pide un toque para confirmar.
+- **Reparto por concepto** (cuenta compartida): en ⋯ de cada gasto, «proporcional» (lo cubren las
+  aportaciones), «a medias» o «lo paga entero» uno. La tarjeta «Reparto del mes» dice cuánto pone cada
+  uno además de su aportación.
 - **Exportar:** en Ajustes puedes descargar Excel (.xlsx, una hoja por mes + Índice + Historial +
   Resumen), una copia completa en JSON o CSV.
 
@@ -154,6 +169,7 @@ vez** en *Supabase → SQL Editor*, en orden. Se pueden repetir sin problema.
 | `0007_borrar_mes_compartido.sql` | Al borrar un mes de la cuenta compartida, desaparece la aportación de ese mes en las cuentas personales |
 | `0008_tiempo_real.sql` | Tiempo real: los cambios aparecen al momento en los demás dispositivos |
 | `0009_historial_compra_viajes.sql` | Historial de cambios, lista de la compra y viajes |
+| `0010_clasificacion_reparto.sql` | Necesidades/caprichos (50/30/20) y reparto por concepto en la cuenta compartida |
 
 ## Cuenta compartida (opcional)
 
