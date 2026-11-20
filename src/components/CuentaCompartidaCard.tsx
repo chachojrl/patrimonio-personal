@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from 'react'
 import { useStore } from '../data/store'
-import { nombreMiembro, useCuentas } from '../data/cuentas'
+import { CLAVE_AVISO, nombreMiembro, useCuentas } from '../data/cuentas'
 import { supabase } from '../data/supabase'
-import { actualizarCuenta, actualizarMiembro, crearCuentaCompartida } from '../data/supabaseRepo'
-import { Boton, Card, Dinero, cx } from './ui'
+import { actualizarCuenta, actualizarMiembro, borrarCuentaCompartida, crearCuentaCompartida } from '../data/supabaseRepo'
+import { Boton, Card, Dinero, Modal, cx } from './ui'
+import { descargar, exportarJSON } from '../lib/exportar'
 import { mesesOrdenados } from '../lib/operaciones'
 import { nombreMes } from '../lib/fechas'
 import type { Cuenta } from '../lib/tipos'
@@ -230,8 +231,120 @@ function Configurar({ cuenta }: { cuenta: Cuenta }) {
         <p className="text-xs text-slate-500">
           Ojo: como se aporta un porcentaje de los ingresos, la otra persona puede deducir tus ingresos a partir de tu aportación.
         </p>
+
+        <ZonaPeligrosa cuenta={cuenta} />
       </div>
     </Card>
+  )
+}
+
+function ZonaPeligrosa({ cuenta }: { cuenta: Cuenta }) {
+  const { cuentas, cambiar, recargarCuentas, userId } = useCuentas()
+  const { datos } = useStore()
+  const [abierto, setAbierto] = useState(false)
+  const [entiendo, setEntiendo] = useState(false)
+  const [escrito, setEscrito] = useState('')
+  const [copiaHecha, setCopiaHecha] = useState(false)
+  const [ocupado, setOcupado] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const otros = cuenta.miembros.filter((m) => m.user_id !== userId).map(nombreMiembro)
+  const coincide = escrito.trim().toLowerCase() === cuenta.nombre.trim().toLowerCase()
+  const n = {
+    meses: datos.months.length,
+    gastos: datos.expenses.filter((g) => g.importe !== 0).length,
+    ingresos: datos.incomes.filter((i) => i.importe !== 0).length,
+    deudas: datos.debts.length,
+  }
+
+  function cerrar() {
+    if (ocupado) return
+    setAbierto(false)
+    setEntiendo(false)
+    setEscrito('')
+    setError(null)
+  }
+
+  function copia() {
+    descargar(`presupuesto-${cuenta.nombre.replace(/[^\p{L}\p{N}]+/gu, '-').toLowerCase()}-${new Date().toISOString().slice(0, 10)}.json`, exportarJSON(datos), 'application/json')
+    setCopiaHecha(true)
+  }
+
+  async function borrar() {
+    if (!entiendo || !coincide) return
+    setOcupado(true)
+    setError(null)
+    try {
+      await borrarCuentaCompartida(supabase!, cuenta.id, escrito)
+      try {
+        sessionStorage.setItem(CLAVE_AVISO, `Cuenta «${cuenta.nombre}» borrada.`)
+      } catch {
+        /* sin almacenamiento */
+      }
+      const personal = cuentas?.find((c) => c.tipo === 'personal')
+      if (personal) cambiar(personal.id)
+      await recargarCuentas()
+    } catch (e) {
+      setError((e as Error).message)
+      setOcupado(false)
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-red-200 p-3 dark:border-red-900/60">
+      <div className="text-sm font-semibold text-red-700 dark:text-red-400">Zona peligrosa</div>
+      <p className="mt-1 text-xs text-slate-500">Borra la cuenta compartida y todo lo que contiene, para todos sus miembros.</p>
+      <Boton variante="secundario" className="mt-2 border-red-300 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/40" onClick={() => setAbierto(true)}>
+        🗑 Borrar cuenta compartida…
+      </Boton>
+
+      <Modal
+        abierto={abierto}
+        onCerrar={cerrar}
+        titulo={`¿Borrar «${cuenta.nombre}»?`}
+        pie={
+          <>
+            <Boton onClick={cerrar} disabled={ocupado}>Cancelar</Boton>
+            <Boton variante="peligro" onClick={borrar} disabled={!entiendo || !coincide || ocupado}>
+              {ocupado ? 'Borrando…' : 'Borrar definitivamente'}
+            </Boton>
+          </>
+        }
+      >
+        <div className="rounded-lg bg-red-50 p-3 text-red-800 dark:bg-red-950/40 dark:text-red-300">
+          <p className="font-semibold">Esto no se puede deshacer.</p>
+          <p className="mt-1">
+            Se borra para {otros.length ? <>ti y para {otros.join(', ')}</> : 'todos los miembros'}:{' '}
+            {n.meses} {n.meses === 1 ? 'mes' : 'meses'}, {n.gastos} gastos, {n.ingresos} ingresos
+            {n.deudas > 0 && <>, {n.deudas} {n.deudas === 1 ? 'deuda' : 'deudas'}</>} y su configuración.
+          </p>
+        </div>
+        <p className="text-slate-600 dark:text-slate-300">
+          En vuestras cuentas personales no se borra nada, salvo el gasto automático «Aportación {cuenta.nombre}» de los meses abiertos.
+          En los meses cerrados se queda como un gasto normal.
+        </p>
+        <div className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+          <span>{copiaHecha ? '✓ Copia descargada' : 'Antes, guarda una copia por si acaso.'}</span>
+          <Boton className="shrink-0 text-xs" onClick={copia}>💾 Descargar copia</Boton>
+        </div>
+        <label className="flex items-start gap-2">
+          <input type="checkbox" className="mt-0.5 h-4 w-4" checked={entiendo} onChange={(e) => setEntiendo(e.target.checked)} />
+          <span>Entiendo que se borra para {otros.length ? 'los dos' : 'todos'} y que no se puede recuperar.</span>
+        </label>
+        <label className="block">
+          <span>Para confirmar, escribe el nombre de la cuenta: <strong className="select-all">{cuenta.nombre}</strong></span>
+          <input
+            className={cx('campo mt-1', escrito && !coincide && 'border-red-400')}
+            value={escrito}
+            autoComplete="off"
+            aria-label="Nombre de la cuenta para confirmar"
+            onChange={(e) => setEscrito(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && borrar()}
+          />
+        </label>
+        {error && <p className="text-red-600" role="alert">{error}</p>}
+      </Modal>
+    </div>
   )
 }
 
