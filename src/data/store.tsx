@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { Repo } from './repo'
 import type { Config, Datos, Tabla } from '../lib/tipos'
 import { calcular, type Calculo } from '../lib/calculos'
-import { aplicarPlan, borrarMes as borrarMesPuro, planMesNuevo, uid, type PlanMesNuevo } from '../lib/operaciones'
+import { aplicarCambioRemoto, aplicarPlan, borrarMes as borrarMesPuro, planMesNuevo, uid, type PlanMesNuevo } from '../lib/operaciones'
 
 export type EstadoGuardado = 'guardado' | 'guardando' | 'error' | 'sin-conexion'
 
@@ -61,6 +61,8 @@ export function StoreProvider({ repo, inicial, children }: { repo: Repo; inicial
   const cola = useRef<Promise<void>>(Promise.resolve())
   /** Han cambiado ingresos: al terminar de guardar, se releen las aportaciones (las calcula el servidor). */
   const ingresosCambiados = useRef(false)
+  /** Última edición local de cada fila ("tabla:id" → ms): los cambios remotos no pisan lo que estás escribiendo. */
+  const editadas = useRef(new Map<string, number>())
   const pendientes = useRef(0)
   const parches = useRef(new Map<string, { tabla: Tabla; id: string; patch: Record<string, unknown>; timer: ReturnType<typeof setTimeout> }>())
 
@@ -172,6 +174,7 @@ export function StoreProvider({ repo, inicial, children }: { repo: Repo; inicial
       setDatos(d)
 
       const clave = `${tabla}:${id}`
+      editadas.current.set(clave, Date.now())
       if (tabla === 'months' && 'estado' in patch) {
         // Al cerrar/reabrir: primero se guarda todo lo pendiente (un mes cerrado no admite cambios)
         for (const k of [...parches.current.keys()]) if (k !== clave) flushParche(k)
@@ -239,6 +242,7 @@ export function StoreProvider({ repo, inicial, children }: { repo: Repo; inicial
 
   const actualizarConfig = useCallback<StoreCtx['actualizarConfig']>(
     (patch) => {
+      editadas.current.set('config', Date.now())
       const d = { ...datosRef.current, config: { ...datosRef.current.config, ...patch } }
       datosRef.current = d
       setDatos(d)
@@ -319,6 +323,24 @@ export function StoreProvider({ repo, inicial, children }: { repo: Repo; inicial
       window.removeEventListener('online', on)
     }
   }, [])
+
+  // Tiempo real: cambios de esta cuenta hechos desde otro dispositivo (o por el servidor)
+  useEffect(() => {
+    if (!repo.suscribir) return
+    return repo.suscribir((c) => {
+      if (c.tabla === 'config' && Date.now() - (editadas.current.get('config') ?? 0) < 3000) return
+      if (c.tabla !== 'config' && c.tipo !== 'DELETE') {
+        const clave = `${c.tabla}:${c.fila.id}`
+        // Fila con cambios sin guardar o editada hace menos de 3 s: manda lo local
+        if (parches.current.has(clave) || Date.now() - (editadas.current.get(clave) ?? 0) < 3000) return
+      }
+      const antes = datosRef.current
+      const despues = aplicarCambioRemoto(antes, c)
+      if (despues === antes) return
+      datosRef.current = despues
+      setDatos(despues)
+    })
+  }, [repo])
 
   const calc = useMemo(() => calcular(datos), [datos])
 

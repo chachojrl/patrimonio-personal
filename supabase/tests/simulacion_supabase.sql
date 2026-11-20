@@ -23,3 +23,4 @@ insert into auth.users values
 -- Supabase la trae creada (tiempo real); aquí basta con que exista
 set client_min_messages = error;
 create publication supabase_realtime;
+alter publication supabase_realtime owner to owner_sim;

@@ -60,15 +60,17 @@ ow_psql -f "$T/ayudas.sql" >/dev/null
 ejecutar 01_cuentas_compartidas.sql
 ejecutar 03_borrar_mes.sql
 
-echo "▶ 2. Todas las migraciones y borrado de la cuenta compartida"
+echo "▶ 2. Todas las migraciones, borrado de la cuenta compartida y tiempo real"
 preparar
 migrar 0001_esquema.sql 0002_usuarios_nuevos_en_blanco.sql 0003_fijos_presupuestos.sql 0004_deudas.sql
 cargar_datos_previos
 # shellcheck disable=SC2046
 migrar $(posteriores)
+migrar 0008_tiempo_real.sql # otra vez: se puede repetir
 ow_psql -f "$T/ayudas.sql" >/dev/null
 ejecutar 01_cuentas_compartidas.sql
 ejecutar 02_borrar_cuenta.sql
+ejecutar 04_tiempo_real.sql
 
 echo "▶ 3. Sin las migraciones 0003 ni 0004 (la 0005 tiene que bastarse sola)"
 preparar
