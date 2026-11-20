@@ -188,8 +188,11 @@ solo dejan ver cada fila a los miembros de su cuenta.
 ## Copias de seguridad
 
 - **Manual:** *Ajustes → Copia completa (JSON)*. Se restaura con *Ajustes → Restaurar copia JSON*.
-- **Automática:** cada lunes, en *Actions → Copia de seguridad semanal → (ejecución) → Artifacts*.
-  Está cifrada; para abrirla:
+- **Automática:** el primer lunes de cada mes, en *Actions → Copia de seguridad mensual →
+  (ejecución) → Artifacts*. GitHub las borra a los 90 días (como mucho hay 3; cada una ocupa unos
+  pocos KB). Para hacer una en cualquier momento: *Actions → Copia de seguridad mensual → Run
+  workflow*. Los demás lunes solo se hace una consulta mínima para que Supabase no pause el
+  proyecto por inactividad. Está cifrada; para abrirla:
   ```bash
   gpg -d copia.tgz.gpg > copia.tgz && tar xzf copia.tgz
   ```
