@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore } from '../data/store'
 import { BadgeEstado, Card, Dinero, Kpi, cx } from '../components/ui'
@@ -21,12 +22,42 @@ interface FilaIndice {
   saldo?: number | null
 }
 
+const CLAVE_ANIO = 'inicio.anio'
+
+function leerAnioGuardado(): number | null {
+  try {
+    const v = Number(localStorage.getItem(CLAVE_ANIO))
+    return Number.isInteger(v) && v > 0 ? v : null
+  } catch {
+    return null
+  }
+}
+
 /** Índice de hojas (equivale a la macro ActualizarIndice, pero siempre al día). */
 export function InicioPage() {
   const { calc, datos, modo } = useStore()
   const compartida = useCuentas().activa?.tipo === 'compartida'
+  const anios = aniosConMeses(calc)
+  const [anioElegido, setAnioElegido] = useState<number | null>(leerAnioGuardado)
+  const anioActual = new Date().getFullYear()
+  // Año mostrado: el elegido si existe; si no, el actual (si tiene meses) o el último con meses.
+  const anioVisible =
+    anioElegido !== null && anios.includes(anioElegido)
+      ? anioElegido
+      : anios.includes(anioActual)
+        ? anioActual
+        : anios[anios.length - 1]
+  const elegirAnio = (a: number) => {
+    setAnioElegido(a)
+    try {
+      localStorage.setItem(CLAVE_ANIO, String(a))
+    } catch {
+      /* sin almacenamiento: no pasa nada */
+    }
+  }
+
   const filas: FilaIndice[] = []
-  for (const anio of aniosConMeses(calc)) {
+  for (const anio of anios.filter((a) => a === anioVisible)) {
     const r = resumenAnual(calc, anio)
     filas.push({ clave: `r${anio}`, hoja: `Resumen ${anio}`, tipo: 'Resumen anual', to: `/resumen/${anio}`, ingresos: r.total.ingresos, gastos: r.total.gastos, saldo: r.total.saldoDisponible })
     for (const m of calc.meses.filter((x) => partes(x.mes.fecha).anio === anio)) {
@@ -85,16 +116,38 @@ export function InicioPage() {
         </Card>
       ) : (
         <Card className="p-0 sm:p-0">
+          {anios.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-4 py-3 dark:border-slate-800" role="tablist" aria-label="Año">
+              <span className="mr-1 text-sm text-slate-500">Año:</span>
+              {anios.map((a) => (
+                <button
+                  key={a}
+                  type="button"
+                  role="tab"
+                  aria-selected={a === anioVisible}
+                  onClick={() => elegirAnio(a)}
+                  className={cx(
+                    'rounded-full px-3 py-1 text-sm font-medium transition-colors',
+                    a === anioVisible
+                      ? 'bg-marino text-white dark:bg-sky-700'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700',
+                  )}
+                >
+                  {a}
+                </button>
+              ))}
+            </div>
+          )}
           {/* Escritorio: tabla */}
           <table className="hidden w-full text-sm md:table">
             <thead>
               <tr className="bg-marino text-left text-white dark:bg-sky-900">
-                <th className="rounded-tl-2xl px-4 py-3 font-semibold">Hoja</th>
+                <th className="px-4 py-3 font-semibold">Hoja</th>
                 <th className="px-4 py-3 font-semibold">Tipo</th>
                 <th className="px-4 py-3 font-semibold">Estado</th>
                 <th className="px-4 py-3 text-right font-semibold">Ingresos</th>
                 <th className="px-4 py-3 text-right font-semibold">Gastos</th>
-                <th className="rounded-tr-2xl px-4 py-3 text-right font-semibold">Saldo disponible</th>
+                <th className="px-4 py-3 text-right font-semibold">Saldo disponible</th>
               </tr>
             </thead>
             <tbody>
