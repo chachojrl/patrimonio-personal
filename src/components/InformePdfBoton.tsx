@@ -23,23 +23,17 @@ export function guardarNombreLocal(nombre: string) {
   }
 }
 
-/** Botón «Informe PDF»: pide el nombre que aparece en la portada y descarga el informe de toda la cuenta. */
-export function InformePdfBoton({ className, disparador }: { className?: string; disparador?: (abrir: () => void) => ReactNode }) {
+/** Genera y descarga el informe PDF de la cuenta activa. */
+export function useInformePdf() {
   const { datos, calc, avisar } = useStore()
   const { activa, userId } = useCuentas()
   const compartida = activa?.tipo === 'compartida'
   const yo = activa?.miembros.find((m) => m.user_id && m.user_id === userId)
-  const [abierto, setAbierto] = useState(false)
-  const [nombre, setNombre] = useState('')
   const [ocupado, setOcupado] = useState(false)
+  // El nombre de Ajustes → tu perfil; si no hay, el último que se usó en este dispositivo
+  const nombrePorDefecto = (yo ? nombreMiembro(yo) : '') || leerNombreLocal()
 
-  function abrir() {
-    // El nombre de Ajustes → «Nombre de la cuenta» (tu perfil); si no hay, el último que usaste aquí
-    setNombre((yo ? nombreMiembro(yo) : '') || leerNombreLocal())
-    setAbierto(true)
-  }
-
-  async function generar() {
+  async function generar(nombre: string): Promise<boolean> {
     setOcupado(true)
     try {
       if (!yo) guardarNombreLocal(nombre)
@@ -53,12 +47,31 @@ export function InformePdfBoton({ className, disparador }: { className?: string;
       })
       const blob = await generarInformePdf(inf, datos)
       descargar(nombreArchivoInforme(compartida ? cuenta : nombre.trim() || cuenta), blob, 'application/pdf')
-      setAbierto(false)
+      return true
     } catch (e) {
       avisar({ texto: `No se pudo generar el informe: ${(e as Error).message}`, tipo: 'error' })
+      return false
     } finally {
       setOcupado(false)
     }
+  }
+
+  return { generar, ocupado, compartida, activa, nombrePorDefecto, meses: datos.months.length }
+}
+
+/** Botón «Informe PDF»: pide el nombre que aparece en la portada y descarga el informe de toda la cuenta. */
+export function InformePdfBoton({ className, disparador }: { className?: string; disparador?: (abrir: () => void) => ReactNode }) {
+  const { generar: generarPdf, ocupado, compartida, activa, nombrePorDefecto } = useInformePdf()
+  const [abierto, setAbierto] = useState(false)
+  const [nombre, setNombre] = useState('')
+
+  function abrir() {
+    setNombre(nombrePorDefecto)
+    setAbierto(true)
+  }
+
+  async function generar() {
+    if (await generarPdf(nombre)) setAbierto(false)
   }
 
   return (

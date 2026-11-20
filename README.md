@@ -70,7 +70,7 @@ yo puedo ver los datos.
 1. Abre la app, inicia sesión y ve a **Ajustes → Cargar datos iniciales (Oct–Nov 2026)**.
 2. Comprueba que el Inicio muestra *Dinero total actual 30.800,07 €*.
 3. En el móvil, ábrela en el navegador y elige **Añadir a pantalla de inicio**: se instala como app.
-4. (Opcional, recomendado) **Ajustes → Activar verificación en dos pasos**. Después, para que la
+4. (Opcional, recomendado) **Ajustes → Contraseña y seguridad → Activar verificación en dos pasos**. Después, para que la
    base de datos lo exija también:
    ```sql
    update public.app_owner set requiere_mfa = true;
@@ -103,7 +103,7 @@ Debe responder `OK` en todas las tablas: sin sesión no se lee nada y el registr
   ámbar desde el 90 %, roja si te pasas) y un resumen arriba de la tabla. Se mantiene en los meses siguientes.
 - **Reordenar filas:** arrastra el asa ⋮⋮ (con el ratón o con el dedo). Con el teclado: enfoca el asa
   y usa ↑ / ↓.
-- **Contraseña:** se cambia en *Ajustes → Seguridad y sesión*. Si la olvidas, pulsa «¿Has olvidado tu
+- **Contraseña:** se cambia en *Ajustes → Contraseña y seguridad*. Si la olvidas, pulsa «¿Has olvidado tu
   contraseña?» en el login (ver *Emails* más abajo).
 - **Mes cerrado:** todo pasa a solo lectura, también en la base de datos. Usa **Reabrir mes**.
 - **Saldo real en cuenta:** si lo rellenas, la diferencia con el saldo calculado se apunta sola
@@ -136,7 +136,7 @@ Debe responder `OK` en todas las tablas: sin sesión no se lee nada y el registr
   tipos del Banco Central Europeo (servicio público Frankfurter: solo se le envía el código de la
   moneda) y se puede escribir a mano; cada gasto guarda el del día. Al volver, «Cerrar y pasar al
   mes» lo apunta en tu presupuesto (fila nueva o sumado a un gasto).
-- **Bloqueo con Face ID / huella:** *Ajustes → Bloqueo*. Pide Face ID, huella o el código del móvil
+- **Bloqueo con Face ID / huella:** *Ajustes → Face ID*. Pide Face ID, huella o el código del móvil
   al abrir la app y al volver a ella tras más de un minuto. Es por dispositivo; la app no ve ni guarda
   tu cara ni tu huella. Si algún día falla, en la pantalla de bloqueo puedes cerrar sesión y entrar
   con tu contraseña (eso quita el bloqueo en ese dispositivo).
@@ -149,7 +149,7 @@ Debe responder `OK` en todas las tablas: sin sesión no se lee nada y el registr
   (con al menos 3 meses de historia y 30 € o más) o dos apuntes iguales casi seguidos.
 - **Cerrar mes guiado:** «✓ Cerrar mes…» repasa el saldo real del banco, el valor de las inversiones,
   lo pendiente (presupuestos, avisos, lo que te deben) y el resumen frente al mes anterior.
-- **Apuntar con Siri o Atajos:** *Ajustes → Apuntar con Siri o Atajos* genera un enlace
+- **Apuntar con Siri o Atajos:** *Ajustes → Siri y Atajos* genera un enlace
   (`#/apuntar?gasto=Supermercado&importe=…`) y explica cómo crear el atajo. El enlace abre la app con
   el gasto puesto y siempre pide un toque para confirmar.
 - **Reparto por concepto** (cuenta compartida): en ⋯ de cada gasto, «proporcional» (lo cubren las
@@ -230,17 +230,18 @@ solo dejan ver cada fila a los miembros de su cuenta.
 
 ## Informe PDF
 
-*Ajustes → Informes y copias → 📄 Informe PDF* genera un PDF de la cuenta activa con todo lo apuntado hasta hoy: portada
+*Ajustes → Informe PDF* genera un PDF de la cuenta activa con todo lo apuntado hasta hoy: portada
 con tu nombre y las cifras principales, gráficas (dinero total, dónde está tu dinero, ingresos y
 gastos, % de ahorro), en qué se va el dinero por concepto, de dónde vienen los ingresos, resumen por
 año, historial mensual, «Te deben», viajes y el detalle de cada mes. Se genera en el propio
-dispositivo; no se envía nada a ningún sitio. El nombre de la portada se pone en *Ajustes → Tu cuenta →
-Nombre de la cuenta* (se guarda en tu perfil y se ve en todos tus dispositivos). En la cuenta
+dispositivo; no se envía nada a ningún sitio. El nombre de la portada se pone en tu perfil, arriba del todo en
+*Ajustes* (se guarda en tu perfil y se ve en todos tus dispositivos). En la cuenta
 compartida, la portada muestra el nombre de la cuenta y de quienes la compartís.
 
 ## Copias de seguridad
 
-- **Manual:** *Ajustes → Copia completa (JSON)*. Se restaura con *Ajustes → Restaurar copia JSON*.
+- **Manual:** *Ajustes → Copias de seguridad → Descargar copia completa*. Se restaura en la misma
+  pantalla, con *Restaurar una copia…*.
 - **Automática:** cada lunes, en *Actions → Copia de seguridad semanal → (ejecución) → Artifacts*.
   Está cifrada; para abrirla:
   ```bash

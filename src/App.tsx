@@ -52,6 +52,7 @@ function Rutas() {
           <Route path="viajes/:id" element={<ViajePage />} />
           <Route path="apuntar" element={<ApuntarPage />} />
           <Route path="ajustes" element={<AjustesPage />} />
+          <Route path="ajustes/:seccion" element={<AjustesPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
