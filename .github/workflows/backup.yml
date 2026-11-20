@@ -1,11 +1,8 @@
-name: Copia de seguridad mensual (y mantener Supabase activo)
+name: Copia de seguridad semanal (y mantener Supabase activo)
 
 # El plan gratuito de Supabase pausa el proyecto tras ~7 días sin actividad.
-# Este workflow se ejecuta cada lunes:
-#   - todos los lunes hace una consulta mínima a Supabase (lo mantiene activo, no guarda nada);
-#   - el primer lunes de cada mes (o al lanzarlo a mano) guarda además una copia CIFRADA de
-#     todos los datos como artefacto del workflow, que GitHub borra a los 90 días
-#     (así hay como mucho 3 copias; cada una ocupa unos pocos KB).
+# Este workflow hace una petición cada semana (lo mantiene activo) y guarda una copia
+# CIFRADA de todos los datos como artefacto del workflow (90 días).
 # Secretos necesarios (Settings → Secrets and variables → Actions → Secrets):
 #   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, BACKUP_PASSPHRASE
 
@@ -34,27 +31,8 @@ jobs:
           else
             echo "ok=true" >> "$GITHUB_OUTPUT"
           fi
-      - name: ¿Toca copia este lunes?
-        id: toca
-        if: steps.check.outputs.ok == 'true'
-        run: |
-          # Primer lunes del mes (día 1-7) o ejecución manual
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "$(date -u +%-d)" -le 7 ]; then
-            echo "copia=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "copia=false" >> "$GITHUB_OUTPUT"
-            echo "Hoy solo se mantiene Supabase activo; la copia se hace el primer lunes de cada mes."
-          fi
-      - name: Mantener Supabase activo
-        if: steps.check.outputs.ok == 'true' && steps.toca.outputs.copia == 'false'
-        env:
-          URL: ${{ secrets.SUPABASE_URL }}
-          KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: |
-          curl -sSf "$URL/rest/v1/months?select=id&limit=1" -H "apikey: $KEY" -H "Authorization: Bearer $KEY" > /dev/null
-          echo "Supabase responde."
       - name: Descargar datos
-        if: steps.toca.outputs.copia == 'true'
+        if: steps.check.outputs.ok == 'true'
         env:
           URL: ${{ secrets.SUPABASE_URL }}
           KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -83,7 +61,7 @@ jobs:
             echo "$t: $(jq length "copia/$t.json") filas"
           done
       - name: Cifrar
-        if: steps.toca.outputs.copia == 'true'
+        if: steps.check.outputs.ok == 'true'
         env:
           PASS: ${{ secrets.BACKUP_PASSPHRASE }}
         run: |
@@ -92,7 +70,7 @@ jobs:
           gpg --batch --yes --pinentry-mode loopback --passphrase "$PASS" --symmetric --cipher-algo AES256 -o copia.tgz.gpg copia.tgz
           rm -rf copia copia.tgz
       - uses: actions/upload-artifact@v4
-        if: steps.toca.outputs.copia == 'true'
+        if: steps.check.outputs.ok == 'true'
         with:
           name: copia-presupuesto-${{ github.run_id }}
           path: copia.tgz.gpg
