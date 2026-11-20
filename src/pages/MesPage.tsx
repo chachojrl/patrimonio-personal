@@ -309,7 +309,7 @@ function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
     avisar({ texto: `${n} gasto(s) añadido(s).` })
   }
 
-  const columnas = 'md:grid-cols-[1.25rem_minmax(0,1fr)_9.5rem_9rem_10rem_2rem]'
+  const columnas = 'md:grid-cols-[1.25rem_minmax(0,1fr)_11rem_9rem_10rem_2rem]'
   return (
     <Card
       titulo="Gastos mensuales"
@@ -379,7 +379,7 @@ function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
               <BarraPresupuesto g={g} />
             </div>
             <div className="order-4 md:order-none">
-              <CeldaFecha ariaLabel={`Vencimiento ${g.concepto}`} valor={g.fecha_vencimiento} disabled={bloqueada} onCambio={(v) => actualizar('expenses', g.id, { fecha_vencimiento: v })} />
+              <CeldaFecha borrable ariaLabel={`Vencimiento ${g.concepto}`} valor={g.fecha_vencimiento} disabled={bloqueada} onCambio={(v) => actualizar('expenses', g.id, { fecha_vencimiento: v })} />
             </div>
             <div className="order-2 self-start md:order-none md:self-center">
               <CeldaImporte ariaLabel={`Importe ${g.concepto}`} valor={g.importe} disabled={bloqueada} onCambio={(v) => actualizar('expenses', g.id, { importe: v ?? 0 })} />

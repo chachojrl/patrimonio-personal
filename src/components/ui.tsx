@@ -201,16 +201,34 @@ export function CeldaTexto({ valor, onCambio, disabled, className, ariaLabel, pl
   return <input aria-label={ariaLabel} placeholder={placeholder} disabled={disabled} className={cx('celda', className)} value={valor} onChange={(e) => onCambio(e.target.value)} />
 }
 
-export function CeldaFecha({ valor, onCambio, disabled, ariaLabel }: { valor: string | null; onCambio: (v: string | null) => void; disabled?: boolean; ariaLabel?: string }) {
-  return (
+export function CeldaFecha({ valor, onCambio, disabled, ariaLabel, borrable }: { valor: string | null; onCambio: (v: string | null) => void; disabled?: boolean; ariaLabel?: string; borrable?: boolean }) {
+  const input = (
     <input
       type="date"
       aria-label={ariaLabel}
       disabled={disabled}
-      className="celda num min-w-[8.5rem]"
+      className={cx('celda num', borrable ? 'fecha-compacta min-w-0 flex-1 px-1 md:min-w-[8.5rem] md:px-2' : 'min-w-[8.5rem]')}
       value={valor ?? ''}
       onChange={(e) => onCambio(e.target.value || null)}
     />
+  )
+  if (!borrable) return input
+  // En el móvil (sobre todo iPhone) el selector de fecha no permite dejarla vacía: botón × para quitarla
+  return (
+    <div className="flex min-w-0 items-center gap-0.5">
+      {input}
+      {valor && !disabled && (
+        <button
+          type="button"
+          aria-label={ariaLabel ? `Quitar ${ariaLabel.toLowerCase()}` : 'Quitar fecha'}
+          title="Quitar fecha"
+          onClick={() => onCambio(null)}
+          className="flex h-7 w-5 shrink-0 items-center justify-center rounded-full text-slate-400 md:w-7 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+        >
+          ×
+        </button>
+      )}
+    </div>
   )
 }
 
