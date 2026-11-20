@@ -13,6 +13,39 @@
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
+-- Requisitos de migraciones anteriores (por si no se ejecutaron):
+-- 0003 (gasto fijo y presupuesto) y 0004 (tabla «Te deben»). Si ya están, no hace nada.
+-- ---------------------------------------------------------------------
+alter table public.expenses add column if not exists fijo boolean not null default false;
+alter table public.expenses add column if not exists presupuesto numeric(12,2);
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'expenses_presupuesto_no_negativo') then
+    alter table public.expenses
+      add constraint expenses_presupuesto_no_negativo check (presupuesto is null or presupuesto >= 0);
+  end if;
+end $$;
+
+create table if not exists public.debts (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  persona text not null default '',
+  concepto text not null default '',
+  importe numeric(12,2) not null default 0 check (importe >= 0),
+  fecha date not null default current_date,
+  devuelto_en date,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists debts_user_idx on public.debts(user_id);
+alter table public.debts enable row level security;
+revoke all on public.debts from anon, public;
+grant select, insert, update, delete on public.debts to authenticated;
+drop trigger if exists updated_at on public.debts;
+create trigger updated_at before update on public.debts
+  for each row execute function public.tg_updated_at();
+
+-- ---------------------------------------------------------------------
 -- Antes de nada: el propietario de las tablas (quien ejecuta este script y
 -- las funciones internas de aportaciones) tiene que poder ver todas las filas
 -- para pasarlas a su cuenta. Los usuarios de la app siguen sujetos a RLS.
