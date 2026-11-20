@@ -1,167 +1,200 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { InformePdfBoton, guardarNombreLocal, leerNombreLocal } from '../components/InformePdfBoton'
-import { actualizarMiembro } from '../data/supabaseRepo'
+// Ajustes al estilo de Apple: lista agrupada con iconos de color (como Ajustes del iPhone) y, en
+// pantallas anchas, dos paneles (como Ajustes del Sistema del Mac). Cada apartado tiene su dirección
+// (/ajustes/copias, /ajustes/apariencia…), así que el botón «atrás» del móvil funciona.
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Link, Navigate, useParams } from 'react-router-dom'
 import { useStore } from '../data/store'
-import { Boton, Card, CeldaImporte, Modal, cx } from '../components/ui'
-import { descargar, exportarCSV, exportarExcel, exportarJSON, importarJSON } from '../lib/exportar'
+import { nombreMiembro, useCuentas } from '../data/cuentas'
 import { supabase } from '../data/supabase'
+import { actualizarMiembro } from '../data/supabaseRepo'
+import { Boton, CeldaImporte, Modal, cx } from '../components/ui'
+import { descargar, exportarCSV, exportarExcel, exportarJSON, importarJSON } from '../lib/exportar'
 import { FormularioContrasena } from '../components/FormularioContrasena'
 import { CuentaCompartidaCard } from '../components/CuentaCompartidaCard'
-import { BloqueoCard } from '../components/BloqueoCard'
 import { AtajosCard } from '../components/AtajosCard'
-import { useCuentas } from '../data/cuentas'
+import { guardarNombreLocal, leerNombreLocal, useInformePdf } from '../components/InformePdfBoton'
+import { useBloqueo } from '../components/useBloqueo'
+import { bloquearAhora } from '../components/Bloqueo'
+import { MINUTOS_EN_SEGUNDO_PLANO } from '../lib/bloqueo'
+import { NOMBRE_TEMA, useTema, type Tema } from '../lib/tema'
+import { MESES, partes } from '../lib/fechas'
+import { Avatar, BotonGrande, COLOR, Fila, FilaCampo, FilaLibre, Grupo, Icono, IconoApp, Interruptor, claseCampoIos, type NombreIcono } from '../components/ios'
 import type { Config, Datos } from '../lib/tipos'
 
-// Secciones de la página (índice lateral en escritorio, fichas en el móvil)
-const SECCIONES = [
-  { id: 'ajustes-datos', icono: '📄', titulo: 'Informes y copias', texto: 'Informe PDF, Excel y copias de seguridad.' },
-  { id: 'ajustes-cuenta', icono: '🧾', titulo: 'Tu cuenta', texto: 'Saldos iniciales, conceptos y cuenta compartida.' },
-  { id: 'ajustes-seguridad', icono: '🔒', titulo: 'Seguridad', texto: 'Contraseña, verificación en dos pasos y bloqueo.' },
-  { id: 'ajustes-app', icono: '📱', titulo: 'Aplicación', texto: 'Apariencia y atajos del iPhone.' },
-] as const
+type Id = 'perfil' | 'informe' | 'exportar' | 'copias' | 'partida' | 'conceptos' | 'compartida' | 'seguridad' | 'faceid' | 'apariencia' | 'atajos'
 
-function irA(id: string) {
-  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+interface Apartado {
+  id: Id
+  titulo: string
+  icono: NombreIcono
+  color: string
 }
 
-/** Sección que se está viendo, para resaltarla en el índice. */
-function useSeccionVisible(ids: readonly string[]) {
-  const [visible, setVisible] = useState(ids[0])
+const APARTADOS: Record<Exclude<Id, 'perfil'>, Apartado> = {
+  informe: { id: 'informe', titulo: 'Informe PDF', icono: 'documento', color: COLOR.naranja },
+  exportar: { id: 'exportar', titulo: 'Exportar', icono: 'grafica', color: COLOR.verde },
+  copias: { id: 'copias', titulo: 'Copias de seguridad', icono: 'archivo', color: COLOR.azul },
+  partida: { id: 'partida', titulo: 'Punto de partida', icono: 'bandera', color: COLOR.amarillo },
+  conceptos: { id: 'conceptos', titulo: 'Conceptos del primer mes', icono: 'lista', color: COLOR.morado },
+  compartida: { id: 'compartida', titulo: 'Cuenta compartida', icono: 'casa', color: COLOR.marron },
+  seguridad: { id: 'seguridad', titulo: 'Contraseña y seguridad', icono: 'candado', color: COLOR.grafito },
+  faceid: { id: 'faceid', titulo: 'Face ID', icono: 'cara', color: COLOR.verde },
+  apariencia: { id: 'apariencia', titulo: 'Apariencia', icono: 'luna', color: COLOR.indigo },
+  atajos: { id: 'atajos', titulo: 'Siri y Atajos', icono: 'microfono', color: COLOR.rosa },
+}
+
+/** Correo de la sesión (vacío en modo local). */
+function useEmail() {
+  const [email, setEmail] = useState('')
   useEffect(() => {
-    if (typeof IntersectionObserver === 'undefined') return
-    const obs = new IntersectionObserver(
-      (entradas) => {
-        const arriba = entradas.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0]
-        if (arriba) setVisible(arriba.target.id)
-      },
-      { rootMargin: '-15% 0px -70% 0px' },
-    )
-    for (const id of ids) {
-      const el = document.getElementById(id)
-      if (el) obs.observe(el)
-    }
-    return () => obs.disconnect()
-  }, [ids])
-  return visible
+    supabase?.auth.getUser().then((u) => setEmail(u.data.user?.email ?? ''))
+  }, [])
+  return email
 }
 
 export function AjustesPage() {
-  const { activa } = useCuentas()
-  const ids = useMemo(() => SECCIONES.map((x) => x.id), [])
-  const visible = useSeccionVisible(ids)
+  const { seccion } = useParams()
+  // Fondo gris de las listas de iOS mientras se está en Ajustes
+  useEffect(() => {
+    document.body.classList.add('fondo-ios')
+    return () => document.body.classList.remove('fondo-ios')
+  }, [])
+  const { datos } = useStore()
+  const { activa, userId, cuentas } = useCuentas()
+  const [tema, setTema] = useTema()
+  const bloqueo = useBloqueo()
+  const email = useEmail()
+  const compartida = activa?.tipo === 'compartida'
+  const yo = activa?.miembros.find((m) => m.user_id && m.user_id === userId)
+  const nombre = compartida ? activa?.nombre ?? '' : (yo ? nombreMiembro(yo) : '') || leerNombreLocal()
+
+  const disponibles: Id[] = [
+    'perfil', 'informe', 'exportar', 'copias', 'partida', 'conceptos',
+    ...(supabase ? (['compartida', 'seguridad'] as Id[]) : []),
+    'faceid', 'apariencia', 'atajos',
+  ]
+  if (seccion && !disponibles.includes(seccion as Id)) return <Navigate to="/ajustes" replace />
+  const actual = (seccion as Id | undefined) ?? null
+  // En pantallas anchas siempre hay algo a la derecha
+  const enPanel: Id = actual ?? 'perfil'
+
+  const { anio, mes } = partes(datos.config.mes_inicio)
+  const nombreCompartida = cuentas?.find((c) => c.tipo === 'compartida')?.nombre
+  const valores: Partial<Record<Id, string>> = {
+    exportar: 'Excel, CSV',
+    partida: `${MESES[mes - 1].toLowerCase()} ${anio}`,
+    conceptos: String(datos.config.plantilla_ingresos.length + datos.config.plantilla_gastos.length),
+    compartida: nombreCompartida ?? 'No',
+    faceid: bloqueo.activo ? 'Sí' : 'No',
+    apariencia: NOMBRE_TEMA[tema],
+  }
+
+  const fila = (id: Exclude<Id, 'perfil'>) => {
+    if (!disponibles.includes(id)) return null
+    const a = APARTADOS[id]
+    return <Fila key={id} icono={a.icono} color={a.color} titulo={a.titulo} valor={valores[id]} to={`/ajustes/${id}`} activa={actual === id} valorSoloMovil />
+  }
+
+  const lista = (
+    <div>
+      <h1 className="mb-4 px-1 text-[34px] font-bold leading-tight tracking-tight text-slate-900 dark:text-white">Ajustes</h1>
+      <Grupo>
+        <Link
+          to={compartida && supabase ? '/ajustes/compartida' : '/ajustes/perfil'}
+          className={cx(
+            'ios-fila flex items-center gap-3.5 px-4 py-3 transition-colors',
+            // Resaltado solo en pantallas anchas (en el móvil la lista y el detalle no se ven a la vez)
+            enPanel === 'perfil' ? 'lg:bg-[#007AFF] lg:dark:bg-[#0A84FF]' : 'lg:hover:bg-slate-50 lg:dark:hover:bg-white/5',
+            'active:bg-slate-200/70',
+          )}
+        >
+          <Avatar nombre={nombre || '?'} />
+          <span className="min-w-0 flex-1">
+            <span className={cx('block truncate text-[20px] font-semibold leading-tight', 'text-slate-900 dark:text-white', enPanel === 'perfil' && 'lg:text-white')}>
+              {nombre || 'Pon tu nombre'}
+            </span>
+            <span className={cx('mt-0.5 block truncate text-[13px]', 'text-slate-500 dark:text-slate-400', enPanel === 'perfil' && 'lg:text-white/80')}>
+              {compartida ? 'Cuenta compartida' : 'Cuenta personal'}{email ? ` · ${email}` : ''}
+            </span>
+          </span>
+          {(
+            <svg viewBox="0 0 24 24" className={cx('h-4 w-4 text-slate-300 dark:text-slate-600', enPanel === 'perfil' && 'lg:hidden')} fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="m9 5 7 7-7 7" />
+            </svg>
+          )}
+        </Link>
+      </Grupo>
+      <Grupo>{fila('informe')}{fila('exportar')}{fila('copias')}</Grupo>
+      <Grupo>{fila('partida')}{fila('conceptos')}{fila('compartida')}</Grupo>
+      <Grupo>{fila('seguridad')}{fila('faceid')}</Grupo>
+      <Grupo>{fila('apariencia')}{fila('atajos')}</Grupo>
+      <p className="pb-4 text-center text-[13px] text-slate-400">Presupuesto personal</p>
+    </div>
+  )
+
+  const titulo = enPanel === 'perfil' ? (compartida ? activa?.nombre ?? 'Cuenta' : 'Perfil') : APARTADOS[enPanel].titulo
+  const detalle = (
+    <Detalle id={enPanel} titulo={titulo}>
+      {enPanel === 'perfil' && <PerfilDetalle email={email} />}
+      {enPanel === 'informe' && <InformeDetalle />}
+      {enPanel === 'exportar' && <ExportarDetalle />}
+      {enPanel === 'copias' && <CopiasDetalle />}
+      {enPanel === 'partida' && <PartidaDetalle />}
+      {enPanel === 'conceptos' && <ConceptosDetalle />}
+      {enPanel === 'compartida' && <div className="mb-8"><CuentaCompartidaCard /></div>}
+      {enPanel === 'seguridad' && <SeguridadDetalle email={email} />}
+      {enPanel === 'faceid' && <FaceIdDetalle bloqueo={bloqueo} />}
+      {enPanel === 'apariencia' && <AparienciaDetalle tema={tema} setTema={setTema} />}
+      {enPanel === 'atajos' && <div className="mb-8"><AtajosCard /></div>}
+    </Detalle>
+  )
+
   return (
-    <div className="space-y-5">
-      <header>
-        <h1 className="text-2xl font-bold text-marino dark:text-sky-300">Ajustes</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          {activa ? <>Estás en <strong className="text-slate-700 dark:text-slate-200">{activa.tipo === 'compartida' ? '🏠' : '👤'} {activa.nombre}</strong>. Lo que cambies en «Tu cuenta» se aplica solo a esta cuenta.</> : 'Configura la app a tu gusto.'}
-        </p>
-      </header>
-
-      {/* Móvil: fichas para saltar a cada sección */}
-      <nav aria-label="Secciones de ajustes" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:hidden">
-        {SECCIONES.map((x) => (
-          <button
-            key={x.id}
-            type="button"
-            onClick={() => irA(x.id)}
-            className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-          >
-            {x.icono} {x.titulo}
-          </button>
-        ))}
-      </nav>
-
-      <div className="lg:grid lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-8">
-        {/* Escritorio: índice fijo */}
-        <nav aria-label="Secciones de ajustes" className="hidden lg:block">
-          <ul className="sticky top-6 space-y-1">
-            {SECCIONES.map((x) => (
-              <li key={x.id}>
-                <button
-                  type="button"
-                  onClick={() => irA(x.id)}
-                  aria-current={visible === x.id ? 'true' : undefined}
-                  className={cx(
-                    'flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-medium transition',
-                    visible === x.id
-                      ? 'bg-marino text-white shadow-sm dark:bg-sky-800'
-                      : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800',
-                  )}
-                >
-                  <span aria-hidden>{x.icono}</span>
-                  {x.titulo}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </nav>
-
-        <div className="space-y-10">
-          <Seccion {...SECCIONES[0]}>
-            <ExportarCard />
-            <CopiasCard />
-          </Seccion>
-          <Seccion {...SECCIONES[1]}>
-            <NombreCard />
-            <ConfigCard />
-            <PlantillaCard />
-            <CuentaCompartidaCard />
-          </Seccion>
-          <Seccion {...SECCIONES[2]}>
-            {supabase && <SeguridadCard />}
-            <BloqueoCard />
-          </Seccion>
-          <Seccion {...SECCIONES[3]}>
-            <AparienciaCard />
-            <AtajosCard />
-          </Seccion>
-        </div>
+    <div className="mx-auto max-w-5xl lg:grid lg:grid-cols-[20rem_minmax(0,1fr)] lg:gap-8">
+      <div className={cx(actual ? 'hidden lg:block' : 'block')}>
+        <div className="lg:sticky lg:top-6">{lista}</div>
       </div>
+      <div className={cx(actual ? 'block' : 'hidden lg:block')}>{detalle}</div>
     </div>
   )
 }
 
-function Seccion({ id, icono, titulo, texto, children }: { id: string; icono: string; titulo: string; texto: string; children: ReactNode }) {
+/** Pantalla de un apartado: en el móvil, con «‹ Ajustes» para volver. */
+function Detalle({ id, titulo, children }: { id: Id; titulo: string; children: ReactNode }) {
   return (
-    <section id={id} aria-labelledby={`${id}-t`} className="scroll-mt-20">
-      <div className="mb-3 flex items-center gap-3">
-        <span aria-hidden className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-xl dark:bg-sky-900/40">{icono}</span>
-        <div>
-          <h2 id={`${id}-t`} className="text-lg font-bold text-slate-800 dark:text-slate-100">{titulo}</h2>
-          <p className="text-sm text-slate-500">{texto}</p>
-        </div>
+    <div>
+      <div className="relative mb-2 flex h-11 items-center justify-center lg:hidden">
+        <Link to="/ajustes" className="absolute left-0 flex items-center gap-0.5 py-2 pr-3 text-[17px] text-[#007AFF] dark:text-[#0A84FF]">
+          <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="m15 5-7 7 7 7" />
+          </svg>
+          Ajustes
+        </Link>
+        <span className="max-w-[55%] truncate text-[17px] font-semibold text-slate-900 dark:text-white">{titulo}</span>
       </div>
-      {/* Dos columnas en pantallas anchas, sin huecos aunque las tarjetas midan distinto */}
-      <div className="gap-4 xl:columns-2 [&>*]:mb-4 [&>*]:break-inside-avoid">{children}</div>
-    </section>
+      <h2 className="mb-5 mt-1 hidden px-1 text-[26px] font-bold tracking-tight text-slate-900 dark:text-white lg:block" id={`ajustes-${id}`}>
+        {titulo}
+      </h2>
+      {children}
+    </div>
   )
 }
 
-/** Opción grande con icono, título y explicación (para exportar). */
-function Opcion({ icono, titulo, texto, onClick, destacada }: { icono: string; titulo: string; texto: string; onClick: () => void; destacada?: boolean }) {
+/** Cabecera grande de un apartado: icono, título y explicación centrados. */
+function Portada({ icono, color, titulo, texto }: { icono: NombreIcono; color: string; titulo: string; texto: ReactNode }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cx(
-        'group flex w-full items-start gap-3 rounded-xl border p-3 text-left transition hover:-translate-y-px hover:shadow-md',
-        destacada
-          ? 'border-marino/30 bg-sky-50/70 hover:border-marino/60 dark:border-sky-700/60 dark:bg-sky-900/20'
-          : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600',
-      )}
-    >
-      <span aria-hidden className="text-2xl leading-none">{icono}</span>
-      <span className="min-w-0">
-        <span className="block font-semibold text-slate-800 group-hover:text-marino dark:text-slate-100 dark:group-hover:text-sky-300">{titulo}</span>
-        <span className="mt-0.5 block text-xs text-slate-500">{texto}</span>
-      </span>
-    </button>
+    <div className="mb-6 flex flex-col items-center rounded-[10px] bg-white px-6 py-6 text-center dark:bg-[#1c1c1e]">
+      <IconoApp nombre={icono} color={color} grande />
+      <h3 className="mt-3 text-[20px] font-bold text-slate-900 dark:text-white">{titulo}</h3>
+      <p className="mt-1 max-w-sm text-[15px] leading-snug text-slate-500 dark:text-slate-400">{texto}</p>
+    </div>
   )
 }
 
-/** Nombre general de la cuenta personal: sale en la portada del informe PDF y en el nombre del archivo. */
-function NombreCard() {
+const campoIos = 'border-transparent! bg-transparent! px-0! py-1! ring-0! shadow-none! text-slate-500! dark:text-slate-400!'
+
+// ---------------- Perfil ----------------
+function PerfilDetalle({ email }: { email: string }) {
   const { avisar } = useStore()
   const { activa, userId, recargarCuentas } = useCuentas()
   const yo = activa?.miembros.find((m) => m.user_id && m.user_id === userId)
@@ -169,8 +202,6 @@ function NombreCard() {
   const [valor, setValor] = useState(guardado)
   const [ocupado, setOcupado] = useState(false)
   useEffect(() => setValor(guardado), [guardado])
-  // En la cuenta compartida, el nombre de la cuenta y de cada persona se cambian en su tarjeta
-  if (activa?.tipo === 'compartida') return null
 
   async function guardar() {
     const v = valor.trim()
@@ -193,134 +224,95 @@ function NombreCard() {
   }
 
   return (
-    <Card titulo="Nombre de la cuenta">
-      <p className="mb-3 text-sm text-slate-500">El nombre que sale en la portada del informe PDF y en el nombre del archivo.{yo ? ' Se guarda en tu perfil y se ve igual en todos tus dispositivos.' : ''}</p>
-      <form
-        className="flex gap-2"
-        onSubmit={(e) => {
-          e.preventDefault()
-          guardar()
-        }}
-      >
-        <input
-          className="campo"
-          aria-label="Nombre de la cuenta"
-          placeholder="Tu nombre"
-          maxLength={60}
-          value={valor}
-          disabled={ocupado}
-          onChange={(e) => setValor(e.target.value)}
-          onBlur={guardar}
-        />
-        <Boton type="submit" variante="primario" disabled={ocupado || valor.trim() === guardado.trim()}>Guardar</Boton>
-      </form>
-    </Card>
+    <>
+      <div className="mb-6 flex flex-col items-center text-center">
+        <Avatar nombre={valor || '?'} grande />
+        <p className="mt-3 text-[24px] font-semibold text-slate-900 dark:text-white">{valor.trim() || 'Sin nombre'}</p>
+        {email && <p className="text-[15px] text-slate-500">{email}</p>}
+      </div>
+      <Grupo pie={<>Es el nombre de la cuenta: sale en la portada del informe PDF y en el nombre del archivo.{yo ? ' Se guarda en tu perfil y se ve igual en todos tus dispositivos.' : ''}</>}>
+        <FilaCampo etiqueta="Nombre">
+          <input
+            className={claseCampoIos}
+            placeholder="Tu nombre"
+            maxLength={60}
+            value={valor}
+            disabled={ocupado}
+            onChange={(e) => setValor(e.target.value)}
+            onBlur={guardar}
+            onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+          />
+        </FilaCampo>
+      </Grupo>
+      <Grupo>
+        <Fila titulo="Cuenta" valor={activa ? `${activa.tipo === 'compartida' ? '🏠' : '👤'} ${activa.nombre}` : 'En este navegador'} />
+        {email && <Fila titulo="Correo" valor={email} />}
+      </Grupo>
+    </>
   )
 }
 
-function ConfigCard() {
-  const { datos, actualizarConfig } = useStore()
-  const cfg = datos.config
-  const compartida = useCuentas().activa?.tipo === 'compartida'
-  const todos: { k: keyof Config; t: string; neg?: boolean; ayuda: string }[] = [
-    compartida
-      ? { k: 'ajuste_cuenta_gastos_inicial', t: 'Saldo inicial de la cuenta común', neg: true, ayuda: 'Lo que había en la cuenta común antes del primer mes.' }
-      : { k: 'ajuste_cuenta_gastos_inicial', t: 'Cuenta de gastos', neg: true, ayuda: 'Saldo «anterior» del primer mes, para cuadrar los cálculos.' },
-    { k: 'cuenta_remunerada_inicial', t: 'Cuenta remunerada', ayuda: 'Lo que había en la cuenta remunerada.' },
-    { k: 'inversiones_iniciales', t: 'Inversiones (valor)', ayuda: 'Lo que valían tus inversiones.' },
-    { k: 'aportado_inicial_inversiones', t: 'Inversiones (aportado)', ayuda: 'Lo que habías metido en inversiones.' },
+// ---------------- Informe PDF ----------------
+function InformeDetalle() {
+  const { generar, ocupado, compartida, activa, nombrePorDefecto, meses } = useInformePdf()
+  const [nombre, setNombre] = useState(nombrePorDefecto)
+  useEffect(() => setNombre(nombrePorDefecto), [nombrePorDefecto])
+  const incluye = [
+    'Portada con las cifras principales',
+    'Gráficas de evolución, ingresos, gastos y ahorro',
+    'En qué se va el dinero y de dónde viene',
+    'Resumen por año e historial mensual',
+    'Te deben y viajes',
+    'Todo lo apuntado, mes a mes',
   ]
-  // En la cuenta compartida no hay inversiones ni cuenta remunerada iniciales
-  const campos = compartida ? todos.slice(0, 1) : todos
-  const conMeses = datos.months.length > 0
   return (
-    <Card titulo="Punto de partida">
-      <p className="mb-4 text-sm text-slate-500">Cómo estaban tus cuentas antes del primer mes. Son ajustes para que cuadren los cálculos, no valoraciones verificadas.</p>
-      <label className="mb-4 block">
-        <span className="text-sm font-medium">Mes de inicio del historial</span>
-        <input
-          type="month"
-          className="campo mt-1"
-          value={cfg.mes_inicio.slice(0, 7)}
-          disabled={conMeses}
-          onChange={(e) => e.target.value && actualizarConfig({ mes_inicio: `${e.target.value}-01` })}
-        />
-        {conMeses && <span className="mt-1 block text-xs text-slate-500">🔒 Solo se puede cambiar cuando todavía no hay meses.</span>}
-      </label>
-      <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
-        {campos.map((c) => (
-          <label key={c.k} className="block">
-            <span className="text-sm font-medium">{c.t}</span>
-            <CeldaImporte
-              ariaLabel={c.t}
-              valor={cfg[c.k] as number}
-              permitirNegativo={c.neg}
-              className="campo mt-1 text-left"
-              onCambio={(v) => actualizarConfig({ [c.k]: v ?? 0 } as Partial<Config>)}
-            />
-            <span className="mt-1 block text-xs text-slate-500">{c.ayuda}</span>
-          </label>
+    <>
+      <Portada
+        icono="documento"
+        color={COLOR.naranja}
+        titulo="Informe de patrimonio"
+        texto={<>Un PDF con todo lo apuntado hasta hoy en {compartida ? <>«{activa?.nombre}»</> : 'tu cuenta'}{meses ? ` (${meses} ${meses === 1 ? 'mes' : 'meses'})` : ''}.</>}
+      />
+      <Grupo
+        titulo="Portada"
+        pie={compartida ? 'En la cuenta compartida, la portada muestra el nombre de la cuenta y de quienes la compartís.' : 'Por defecto, el nombre de tu perfil. Si lo cambias aquí, solo afecta a este PDF.'}
+      >
+        <FilaCampo etiqueta={compartida ? 'Autor' : 'Nombre'}>
+          <input className={claseCampoIos} placeholder="Tu nombre" maxLength={60} value={nombre} onChange={(e) => setNombre(e.target.value)} />
+        </FilaCampo>
+      </Grupo>
+      <Grupo titulo="Incluye">
+        {incluye.map((t) => (
+          <Fila key={t} titulo={<span className="text-[15px]">{t}</span>} derecha={<span className="text-[#34C759]">✓</span>} />
         ))}
-      </div>
-    </Card>
+      </Grupo>
+      <BotonGrande onClick={() => generar(nombre)} disabled={ocupado}>{ocupado ? 'Generando…' : 'Generar PDF'}</BotonGrande>
+      <p className="-mt-5 mb-8 px-4 text-center text-[13px] text-slate-500">Se genera en este dispositivo. No se envía a ningún sitio.</p>
+    </>
   )
 }
 
-function PlantillaCard() {
-  const { datos, actualizarConfig } = useStore()
-  const [ing, setIng] = useState(datos.config.plantilla_ingresos.join('\n'))
-  const [gas, setGas] = useState(datos.config.plantilla_gastos.join('\n'))
-  const limpiar = (s: string) => s.split('\n').map((x) => x.trim()).filter(Boolean)
-  const n = (s: string) => limpiar(s).length
-  return (
-    <Card titulo="Conceptos del primer mes">
-      <p className="mb-3 text-sm text-slate-500">Solo se usan al crear el primer mes; después, cada mes copia los conceptos del anterior. Uno por línea.</p>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className="block">
-          <span className="flex items-baseline justify-between text-sm font-medium">Ingresos <span className="text-xs font-normal text-slate-400">{n(ing)}</span></span>
-          <textarea className="campo mt-1 h-44 text-sm leading-6" value={ing} onChange={(e) => setIng(e.target.value)} onBlur={() => actualizarConfig({ plantilla_ingresos: limpiar(ing) })} />
-        </label>
-        <label className="block">
-          <span className="flex items-baseline justify-between text-sm font-medium">Gastos <span className="text-xs font-normal text-slate-400">{n(gas)}</span></span>
-          <textarea className="campo mt-1 h-44 text-sm leading-6" value={gas} onChange={(e) => setGas(e.target.value)} onBlur={() => actualizarConfig({ plantilla_gastos: limpiar(gas) })} />
-        </label>
-      </div>
-    </Card>
-  )
-}
+// ---------------- Exportar ----------------
+const IconoDescarga = () => <Icono nombre="descargar" className="h-5 w-5 text-[#007AFF] dark:text-[#0A84FF]" />
 
-function ExportarCard() {
+function ExportarDetalle() {
   const { datos, avisar } = useStore()
   return (
-    <Card titulo="Informes y exportar">
-      <div className="space-y-2">
-        <InformePdfBoton
-          disparador={(abrir) => (
-            <Opcion destacada icono="📄" titulo="Informe PDF" texto="Todo lo apuntado hasta hoy, con gráficas y el detalle de cada mes." onClick={abrir} />
-          )}
-        />
-        <Opcion icono="📗" titulo="Excel (.xlsx)" texto="Un libro con una hoja por mes, el historial y los resúmenes." onClick={() => exportarExcel(datos).catch((e) => avisar({ texto: e.message, tipo: 'error' }))} />
-      </div>
-      <div className="mt-4 border-t border-slate-100 pt-3 dark:border-slate-800">
-        <p className="mb-2 text-xs font-medium text-slate-500">Tablas sueltas en CSV (para Excel o Numbers)</p>
-        <div className="flex flex-wrap gap-1.5">
-          {([['historial', 'Historial'], ['incomes', 'Ingresos'], ['expenses', 'Gastos'], ['savings', 'Ahorro y traspasos']] as const).map(([t, txt]) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => exportarCSV(datos, t)}
-              className="rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-            >
-              ⬇ {txt}
-            </button>
-          ))}
-        </div>
-      </div>
-    </Card>
+    <>
+      <Grupo titulo="Libro completo" pie="Una hoja por mes, el historial y los resúmenes por año.">
+        <Fila icono="grafica" color={COLOR.verde} titulo="Excel (.xlsx)" derecha={<IconoDescarga />} onClick={() => exportarExcel(datos).catch((e) => avisar({ texto: e.message, tipo: 'error' }))} />
+      </Grupo>
+      <Grupo titulo="Tablas sueltas (CSV)" pie="Se abren en Excel o Numbers. Usan «;» y coma decimal, como en España.">
+        {([['historial', 'Historial'], ['incomes', 'Ingresos'], ['expenses', 'Gastos'], ['savings', 'Ahorro y traspasos']] as const).map(([t, txt]) => (
+          <Fila key={t} titulo={txt} derecha={<IconoDescarga />} onClick={() => exportarCSV(datos, t)} />
+        ))}
+      </Grupo>
+    </>
   )
 }
 
-function CopiasCard() {
+// ---------------- Copias ----------------
+function CopiasDetalle() {
   const { datos, reemplazarTodo, avisar } = useStore()
   const archivo = useRef<HTMLInputElement>(null)
   const [pendiente, setPendiente] = useState<{ titulo: string; datos: Datos } | null>(null)
@@ -341,16 +333,17 @@ function CopiasCard() {
   }
 
   return (
-    <Card titulo="Copias de seguridad">
-      <div className="space-y-2">
-        <Opcion
-          icono="💾"
-          titulo="Descargar copia completa"
-          texto="Un archivo JSON con todo lo de esta cuenta. Guárdalo de vez en cuando."
-          onClick={() => descargar(`presupuesto-copia-${new Date().toISOString().slice(0, 10)}.json`, exportarJSON(datos), 'application/json')}
-        />
-        <Opcion icono="📂" titulo="Restaurar una copia…" texto="Sustituye todos los datos de esta cuenta por los de un archivo JSON." onClick={() => archivo.current?.click()} />
-      </div>
+    <>
+      <Portada icono="archivo" color={COLOR.azul} titulo="Copias de seguridad" texto="Guarda de vez en cuando una copia de todo lo de esta cuenta, por ejemplo en iCloud Drive." />
+      <Grupo pie="Un archivo JSON con todo: meses, ingresos, gastos, ahorros, Te deben, viajes y ajustes.">
+        <Fila titulo="Descargar copia completa" accion="azul" onClick={() => descargar(`presupuesto-copia-${new Date().toISOString().slice(0, 10)}.json`, exportarJSON(datos), 'application/json')} />
+      </Grupo>
+      <Grupo pie="Sustituye todos los datos de esta cuenta por los de un archivo de copia. Antes te pide confirmación.">
+        <Fila titulo="Restaurar una copia…" accion="rojo" onClick={() => archivo.current?.click()} />
+      </Grupo>
+      <Grupo titulo="Copia automática">
+        <FilaLibre>Si está configurada, cada lunes se guarda sola una copia cifrada en GitHub durante 90 días.</FilaLibre>
+      </Grupo>
       <input
         ref={archivo}
         type="file"
@@ -367,9 +360,6 @@ function CopiasCard() {
           }
         }}
       />
-      <p className="mt-3 rounded-lg bg-slate-50 p-2.5 text-xs text-slate-500 dark:bg-slate-800/60">
-        🛟 Además, si está configurada, cada lunes se guarda sola una copia cifrada en GitHub (90 días).
-      </p>
       <Modal
         abierto={!!pendiente}
         onCerrar={() => !ocupado && setPendiente(null)}
@@ -384,68 +374,91 @@ function CopiasCard() {
         <p>Se <strong>borrarán todos los datos actuales</strong> ({datos.months.length} meses) y se sustituirán por {pendiente?.datos.months.length ?? 0} meses.</p>
         {datos.months.length > 0 && <p>Te recomiendo descargar antes una copia completa.</p>}
       </Modal>
-    </Card>
+    </>
   )
 }
 
-function AparienciaCard() {
-  const [tema, setTema] = useState<string>(() => {
-    try {
-      return localStorage.getItem('tema') ?? 'sistema'
-    } catch {
-      return 'sistema'
-    }
-  })
-  useEffect(() => {
-    try {
-      localStorage.setItem('tema', tema)
-    } catch {
-      /* sin almacenamiento */
-    }
-    const oscuro = tema === 'oscuro' || (tema === 'sistema' && window.matchMedia('(prefers-color-scheme: dark)').matches)
-    document.documentElement.classList.toggle('dark', oscuro)
-  }, [tema])
-  const opciones = [
-    ['sistema', '🖥️', 'Automático'],
-    ['claro', '☀️', 'Claro'],
-    ['oscuro', '🌙', 'Oscuro'],
-  ] as const
+// ---------------- Punto de partida ----------------
+function PartidaDetalle() {
+  const { datos, actualizarConfig } = useStore()
+  const cfg = datos.config
+  const compartida = useCuentas().activa?.tipo === 'compartida'
+  const conMeses = datos.months.length > 0
+  const todos: { k: keyof Config; t: string; neg?: boolean }[] = [
+    { k: 'ajuste_cuenta_gastos_inicial', t: compartida ? 'Cuenta común' : 'Cuenta de gastos', neg: true },
+    { k: 'cuenta_remunerada_inicial', t: 'Cuenta remunerada' },
+    { k: 'inversiones_iniciales', t: 'Inversiones (valor)' },
+    { k: 'aportado_inicial_inversiones', t: 'Inversiones (aportado)' },
+  ]
+  // En la cuenta compartida no hay inversiones ni cuenta remunerada iniciales
+  const campos = compartida ? todos.slice(0, 1) : todos
   return (
-    <Card titulo="Apariencia">
-      <p className="mb-3 text-sm text-slate-500">Automático sigue el modo claro u oscuro del dispositivo.</p>
-      <div role="radiogroup" aria-label="Tema" className="grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
-        {opciones.map(([v, ico, t]) => (
-          <button
-            key={v}
-            type="button"
-            role="radio"
-            aria-checked={tema === v}
-            onClick={() => setTema(v)}
-            className={cx(
-              'flex flex-col items-center gap-0.5 rounded-lg px-2 py-2 text-sm font-medium transition',
-              tema === v ? 'bg-white text-marino shadow-sm dark:bg-slate-900 dark:text-sky-300' : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200',
-            )}
-          >
-            <span aria-hidden className="text-lg">{ico}</span>
-            {t}
-          </button>
+    <>
+      <Grupo pie={conMeses ? 'Solo se puede cambiar cuando todavía no hay meses.' : 'El primer mes del historial.'}>
+        <FilaCampo etiqueta="Mes de inicio">
+          <input
+            type="month"
+            className={cx(claseCampoIos, 'w-auto')}
+            value={cfg.mes_inicio.slice(0, 7)}
+            disabled={conMeses}
+            onChange={(e) => e.target.value && actualizarConfig({ mes_inicio: `${e.target.value}-01` })}
+          />
+        </FilaCampo>
+      </Grupo>
+      <Grupo
+        titulo="Antes del primer mes"
+        pie={compartida
+          ? 'Lo que había en la cuenta común antes del primer mes.'
+          : 'Cómo estaban tus cuentas antes del primer mes. «Valor» es lo que valían tus inversiones y «aportado», lo que habías metido. Son ajustes para que cuadren los cálculos, no valoraciones verificadas.'}
+      >
+        {campos.map((c) => (
+          <FilaCampo key={c.k} etiqueta={c.t}>
+            <CeldaImporte
+              ariaLabel={c.t}
+              valor={cfg[c.k] as number}
+              permitirNegativo={c.neg}
+              className={campoIos}
+              onCambio={(v) => actualizarConfig({ [c.k]: v ?? 0 } as Partial<Config>)}
+            />
+          </FilaCampo>
         ))}
-      </div>
-    </Card>
+      </Grupo>
+    </>
   )
 }
 
-function SeguridadCard() {
+// ---------------- Conceptos ----------------
+function ConceptosDetalle() {
+  const { datos, actualizarConfig } = useStore()
+  const [ing, setIng] = useState(datos.config.plantilla_ingresos.join('\n'))
+  const [gas, setGas] = useState(datos.config.plantilla_gastos.join('\n'))
+  const limpiar = (s: string) => s.split('\n').map((x) => x.trim()).filter(Boolean)
+  const area = 'block h-44 w-full resize-y bg-transparent text-[17px] leading-7 text-slate-900 outline-none dark:text-slate-100'
+  return (
+    <>
+      <Grupo titulo={`Ingresos · ${limpiar(ing).length}`}>
+        <FilaLibre>
+          <textarea aria-label="Conceptos de ingresos" className={area} value={ing} onChange={(e) => setIng(e.target.value)} onBlur={() => actualizarConfig({ plantilla_ingresos: limpiar(ing) })} />
+        </FilaLibre>
+      </Grupo>
+      <Grupo titulo={`Gastos · ${limpiar(gas).length}`} pie="Uno por línea. Solo se usan al crear el primer mes; después, cada mes copia los conceptos del anterior.">
+        <FilaLibre>
+          <textarea aria-label="Conceptos de gastos" className={area} value={gas} onChange={(e) => setGas(e.target.value)} onBlur={() => actualizarConfig({ plantilla_gastos: limpiar(gas) })} />
+        </FilaLibre>
+      </Grupo>
+    </>
+  )
+}
+
+// ---------------- Seguridad ----------------
+function SeguridadDetalle({ email }: { email: string }) {
   const { avisar } = useStore()
-  const [email, setEmail] = useState('')
   const [factores, setFactores] = useState<{ id: string; status: string }[]>([])
   const [alta, setAlta] = useState<{ id: string; qr: string; secreto: string } | null>(null)
   const [codigo, setCodigo] = useState('')
 
   async function refrescar() {
     if (!supabase) return
-    const u = await supabase.auth.getUser()
-    setEmail(u.data.user?.email ?? '')
     const f = await supabase.auth.mfa.listFactors()
     setFactores((f.data?.totp ?? []).map((x) => ({ id: x.id, status: x.status })))
   }
@@ -474,36 +487,97 @@ function SeguridadCard() {
 
   const activo = factores.some((f) => f.status === 'verified')
   return (
-    <Card titulo="Seguridad y sesión">
-      <div className="space-y-4 text-sm">
-        <p>Sesión iniciada como <strong>{email}</strong>.</p>
-        <div>
-          <h3 className="mb-2 font-medium">Cambiar contraseña</h3>
+    <>
+      <Grupo>
+        <Fila titulo="Sesión iniciada" valor={email} />
+      </Grupo>
+      <Grupo titulo="Cambiar contraseña" pie="Al menos 8 caracteres.">
+        <FilaLibre>
           <FormularioContrasena />
-        </div>
-        <div>
-          <h3 className="mb-1 font-medium">Verificación en dos pasos (TOTP)</h3>
-          {activo ? (
-            <p className="text-emerald-700 dark:text-emerald-400">✔ Activada. Para exigirla también en la base de datos, pon <code>requiere_mfa = true</code> en la tabla <code>app_owner</code> (ver README).</p>
-          ) : alta ? (
-            <div className="space-y-2">
-              <p>Escanea este código con Google Authenticator, 1Password, Authy…</p>
-              <img src={alta.qr} alt="Código QR" className="h-44 w-44 rounded bg-white p-2" />
-              <p className="break-all text-xs text-slate-500">Clave manual: {alta.secreto}</p>
-              <div className="flex gap-2">
-                <input className="campo w-36" inputMode="numeric" placeholder="123456" value={codigo} onChange={(e) => setCodigo(e.target.value)} />
-                <Boton variante="primario" onClick={verificar}>Verificar</Boton>
-              </div>
+        </FilaLibre>
+      </Grupo>
+      <Grupo
+        titulo="Verificación en dos pasos"
+        pie={activo
+          ? <>Para exigirla también en la base de datos, pon <code>requiere_mfa = true</code> en la tabla <code>app_owner</code> (ver README).</>
+          : 'Además de la contraseña, te pide un código de una app como Google Authenticator, 1Password o Authy.'}
+      >
+        <Fila titulo="Estado" valor={activo ? 'Activada' : 'Desactivada'} />
+        {!activo && !alta && <Fila titulo="Activar verificación en dos pasos" accion="azul" onClick={empezarAlta} />}
+        {alta && (
+          <FilaLibre>
+            <p>Escanea este código con tu app de códigos:</p>
+            <img src={alta.qr} alt="Código QR" className="my-3 h-44 w-44 rounded-lg bg-white p-2" />
+            <p className="mb-3 break-all text-xs text-slate-500">Clave manual: {alta.secreto}</p>
+            <div className="flex gap-2">
+              <input className="campo w-36" inputMode="numeric" placeholder="123456" value={codigo} onChange={(e) => setCodigo(e.target.value)} />
+              <Boton variante="primario" onClick={verificar}>Verificar</Boton>
             </div>
-          ) : (
-            <Boton onClick={empezarAlta}>Activar verificación en dos pasos</Boton>
-          )}
-        </div>
-        <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-4 dark:border-slate-800">
-          <Boton onClick={() => supabase?.auth.signOut()}>Cerrar sesión</Boton>
-          <Boton variante="fantasma" className="text-red-600" onClick={() => supabase?.auth.signOut({ scope: 'global' })}>Cerrar sesión en todos los dispositivos</Boton>
-        </div>
+          </FilaLibre>
+        )}
+      </Grupo>
+      <Grupo>
+        <Fila titulo="Cerrar sesión" accion="rojo" onClick={() => supabase?.auth.signOut()} />
+        <Fila titulo="Cerrar sesión en todos los dispositivos" accion="rojo" onClick={() => supabase?.auth.signOut({ scope: 'global' })} />
+      </Grupo>
+    </>
+  )
+}
+
+// ---------------- Face ID ----------------
+function FaceIdDetalle({ bloqueo }: { bloqueo: ReturnType<typeof useBloqueo> }) {
+  const { disponible, activo, ocupado, activar, desactivar } = bloqueo
+  const noDisponible = disponible === false && !activo
+  return (
+    <>
+      <Grupo
+        pie={noDisponible
+          ? 'Este navegador o dispositivo no ofrece Face ID ni huella para páginas web.'
+          : `Al abrir la app, y si vuelves a ella tras más de ${MINUTOS_EN_SEGUNDO_PLANO} minuto, te pide Face ID, tu huella o el código del móvil. Es para este dispositivo: actívalo en cada uno donde lo quieras.`}
+      >
+        <Fila
+          icono="cara"
+          color={COLOR.verde}
+          titulo="Bloquear con Face ID"
+          derecha={<Interruptor etiqueta="Bloquear con Face ID" activo={activo} disabled={ocupado || noDisponible || disponible === null} onCambio={(v) => (v ? activar() : desactivar())} />}
+        />
+      </Grupo>
+      {activo && (
+        <Grupo>
+          <Fila titulo="Bloquear ahora" accion="azul" onClick={bloquearAhora} />
+        </Grupo>
+      )}
+      <Grupo titulo="Privacidad">
+        <FilaLibre>La app no ve ni guarda tu cara ni tu huella: lo comprueba el propio móvil. Si algún día no funciona, en la pantalla de bloqueo puedes cerrar sesión y entrar con tu contraseña.</FilaLibre>
+      </Grupo>
+    </>
+  )
+}
+
+// ---------------- Apariencia ----------------
+function AparienciaDetalle({ tema, setTema }: { tema: Tema; setTema: (t: Tema) => void }) {
+  // Con «Automático», se marca el modo que se está usando ahora
+  const enUso = tema === 'sistema' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro') : tema
+  return (
+    <>
+      <div className="mb-6 grid grid-cols-2 gap-4 rounded-[10px] bg-white px-6 py-5 dark:bg-[#1c1c1e]">
+        {(['claro', 'oscuro'] as const).map((t) => (
+          <button key={t} type="button" onClick={() => setTema(t)} className="flex flex-col items-center gap-2" aria-pressed={enUso === t}>
+            <span className={cx('flex h-28 w-16 flex-col gap-1.5 rounded-xl border-2 p-2', t === 'claro' ? 'bg-slate-100' : 'bg-slate-900', enUso === t ? 'border-[#007AFF]' : 'border-transparent')}>
+              <span className={cx('h-2 w-8 rounded', t === 'claro' ? 'bg-slate-300' : 'bg-slate-600')} />
+              <span className={cx('h-6 rounded', t === 'claro' ? 'bg-white' : 'bg-slate-700')} />
+              <span className={cx('h-6 rounded', t === 'claro' ? 'bg-white' : 'bg-slate-700')} />
+            </span>
+            <span className="text-[15px] text-slate-900 dark:text-slate-100">{NOMBRE_TEMA[t]}</span>
+            <span className={cx('flex h-5 w-5 items-center justify-center rounded-full border', enUso === t ? 'border-[#007AFF] bg-[#007AFF] text-white' : 'border-slate-300 dark:border-slate-600')}>
+              {enUso === t && <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={3.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="m5 12.5 4.5 4.5L19 7" /></svg>}
+            </span>
+          </button>
+        ))}
       </div>
-    </Card>
+      <Grupo pie="Cambia entre claro y oscuro según el modo de tu dispositivo.">
+        <Fila titulo="Automático" derecha={<Interruptor etiqueta="Apariencia automática" activo={tema === 'sistema'} onCambio={(v) => setTema(v ? 'sistema' : document.documentElement.classList.contains('dark') ? 'oscuro' : 'claro')} />} />
+      </Grupo>
+    </>
   )
 }

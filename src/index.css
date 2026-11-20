@@ -49,3 +49,10 @@ body {
     focus:ring-marino-claro/20 dark:border-slate-600 dark:bg-slate-900 disabled:opacity-60;
 }
 .recharts-wrapper *:focus { outline: none; }
+
+/* Listas estilo iOS: separador fino entre filas, que empieza donde empieza el texto */
+.ios-fila + .ios-fila .ios-sep { border-top: 0.5px solid rgb(60 60 67 / 0.29); }
+.dark .ios-fila + .ios-fila .ios-sep { border-top-color: rgb(84 84 88 / 0.65); }
+/* Ajustes: fondo gris de las listas de iOS */
+body.fondo-ios { background-color: #f2f2f7; }
+.dark body.fondo-ios { background-color: #000; }
