@@ -1,8 +1,12 @@
 import type { Cents } from './money'
 
 export type EstadoMes = 'Abierto' | 'Cerrado'
-export type TipoAhorro = 'Inversiones' | 'Cuenta remunerada'
-export type OrigenAhorro = 'Ingresos mensuales' | 'Cuenta remunerada'
+/** Destino de un movimiento de ahorro / traspaso. */
+export type TipoAhorro = 'Inversiones' | 'Cuenta remunerada' | 'Cuenta de gastos'
+/** Origen de un movimiento: 'Ingresos mensuales' es la cuenta de gastos. */
+export type OrigenAhorro = 'Ingresos mensuales' | 'Cuenta remunerada' | 'Inversiones'
+/** Las tres cuentas entre las que se mueve el dinero. */
+export type CuentaDinero = 'gastos' | 'remunerada' | 'inversiones'
 
 export interface Config {
   mes_inicio: string // "2026-10-01"

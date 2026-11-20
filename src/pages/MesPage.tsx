@@ -11,6 +11,7 @@ import { GastosRaros } from '../components/GastosRaros'
 import { CierreMes } from '../components/CierreMes'
 import { RepartoCompartidaCard } from '../components/RepartoCompartidaCard'
 import { formatFechaHora, nombreMes, hoyISO } from '../lib/fechas'
+import { cuentaDestino, cuentaOrigen } from '../lib/calculos'
 import { anadirGasto, borrarCreaHueco, deshacerApunte, estadoPresupuesto, mesesOrdenados, reordenar, separarImporteNota, uid } from '../lib/operaciones'
 import { Asa, useOrdenable } from '../components/Ordenable'
 import type { Ahorro, Gasto, Ingreso, Mes, OrigenAhorro, TipoAhorro } from '../lib/tipos'
@@ -516,56 +517,86 @@ function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
   )
 }
 
-// ---------------- Ahorro ----------------
-const TIPOS: TipoAhorro[] = ['Inversiones', 'Cuenta remunerada']
-const ORIGENES: OrigenAhorro[] = ['Ingresos mensuales', 'Cuenta remunerada']
+// ---------------- Ahorro y traspasos ----------------
+// Cada fila mueve dinero de una cuenta a otra: Desde (origen) → Hacia (tipo).
+const DESDE: { valor: OrigenAhorro; texto: string }[] = [
+  { valor: 'Ingresos mensuales', texto: 'Cuenta de gastos' },
+  { valor: 'Cuenta remunerada', texto: 'Cuenta remunerada' },
+  { valor: 'Inversiones', texto: 'Inversiones' },
+]
+const HACIA: { valor: TipoAhorro; texto: string }[] = [
+  { valor: 'Inversiones', texto: 'Inversiones' },
+  { valor: 'Cuenta remunerada', texto: 'Cuenta remunerada' },
+  { valor: 'Cuenta de gastos', texto: 'Cuenta de gastos' },
+]
+const mismaCuenta = (origen: OrigenAhorro, tipo: TipoAhorro) => cuentaOrigen({ origen }) === cuentaDestino({ tipo })
 
 function TablaAhorro({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
-  const { datos, actualizar, insertar, borrar } = useStore()
+  const { datos, calc, actualizar, insertar, borrar } = useStore()
   const filas = datos.savings.filter((x) => x.month_id === mes.id).sort((a, b) => (a.fecha ?? '').localeCompare(b.fecha ?? ''))
-  const total = filas.reduce((a, b) => a + b.importe, 0)
+  const c = calc.porId.get(mes.id)
   const hoy = hoyISO()
   const fechaDef = hoy.slice(0, 7) === mes.fecha.slice(0, 7) ? hoy : mes.fecha
-  const cols = 'grid-cols-[8.5rem_7.5rem_minmax(8rem,1fr)_minmax(9rem,1fr)_2rem]'
+  const cols = 'grid-cols-[8.5rem_7.5rem_minmax(9rem,1fr)_1rem_minmax(9rem,1fr)_2rem]'
+  const nuevo = (origen: OrigenAhorro, tipo: TipoAhorro) =>
+    insertar('savings', { id: uid(), month_id: mes.id, fecha: fechaDef, importe: 0, tipo, origen } satisfies Ahorro)
+  const hayTraspasos = filas.some((f) => cuentaDestino(f) === 'gastos' || cuentaOrigen(f) !== 'gastos')
   return (
-    <Card titulo="Ahorro mensual" accion={!cerrado && (
-      <Boton variante="fantasma" className="text-xs" onClick={() => insertar('savings', { id: uid(), month_id: mes.id, fecha: fechaDef, importe: 0, tipo: 'Inversiones', origen: 'Ingresos mensuales' } satisfies Ahorro)}>＋ Añadir ahorro</Boton>
+    <Card titulo="Ahorro y traspasos" accion={!cerrado && (
+      <div className="flex flex-wrap justify-end gap-1">
+        <Boton variante="fantasma" className="text-xs" onClick={() => nuevo('Ingresos mensuales', 'Inversiones')}>＋ Añadir ahorro</Boton>
+        <Boton variante="fantasma" className="text-xs" onClick={() => nuevo('Cuenta remunerada', 'Cuenta de gastos')}>⇄ Traspaso</Boton>
+      </div>
     )}>
       <div className="-mx-2 overflow-x-auto px-2">
-        <div className="min-w-[34rem]">
+        <div className="min-w-[38rem]">
           <div className={cx('grid gap-x-1 px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500', cols)}>
-            <span>Fecha</span><span className="text-right">Importe</span><span>Tipo</span><span>Origen</span><span />
+            <span>Fecha</span><span className="text-right">Importe</span><span>Desde</span><span /><span>Hacia</span><span />
           </div>
-          {filas.length === 0 && <p className="px-2 py-3 text-sm text-slate-500">Sin movimientos de ahorro este mes.</p>}
+          {filas.length === 0 && <p className="px-2 py-3 text-sm text-slate-500">Sin ahorros ni traspasos este mes.</p>}
           {filas.map((f) => (
             <div key={f.id} className={cx('grid items-center gap-x-1 border-b border-slate-100 dark:border-slate-800', cols)}>
-              <CeldaFecha ariaLabel="Fecha del ahorro" valor={f.fecha} disabled={cerrado} onCambio={(v) => actualizar('savings', f.id, { fecha: v })} />
-              <CeldaImporte ariaLabel="Importe del ahorro" valor={f.importe} disabled={cerrado} onCambio={(v) => actualizar('savings', f.id, { importe: v ?? 0 })} />
+              <CeldaFecha ariaLabel="Fecha del movimiento" valor={f.fecha} disabled={cerrado} onCambio={(v) => actualizar('savings', f.id, { fecha: v })} />
+              <CeldaImporte ariaLabel="Importe del movimiento" valor={f.importe} disabled={cerrado} onCambio={(v) => actualizar('savings', f.id, { importe: v ?? 0 })} />
               <select
-                aria-label="Tipo"
+                aria-label="Desde"
+                className="celda"
+                disabled={cerrado}
+                value={f.origen}
+                onChange={(e) => {
+                  const origen = e.target.value as OrigenAhorro
+                  // Si coincide con el destino, el destino pasa a otra cuenta
+                  const tipo = mismaCuenta(origen, f.tipo) ? HACIA.find((h) => !mismaCuenta(origen, h.valor))!.valor : f.tipo
+                  actualizar('savings', f.id, { origen, tipo })
+                }}
+              >
+                {DESDE.map((o) => <option key={o.valor} value={o.valor}>{o.texto}</option>)}
+              </select>
+              <span className="text-center text-slate-400" aria-hidden>→</span>
+              <select
+                aria-label="Hacia"
                 className="celda"
                 disabled={cerrado}
                 value={f.tipo}
                 onChange={(e) => {
                   const tipo = e.target.value as TipoAhorro
-                  actualizar('savings', f.id, tipo === 'Cuenta remunerada' && f.origen === 'Cuenta remunerada' ? { tipo, origen: 'Ingresos mensuales' } : { tipo })
+                  const origen = mismaCuenta(f.origen, tipo) ? DESDE.find((o) => !mismaCuenta(o.valor, tipo))!.valor : f.origen
+                  actualizar('savings', f.id, { origen, tipo })
                 }}
               >
-                {TIPOS.map((t) => <option key={t}>{t}</option>)}
-              </select>
-              <select aria-label="Origen" className="celda" disabled={cerrado} value={f.origen} onChange={(e) => actualizar('savings', f.id, { origen: e.target.value })}>
-                {ORIGENES.map((o) => (
-                  <option key={o} disabled={o === 'Cuenta remunerada' && f.tipo === 'Cuenta remunerada'}>{o}</option>
-                ))}
+                {HACIA.map((h) => <option key={h.valor} value={h.valor} disabled={mismaCuenta(f.origen, h.valor)}>{h.texto}</option>)}
               </select>
               {!cerrado ? <BotonBorrar onClick={() => borrar('savings', f.id)} /> : <span />}
             </div>
           ))}
         </div>
       </div>
-      <Total etiqueta="Total ahorro" valor={total} />
-      {filas.some((f) => f.tipo === 'Inversiones' && f.origen === 'Cuenta remunerada') && (
-        <p className="mt-2 text-xs text-slate-500">Los traspasos de cuenta remunerada a inversiones no restan del saldo disponible del mes.</p>
+      <Total etiqueta="Total ahorro" valor={c?.ahorroTotal ?? 0} />
+      {hayTraspasos && (
+        <p className="mt-2 text-xs text-slate-500">
+          Los traspasos no son ingresos ni gastos: lo que llega a la cuenta de gastos suma al saldo disponible y resta del ahorro;
+          los que van entre la cuenta remunerada e inversiones no cambian el saldo disponible.
+        </p>
       )}
     </Card>
   )

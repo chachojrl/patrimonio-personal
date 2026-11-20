@@ -1,10 +1,23 @@
 // Módulo PURO de cálculo: réplica exacta de las fórmulas del Excel.
 // Todo en céntimos enteros. Nada de lo que se calcula aquí se guarda en la base de datos.
 import type { Cents } from './money'
-import type { Datos, Mes } from './tipos'
+import type { Ahorro, CuentaDinero, Datos, Mes } from './tipos'
 import { fechaDesdeIndice, indiceMes, nombreMes, partes } from './fechas'
 
 const suma = (xs: Cents[]) => xs.reduce((a, b) => a + b, 0)
+
+/** Cuenta de la que sale el dinero de un movimiento de ahorro / traspaso. */
+export function cuentaOrigen(a: Pick<Ahorro, 'origen'>): CuentaDinero {
+  return a.origen === 'Cuenta remunerada' ? 'remunerada' : a.origen === 'Inversiones' ? 'inversiones' : 'gastos'
+}
+/** Cuenta a la que llega el dinero de un movimiento de ahorro / traspaso. */
+export function cuentaDestino(a: Pick<Ahorro, 'tipo'>): CuentaDinero {
+  return a.tipo === 'Cuenta remunerada' ? 'remunerada' : a.tipo === 'Cuenta de gastos' ? 'gastos' : 'inversiones'
+}
+/** Lo que entra menos lo que sale de una cuenta con estos movimientos. */
+export function netoCuenta(movs: Ahorro[], cuenta: CuentaDinero): Cents {
+  return suma(movs.map((x) => (cuentaDestino(x) === cuenta ? x.importe : 0) - (cuentaOrigen(x) === cuenta ? x.importe : 0)))
+}
 
 export interface MesCalculado {
   mes: Mes
@@ -12,10 +25,15 @@ export interface MesCalculado {
   // Sumas base
   sumIngresos: Cents
   sumGastos: Cents
+  /** Ahorro del mes: lo que va a inversiones o cuenta remunerada, menos lo que vuelve a la cuenta de gastos. */
   ahorroTotal: Cents
   invDesdeCtaRem: Cents
+  /** Neto que entra en inversiones este mes (aportaciones − retiradas). */
   invMes: Cents
+  /** Lo que entra en la cuenta remunerada este mes, menos lo que sale hacia la cuenta de gastos (lo que va a inversiones va aparte, en invDesdeCtaRem). */
   ctaRemMes: Cents
+  /** Neto que entra en la cuenta de gastos desde las otras cuentas (negativo si sale). */
+  traspasoGastos: Cents
   // 4.1
   anterior: Cents
   saldoCalculado: Cents
@@ -72,7 +90,7 @@ export function calcular(d: Datos): Calculo {
 
   const resultado: MesCalculado[] = []
   let anterior = cfg.ajuste_cuenta_gastos_inicial
-  let acumCtaRem = 0 // Σ ctaRemMes − Σ invDesdeCtaRem
+  let acumCtaRem = 0 // Σ (lo que entra − lo que sale de la cuenta remunerada)
   let invEstimada = cfg.inversiones_iniciales // última valoración real (o inicial) + aportaciones posteriores
 
   for (const mes of meses) {
@@ -82,13 +100,18 @@ export function calcular(d: Datos): Calculo {
 
     const sumIngresos = suma(ing.map((x) => x.importe))
     const sumGastos = suma(gas.map((x) => x.importe))
-    const ahorroTotal = suma(aho.map((x) => x.importe))
+    // Cada fila es un movimiento origen → destino entre la cuenta de gastos, la remunerada e inversiones
+    const aGastos = suma(aho.filter((x) => cuentaDestino(x) === 'gastos').map((x) => x.importe))
+    const ahorroTotal = suma(aho.map((x) => x.importe)) - 2 * aGastos
     const invDesdeCtaRem = suma(aho.filter((x) => x.tipo === 'Inversiones' && x.origen === 'Cuenta remunerada').map((x) => x.importe))
-    const invMes = suma(aho.filter((x) => x.tipo === 'Inversiones').map((x) => x.importe))
-    const ctaRemMes = suma(aho.filter((x) => x.tipo === 'Cuenta remunerada').map((x) => x.importe))
+    const invMes = netoCuenta(aho, 'inversiones')
+    const netoCtaRem = netoCuenta(aho, 'remunerada')
+    // Como en el Excel: cuenta rem. acumulada = anterior + ctaRemMes − invDesdeCtaRem
+    const ctaRemMes = netoCtaRem + invDesdeCtaRem
+    const traspasoGastos = netoCuenta(aho, 'gastos')
 
     // 4.1
-    const saldoCalculado = anterior + sumIngresos - sumGastos - (ahorroTotal - invDesdeCtaRem)
+    const saldoCalculado = anterior + sumIngresos - sumGastos + traspasoGastos
     const ajuste = mes.saldo_real_cuenta === null ? 0 : mes.saldo_real_cuenta - saldoCalculado
     const ingresosTotales = sumIngresos + Math.max(0, ajuste)
     const gastosTotales = sumGastos + Math.max(0, -ajuste)
@@ -100,24 +123,25 @@ export function calcular(d: Datos): Calculo {
     else invEstimada += invMes
     const inversionesAcum = invEstimada
 
-    acumCtaRem += ctaRemMes - invDesdeCtaRem
+    acumCtaRem += netoCtaRem
     const cuentaRemAcum = cfg.cuenta_remunerada_inicial + acumCtaRem
     const ahorroAcumulado = inversionesAcum + cuentaRemAcum
     const dineroTotal = ahorroAcumulado + saldoDisponible
 
-    const ahorroDesdeIngresos = ahorroTotal - invDesdeCtaRem
+    // Lo que sale de la cuenta de gastos hacia el ahorro (negativo si se saca más de lo que se mete)
+    const ahorroDesdeIngresos = 0 - traspasoGastos
 
     resultado.push({
       mes,
       nombre: nombreMes(mes.fecha),
-      sumIngresos, sumGastos, ahorroTotal, invDesdeCtaRem, invMes, ctaRemMes,
+      sumIngresos, sumGastos, ahorroTotal, invDesdeCtaRem, invMes, ctaRemMes, traspasoGastos,
       anterior, saldoCalculado, ajuste, ingresosTotales, gastosTotales, saldoDisponible,
       pctGastado, pctDisponible: 1 - pctGastado,
       neto: ingresosTotales - gastosTotales,
       inversionesAcum, cuentaRemAcum, ahorroAcumulado, dineroTotal,
       ahorroDesdeIngresos,
       pctAhorro: ingresosTotales === 0 ? null : ahorroDesdeIngresos / ingresosTotales,
-      conMovimientos: ingresosTotales + gastosTotales + ahorroTotal !== 0,
+      conMovimientos: ingresosTotales + gastosTotales !== 0 || aho.some((x) => x.importe !== 0),
     })
     anterior = saldoDisponible
   }
