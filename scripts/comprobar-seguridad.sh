@@ -3,7 +3,7 @@
 # Uso: SUPABASE_URL=https://xxx.supabase.co SUPABASE_ANON_KEY=eyJ... ./scripts/comprobar-seguridad.sh
 set -u
 fallos=0
-for t in config months incomes expenses expense_entries savings app_owner; do
+for t in config months incomes expenses expense_entries savings debts app_owner; do
   r=$(curl -s "$SUPABASE_URL/rest/v1/$t?select=*&limit=1" -H "apikey: $SUPABASE_ANON_KEY" -H "Authorization: Bearer $SUPABASE_ANON_KEY")
   if [ "$r" = "[]" ] || echo "$r" | grep -q '"code"'; then
     echo "OK   $t → sin acceso ($(echo "$r" | head -c 80))"

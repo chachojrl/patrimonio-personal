@@ -62,6 +62,17 @@ export interface Ahorro {
   origen: OrigenAhorro
 }
 
+/** Dinero que te deben. No forma parte de ningún mes ni de los cálculos. */
+export interface Deuda {
+  id: string
+  persona: string
+  concepto: string
+  importe: Cents
+  fecha: string // día en que prestaste o pagaste
+  /** Fecha en que te lo devolvieron (null = pendiente). */
+  devuelto_en: string | null
+}
+
 export interface Datos {
   config: Config
   months: Mes[]
@@ -69,9 +80,10 @@ export interface Datos {
   expenses: Gasto[]
   expense_entries: ApunteGasto[]
   savings: Ahorro[]
+  debts: Deuda[]
 }
 
-export type Tabla = 'months' | 'incomes' | 'expenses' | 'expense_entries' | 'savings'
+export type Tabla = 'months' | 'incomes' | 'expenses' | 'expense_entries' | 'savings' | 'debts'
 
 export const PLANTILLA_INGRESOS = ['Nomina', 'Fuente de ingresos 2', 'Fuente de ingresos 3', 'Fuente de ingresos 4', 'Otros']
 export const PLANTILLA_GASTOS = [
@@ -91,7 +103,7 @@ export const CONFIG_INICIAL: Config = {
 }
 
 export function datosVacios(): Datos {
-  return { config: { ...CONFIG_INICIAL }, months: [], incomes: [], expenses: [], expense_entries: [], savings: [] }
+  return { config: { ...CONFIG_INICIAL }, months: [], incomes: [], expenses: [], expense_entries: [], savings: [], debts: [] }
 }
 
 /** Completa campos que pueden faltar en datos antiguos (copias JSON o modo local de versiones previas). */
@@ -100,5 +112,6 @@ export function normalizarDatos(d: Datos): Datos {
     ...d,
     expenses: d.expenses.map((g) => ({ ...g, fijo: g.fijo ?? false, presupuesto: g.presupuesto ?? null })),
     expense_entries: d.expense_entries ?? [],
+    debts: d.debts ?? [],
   }
 }

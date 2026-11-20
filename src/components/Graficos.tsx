@@ -2,6 +2,7 @@ import {
   Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
 import { formatEUR, formatPct } from '../lib/money'
+import { OCULTO, useDiscreto } from '../lib/discreto'
 
 // Colores por papel (definidos como variables CSS en index.css, con su versión oscura)
 export const COL = {
@@ -19,6 +20,15 @@ const euroCorto = (v: number) => {
   const e = v / 100
   if (Math.abs(e) >= 1000) return `${(e / 1000).toLocaleString('es-ES', { maximumFractionDigits: 1 })} k€`
   return `${Math.round(e)} €`
+}
+
+/** Formatos de eje y tooltip; en modo discreto ocultan las cifras. */
+function useFormatos() {
+  const d = useDiscreto()
+  return {
+    corto: d ? () => '•••' : euroCorto,
+    largo: (v: unknown) => (d ? OCULTO : formatEUR(Number(v), { dash: false })),
+  }
 }
 
 const estiloTooltip = {
@@ -75,6 +85,7 @@ export function DonutGastado({ pctGastado }: { pctGastado: number }) {
 
 /** Columnas agrupadas Ingresos vs Gastos */
 export function BarrasIngresosGastos({ ingresos, gastos }: { ingresos: number; gastos: number }) {
+  const f = useFormatos()
   const datos = [{ nombre: 'Este mes', Ingresos: ingresos, Gastos: gastos }]
   return (
     <div className="h-48 w-full">
@@ -82,8 +93,8 @@ export function BarrasIngresosGastos({ ingresos, gastos }: { ingresos: number; g
         <BarChart data={datos} barGap={2} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
           <CartesianGrid vertical={false} stroke="var(--grid)" />
           <XAxis dataKey="nombre" tick={eje} axisLine={false} tickLine={false} />
-          <YAxis tickFormatter={euroCorto} tick={eje} axisLine={false} tickLine={false} width={56} />
-          <Tooltip {...estiloTooltip} cursor={{ fill: 'var(--grid)', opacity: 0.4 }} formatter={(v) => formatEUR(Number(v), { dash: false })} />
+          <YAxis tickFormatter={f.corto} tick={eje} axisLine={false} tickLine={false} width={56} />
+          <Tooltip {...estiloTooltip} cursor={{ fill: 'var(--grid)', opacity: 0.4 }} formatter={f.largo} />
           <Legend iconType="square" iconSize={10} wrapperStyle={{ fontSize: 12 }} />
           <Bar dataKey="Ingresos" fill={COL.ingresos} radius={[4, 4, 0, 0]} maxBarSize={56} isAnimationActive={false} />
           <Bar dataKey="Gastos" fill={COL.gastos} radius={[4, 4, 0, 0]} maxBarSize={56} isAnimationActive={false} />
@@ -102,14 +113,15 @@ export interface PuntoDinero {
 
 /** Columnas apiladas del resumen anual */
 export function BarrasDineroAnual({ datos }: { datos: PuntoDinero[] }) {
+  const f = useFormatos()
   return (
     <div className="h-72 w-full">
       <ResponsiveContainer>
         <BarChart data={datos} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
           <CartesianGrid vertical={false} stroke="var(--grid)" />
           <XAxis dataKey="mes" tick={eje} axisLine={false} tickLine={false} interval={0} />
-          <YAxis tickFormatter={euroCorto} tick={eje} axisLine={false} tickLine={false} width={56} />
-          <Tooltip {...estiloTooltip} cursor={{ fill: 'var(--grid)', opacity: 0.4 }} formatter={(v) => formatEUR(Number(v), { dash: false })} />
+          <YAxis tickFormatter={f.corto} tick={eje} axisLine={false} tickLine={false} width={56} />
+          <Tooltip {...estiloTooltip} cursor={{ fill: 'var(--grid)', opacity: 0.4 }} formatter={f.largo} />
           <Legend iconType="square" iconSize={10} wrapperStyle={{ fontSize: 12 }} />
           <Bar dataKey="Inversiones" stackId="a" fill={COL.inversiones} stroke="var(--surface)" strokeWidth={1} maxBarSize={40} isAnimationActive={false} />
           <Bar dataKey="Cuenta remunerada" stackId="a" fill={COL.cuentaRem} stroke="var(--surface)" strokeWidth={1} maxBarSize={40} isAnimationActive={false} />
@@ -122,14 +134,15 @@ export function BarrasDineroAnual({ datos }: { datos: PuntoDinero[] }) {
 
 /** Línea: Dinero total por mes */
 export function LineaDineroTotal({ datos }: { datos: { mes: string; valor: number }[] }) {
+  const f = useFormatos()
   return (
     <div className="h-64 w-full">
       <ResponsiveContainer>
         <LineChart data={datos} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
           <CartesianGrid vertical={false} stroke="var(--grid)" />
           <XAxis dataKey="mes" tick={eje} axisLine={false} tickLine={false} />
-          <YAxis tickFormatter={euroCorto} tick={eje} axisLine={false} tickLine={false} width={60} domain={['auto', 'auto']} />
-          <Tooltip {...estiloTooltip} formatter={(v) => [formatEUR(Number(v), { dash: false }), 'Dinero total']} />
+          <YAxis tickFormatter={f.corto} tick={eje} axisLine={false} tickLine={false} width={60} domain={['auto', 'auto']} />
+          <Tooltip {...estiloTooltip} formatter={(v) => [f.largo(v), 'Dinero total']} />
           <Line type="monotone" dataKey="valor" stroke={COL.inversiones} strokeWidth={2} dot={{ r: 4, strokeWidth: 2, fill: 'var(--surface)' }} activeDot={{ r: 6 }} isAnimationActive={false} />
         </LineChart>
       </ResponsiveContainer>

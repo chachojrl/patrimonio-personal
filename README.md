@@ -108,8 +108,14 @@ Debe responder `OK` en todas las tablas: sin sesión no se lee nada y el registr
 - **Mes cerrado:** todo pasa a solo lectura, también en la base de datos. Usa **Reabrir mes**.
 - **Saldo real en cuenta:** si lo rellenas, la diferencia con el saldo calculado se apunta sola
   como ingreso extra o como gasto no registrado.
-- **Valor real de inversiones:** se edita en el Historial. Pon el valor total de la cartera, no la
-  ganancia.
+- **Valor real de inversiones:** pulsa ✎ en la tarjeta «Total en inversiones» (Inicio o Historial)
+  o rellénalo en la página de cada mes. Pon el valor total de la cartera, no la ganancia.
+- **Buscar** (🔍): escribe un concepto («super», «regalos») o una persona y verás cuánto llevas
+  gastado o ingresado, mes a mes, en el año elegido o en todos. No distingue mayúsculas ni tildes.
+- **Te deben** (🤝): apunta quién te debe dinero y márcalo como devuelto cuando te pague. No se
+  suma al dinero total ni a los gastos del mes. Si hay algo pendiente, aparece un aviso en Inicio.
+- **Modo discreto** (👁): oculta todas las cifras en pantalla (•••• €). Se recuerda en cada
+  dispositivo y no afecta a las exportaciones.
 - **Exportar:** en Ajustes puedes descargar Excel (.xlsx, una hoja por mes + Índice + Historial +
   Resumen), una copia completa en JSON o CSV.
 
@@ -123,6 +129,7 @@ vez** en *Supabase → SQL Editor*, en orden. Se pueden repetir sin problema.
 | `0001_esquema.sql` | Tablas, seguridad y reglas (instalación inicial) |
 | `0002_usuarios_nuevos_en_blanco.sql` | Los usuarios nuevos empiezan con saldos a 0 |
 | `0003_fijos_presupuestos.sql` | Gastos fijos y presupuesto por concepto |
+| `0004_deudas.sql` | Tabla «Te deben» (dinero que te deben) |
 
 ## Emails (recuperar contraseña)
 

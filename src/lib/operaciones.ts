@@ -207,6 +207,7 @@ export function datosIniciales(): Datos {
       }, [['Golf', 2500, 125]]),
     ],
     expense_entries: [],
+    debts: [],
     savings: [
       { id: uid(), month_id: oct.id, fecha: '2026-10-01', importe: 400000, tipo: 'Inversiones', origen: 'Cuenta remunerada' },
       { id: uid(), month_id: oct.id, fecha: '2026-10-16', importe: 200000, tipo: 'Inversiones', origen: 'Cuenta remunerada' },
