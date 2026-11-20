@@ -132,6 +132,7 @@ vez** en *Supabase → SQL Editor*, en orden. Se pueden repetir sin problema.
 | `0004_deudas.sql` | Tabla «Te deben» (dinero que te deben) |
 | `0005_cuentas_compartidas.sql` | Cuentas: tu cuenta personal y, opcionalmente, una compartida. Tus datos pasan a tu cuenta personal sin cambios |
 | `0006_borrar_cuenta_compartida.sql` | Permite borrar una cuenta compartida (con confirmación) |
+| `0007_borrar_mes_compartido.sql` | Al borrar un mes de la cuenta compartida, desaparece la aportación de ese mes en las cuentas personales |
 
 ## Cuenta compartida (opcional)
 
@@ -161,6 +162,8 @@ uno aporta ese porcentaje de **todos** sus ingresos del mes:
   creado ese mes en su cuenta personal;
 - los meses **cerrados** no se tocan, así que cambiar el porcentaje no altera el pasado;
 - esas filas no se pueden editar a mano (llevan la marca 🏠 Automático).
+- si se borra un mes de la cuenta compartida, desaparece la aportación de **ese mes** en la cuenta
+  personal de cada uno (salvo que su mes personal esté cerrado).
 
 **Borrar la cuenta compartida:** *Ajustes* (dentro de la compartida) → *Zona peligrosa*. Hay que
 marcar que lo entiendes y escribir el nombre de la cuenta; la base de datos también comprueba el
