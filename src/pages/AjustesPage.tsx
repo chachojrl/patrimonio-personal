@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { InformePdfBoton } from '../components/InformePdfBoton'
 import { useStore } from '../data/store'
 import { Boton, Card, CeldaImporte, Modal } from '../components/ui'
 import { descargar, exportarCSV, exportarExcel, exportarJSON, importarJSON } from '../lib/exportar'
@@ -125,7 +126,8 @@ function DatosCard() {
         <div>
           <h3 className="mb-2 text-sm font-medium">Exportar</h3>
           <div className="flex flex-wrap gap-2">
-            <Boton variante="primario" onClick={() => exportarExcel(datos).catch((e) => avisar({ texto: e.message, tipo: 'error' }))}>📗 Excel (.xlsx)</Boton>
+            <InformePdfBoton />
+            <Boton onClick={() => exportarExcel(datos).catch((e) => avisar({ texto: e.message, tipo: 'error' }))}>📗 Excel (.xlsx)</Boton>
             <Boton onClick={() => descargar(`presupuesto-copia-${new Date().toISOString().slice(0, 10)}.json`, exportarJSON(datos), 'application/json')}>💾 Copia completa (JSON)</Boton>
           </div>
           <div className="mt-2 flex flex-wrap gap-2 text-xs">
