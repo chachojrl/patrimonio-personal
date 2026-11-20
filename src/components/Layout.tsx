@@ -2,6 +2,7 @@ import { Link, NavLink, Outlet } from 'react-router-dom'
 import { useStore } from '../data/store'
 import { BotonDiscreto, cx } from './ui'
 import { ultimoMes } from '../lib/operaciones'
+import { nombreMiembro, useCuentas } from '../data/cuentas'
 
 function EstadoGuardadoChip() {
   const { guardado } = useStore()
@@ -12,6 +13,45 @@ function EstadoGuardadoChip() {
     'sin-conexion': { txt: 'Sin conexión', cls: 'text-amber-600' },
   }[guardado]
   return <span className={cx('text-xs font-medium', t.cls)} aria-live="polite">{t.txt}</span>
+}
+
+/** Cambiar entre la cuenta personal y la compartida (solo si hay más de una). */
+function SelectorCuenta({ className, vertical }: { className?: string; vertical?: boolean }) {
+  const { cuentas, activa, cambiar } = useCuentas()
+  if (!cuentas || cuentas.length < 2 || !activa) return null
+  return (
+    <div role="group" aria-label="Cuenta" className={cx('flex gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-800', vertical && 'flex-col', className)}>
+      {cuentas.map((c) => (
+        <button
+          key={c.id}
+          type="button"
+          aria-pressed={c.id === activa.id}
+          onClick={() => c.id !== activa.id && cambiar(c.id)}
+          className={cx(
+            'flex min-w-0 flex-1 items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium',
+            vertical ? 'justify-start px-3' : 'justify-center',
+            c.id === activa.id ? 'bg-white text-marino shadow-sm dark:bg-slate-900 dark:text-sky-300' : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200',
+          )}
+        >
+          <span aria-hidden>{c.tipo === 'personal' ? '👤' : '🏠'}</span>
+          <span className="truncate">{c.tipo === 'personal' ? 'Mi cuenta' : c.nombre}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function AvisoCompartida() {
+  const { activa, userId } = useCuentas()
+  if (activa?.tipo !== 'compartida') return null
+  const otros = activa.miembros.filter((m) => m.user_id !== userId)
+  const pendiente = otros.some((m) => !m.user_id)
+  return (
+    <div className="bg-sky-50 px-4 py-2 text-center text-xs text-sky-900 dark:bg-sky-950/50 dark:text-sky-200">
+      🏠 Cuenta compartida{otros.length ? ` con ${otros.map(nombreMiembro).join(', ')}` : ''}: lo que hay aquí lo veis {otros.length > 1 ? 'todos' : 'los dos'}.
+      {pendiente && ' (Aún no ha entrado en la app.)'}
+    </div>
+  )
 }
 
 const ICONOS: Record<string, string> = { inicio: '☰', mes: '📅', historial: '📈', resumen: '📊', ajustes: '⚙️' }
@@ -43,6 +83,7 @@ export function Layout() {
           <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" className="h-8 w-8" />
           <span className="font-semibold text-marino dark:text-sky-300">Presupuesto</span>
         </div>
+        <SelectorCuenta className="mb-4" vertical />
         <nav className="flex flex-col gap-1">
           {enlaces.map((e) => (
             <NavLink
@@ -89,6 +130,11 @@ export function Layout() {
           <BotonDiscreto />
         </div>
       </header>
+
+      <div className="border-b border-slate-200 bg-white px-4 py-2 dark:border-slate-800 dark:bg-slate-900 md:hidden [&:empty]:hidden">
+        <SelectorCuenta />
+      </div>
+      <AvisoCompartida />
 
       {modo === 'local' && (
         <div className="bg-amber-100 px-4 py-2 text-center text-xs text-amber-900 dark:bg-amber-900/40 dark:text-amber-200">

@@ -6,6 +6,7 @@ import { BarrasIngresosGastos, DonutGastado } from '../components/Graficos'
 import { CrearMesBoton } from '../components/CrearMes'
 import { parseImporte } from '../lib/money'
 import { useEur } from '../lib/discreto'
+import { useCuentas } from '../data/cuentas'
 import { formatFechaHora, nombreMes, hoyISO } from '../lib/fechas'
 import { anadirGasto, borrarCreaHueco, deshacerApunte, estadoPresupuesto, mesesOrdenados, reordenar, uid } from '../lib/operaciones'
 import { Asa, useOrdenable } from '../components/Ordenable'
@@ -33,6 +34,7 @@ function VistaMes({ mes, c }: { mes: Mes; c: NonNullable<ReturnType<ReturnType<t
   const { datos, actualizar } = useStore()
   const cerrado = mes.estado === 'Cerrado'
   const eur = useEur()
+  const compartida = useCuentas().activa?.tipo === 'compartida'
   const ordenados = mesesOrdenados(datos)
   const idx = ordenados.findIndex((m) => m.id === mes.id)
   const prev = ordenados[idx - 1]
@@ -104,27 +106,31 @@ function VistaMes({ mes, c }: { mes: Mes; c: NonNullable<ReturnType<ReturnType<t
                 onCambio={(v) => actualizar('months', mes.id, { saldo_real_cuenta: v })}
               />
             </div>
-            <div>
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                Inversiones acumuladas
-                <Info texto="Si escribes el valor real de tu cartera, sustituye a la estimación (última valoración + aportaciones) y se recalculan el ahorro acumulado, el dinero total y la ganancia/pérdida, también de los meses siguientes." />
-              </div>
-              <div className="mt-1 text-lg font-semibold"><Dinero c={c.inversionesAcum} dash={false} /></div>
-              <div className="text-xs text-slate-500">{mes.valor_real_inversiones === null ? 'Estimado' : 'Valor real'}</div>
-            </div>
-            <div>
-              <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                Valor real de inversiones (opcional)
-              </label>
-              <CeldaImporte
-                ariaLabel="Valor real de inversiones"
-                valor={mes.valor_real_inversiones}
-                permitirVacio
-                placeholder="Vacío"
-                className="mt-1 border-slate-300 bg-white text-left dark:border-slate-600 dark:bg-slate-900"
-                onCambio={(v) => actualizar('months', mes.id, { valor_real_inversiones: v })}
-              />
-            </div>
+            {!compartida && (
+              <>
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                    Inversiones acumuladas
+                    <Info texto="Si escribes el valor real de tu cartera, sustituye a la estimación (última valoración + aportaciones) y se recalculan el ahorro acumulado, el dinero total y la ganancia/pérdida, también de los meses siguientes." />
+                  </div>
+                  <div className="mt-1 text-lg font-semibold"><Dinero c={c.inversionesAcum} dash={false} /></div>
+                  <div className="text-xs text-slate-500">{mes.valor_real_inversiones === null ? 'Estimado' : 'Valor real'}</div>
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                    Valor real de inversiones (opcional)
+                  </label>
+                  <CeldaImporte
+                    ariaLabel="Valor real de inversiones"
+                    valor={mes.valor_real_inversiones}
+                    permitirVacio
+                    placeholder="Vacío"
+                    className="mt-1 border-slate-300 bg-white text-left dark:border-slate-600 dark:bg-slate-900"
+                    onCambio={(v) => actualizar('months', mes.id, { valor_real_inversiones: v })}
+                  />
+                </div>
+              </>
+            )}
           </div>
         </Card>
         <Card titulo="Ingresos vs gastos">
@@ -163,6 +169,7 @@ function Total({ etiqueta, valor, cols }: { etiqueta: string; valor: number; col
 // ---------------- Ingresos ----------------
 function TablaIngresos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
   const { datos, actualizar, insertar, borrar } = useStore()
+  const pct = useCuentas().activa?.pct_aportacion
   const [params] = useSearchParams()
   const filas = datos.incomes.filter((x) => x.month_id === mes.id).sort((a, b) => a.orden - b.orden)
   const total = filas.reduce((a, b) => a + b.importe, 0)
@@ -177,16 +184,34 @@ function TablaIngresos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
       <div className="grid grid-cols-[1.25rem_1fr_9rem_2rem] gap-x-1 px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
         <span /><span>Concepto</span><span className="text-right">Importe</span><span />
       </div>
-      {filas.map((f, i) => (
-        <div key={f.id} ref={ord.refFila(i)} style={ord.estilo(i)} className="grid grid-cols-[1.25rem_1fr_9rem_2rem] items-center gap-x-1 border-b border-slate-100 dark:border-slate-800">
-          {!cerrado ? <Asa {...ord.asa(i)} /> : <span />}
-          <CeldaTexto ariaLabel="Concepto de ingreso" valor={f.concepto} disabled={cerrado} onCambio={(v) => actualizar('incomes', f.id, { concepto: v })} />
-          <CeldaImporte ariaLabel={`Importe ${f.concepto}`} valor={f.importe} disabled={cerrado} autoFocus={focoNomina && i === 0} onCambio={(v) => actualizar('incomes', f.id, { importe: v ?? 0 })} />
-          {!cerrado ? <BotonBorrar onClick={() => borrar('incomes', f.id)} /> : <span />}
-        </div>
-      ))}
+      {filas.map((f, i) => {
+        const auto = !!f.aportacion_de
+        return (
+          <div key={f.id} ref={ord.refFila(i)} style={ord.estilo(i)} className="grid grid-cols-[1.25rem_1fr_9rem_2rem] items-center gap-x-1 border-b border-slate-100 dark:border-slate-800">
+            {!cerrado ? <Asa {...ord.asa(i)} /> : <span />}
+            <div className="min-w-0">
+              <CeldaTexto ariaLabel="Concepto de ingreso" valor={f.concepto} disabled={cerrado || auto} onCambio={(v) => actualizar('incomes', f.id, { concepto: v })} />
+              {auto && <EtiquetaAuto texto={`${pct ?? '?'} % de sus ingresos del mes, calculado automáticamente. Cambia el porcentaje en Ajustes.`} />}
+            </div>
+            <CeldaImporte ariaLabel={`Importe ${f.concepto}`} valor={f.importe} disabled={cerrado || auto} autoFocus={focoNomina && i === 0} onCambio={(v) => actualizar('incomes', f.id, { importe: v ?? 0 })} />
+            {!cerrado && !auto ? <BotonBorrar onClick={() => borrar('incomes', f.id)} /> : <span />}
+          </div>
+        )
+      })}
       <Total etiqueta="Total ingresos" valor={total} />
     </Card>
+  )
+}
+
+/** Marca de las filas que calcula el servidor (aportaciones a la cuenta compartida). */
+function EtiquetaAuto({ texto }: { texto: string }) {
+  return (
+    <div className="px-2">
+      <span className="rounded bg-violet-100 px-1.5 text-[10px] font-semibold text-violet-800 dark:bg-violet-900/50 dark:text-violet-300" title={texto}>
+        🏠 Automático
+      </span>
+      <span className="ml-1.5 text-[11px] text-slate-500">{texto}</span>
+    </div>
   )
 }
 
@@ -309,6 +334,8 @@ function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
       </div>
       {filas.map((g, i) => {
         const apuntes = datos.expense_entries.filter((a) => a.expense_id === g.id)
+        const auto = !!g.aportacion_cuenta
+        const bloqueada = cerrado || auto
         return (
           <div
             key={g.id}
@@ -318,7 +345,8 @@ function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
           >
             <div className="row-span-2 self-start pt-1 md:row-span-1 md:self-center md:pt-0">{!cerrado && <Asa {...ord.asa(i)} />}</div>
             <div className="min-w-0">
-              <CeldaTexto ariaLabel="Concepto de gasto" valor={g.concepto} disabled={cerrado} onCambio={(v) => actualizar('expenses', g.id, { concepto: v })} />
+              <CeldaTexto ariaLabel="Concepto de gasto" valor={g.concepto} disabled={bloqueada} onCambio={(v) => actualizar('expenses', g.id, { concepto: v })} />
+              {auto && <EtiquetaAuto texto="Tu aportación a la cuenta compartida: se recalcula sola al cambiar tus ingresos." />}
               {(g.fijo || apuntes.length > 0) && (
                 <div className="flex flex-wrap gap-2 px-2">
                   {g.fijo && <span className="rounded bg-sky-100 px-1.5 text-[10px] font-semibold text-sky-800 dark:bg-sky-900/50 dark:text-sky-300" title="Se copia con el mismo importe al crear el mes siguiente">📌 Fijo</span>}
@@ -332,13 +360,13 @@ function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
               <BarraPresupuesto g={g} />
             </div>
             <div className="order-4 md:order-none">
-              <CeldaFecha ariaLabel={`Vencimiento ${g.concepto}`} valor={g.fecha_vencimiento} disabled={cerrado} onCambio={(v) => actualizar('expenses', g.id, { fecha_vencimiento: v })} />
+              <CeldaFecha ariaLabel={`Vencimiento ${g.concepto}`} valor={g.fecha_vencimiento} disabled={bloqueada} onCambio={(v) => actualizar('expenses', g.id, { fecha_vencimiento: v })} />
             </div>
             <div className="order-2 self-start md:order-none md:self-center">
-              <CeldaImporte ariaLabel={`Importe ${g.concepto}`} valor={g.importe} disabled={cerrado} onCambio={(v) => actualizar('expenses', g.id, { importe: v ?? 0 })} />
+              <CeldaImporte ariaLabel={`Importe ${g.concepto}`} valor={g.importe} disabled={bloqueada} onCambio={(v) => actualizar('expenses', g.id, { importe: v ?? 0 })} />
             </div>
             <div className="order-5 col-span-2 md:order-none md:col-span-1">
-              {!cerrado && (
+              {!bloqueada && (
                 <div className="flex items-center gap-1">
                   <input
                     inputMode="decimal"
@@ -368,7 +396,7 @@ function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
               {errores[g.id] && <div className="px-2 text-[11px] text-red-600">{errores[g.id]}</div>}
             </div>
             <div className="order-3 self-start justify-self-end md:order-none md:self-center">
-              {!cerrado && (
+              {!bloqueada && (
                 <button
                   type="button"
                   aria-label={`Opciones de ${g.concepto}`}

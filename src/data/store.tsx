@@ -59,6 +59,8 @@ export function StoreProvider({ repo, inicial, children }: { repo: Repo; inicial
   const [toasts, setToasts] = useState<Toast[]>([])
 
   const cola = useRef<Promise<void>>(Promise.resolve())
+  /** Han cambiado ingresos: al terminar de guardar, se releen las aportaciones (las calcula el servidor). */
+  const ingresosCambiados = useRef(false)
   const pendientes = useRef(0)
   const parches = useRef(new Map<string, { tabla: Tabla; id: string; patch: Record<string, unknown>; timer: ReturnType<typeof setTimeout> }>())
 
@@ -109,10 +111,26 @@ export function StoreProvider({ repo, inicial, children }: { repo: Repo; inicial
           }
         }
         pendientes.current--
-        if (pendientes.current === 0) setGuardado((g) => (g === 'error' ? g : 'guardado'))
+        if (pendientes.current === 0) {
+          setGuardado((g) => (g === 'error' ? g : 'guardado'))
+          if (ingresosCambiados.current && repo.leerAportaciones) {
+            ingresosCambiados.current = false
+            try {
+              const nuevas = await repo.leerAportaciones()
+              const d = datosRef.current
+              const ids = new Set(nuevas.map((g) => g.id))
+              const antes = d.expenses.filter((g) => !g.aportacion_cuenta && !ids.has(g.id))
+              const actualizado = { ...d, expenses: [...antes, ...nuevas] }
+              datosRef.current = actualizado
+              setDatos(actualizado)
+            } catch {
+              /* se verá al recargar */
+            }
+          }
+        }
       })
     },
-    [avisar, recargar],
+    [avisar, recargar, repo],
   )
 
   /** Marca "Último cambio" del mes (equivale a la macro MarcarUltimoCambio). */
@@ -135,6 +153,7 @@ export function StoreProvider({ repo, inicial, children }: { repo: Repo; inicial
       if (!p) return
       clearTimeout(p.timer)
       parches.current.delete(clave)
+      if (p.tabla === 'incomes') ingresosCambiados.current = true
       encolar(() => repo.actualizar(p.tabla, p.id, p.patch))
     },
     [encolar, repo],
@@ -175,6 +194,7 @@ export function StoreProvider({ repo, inicial, children }: { repo: Repo; inicial
   const insertar = useCallback<StoreCtx['insertar']>(
     (tabla, fila) => {
       let d = datosRef.current
+      if (tabla === 'incomes') ingresosCambiados.current = true
       d = { ...d, [tabla]: [...(d[tabla] as object[]), fila] }
       d = tocar(d, monthIdDe(d, tabla, fila as Record<string, unknown>))
       datosRef.current = d
@@ -195,6 +215,7 @@ export function StoreProvider({ repo, inicial, children }: { repo: Repo; inicial
       let d = datosRef.current
       const fila = (d[tabla] as unknown as Record<string, unknown>[]).find((x) => x.id === id)
       if (!fila) return
+      if (tabla === 'incomes') ingresosCambiados.current = true
       const mid = monthIdDe(d, tabla, fila)
       d = { ...d, [tabla]: (d[tabla] as unknown as { id: string }[]).filter((x) => x.id !== id) }
       if (tabla === 'expenses') d = { ...d, expense_entries: d.expense_entries.filter((x) => x.expense_id !== id) }
@@ -240,9 +261,11 @@ export function StoreProvider({ repo, inicial, children }: { repo: Repo; inicial
       const d = aplicarPlan(datosRef.current, plan)
       datosRef.current = d
       setDatos(d)
+      // El servidor puede haber añadido aportaciones automáticas al mes nuevo
+      if (repo.leerAportaciones) await recargar().catch(() => undefined)
       return plan
     },
-    [repo, vaciar],
+    [repo, vaciar, recargar],
   )
 
   const borrarMes = useCallback<StoreCtx['borrarMes']>(

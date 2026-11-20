@@ -83,3 +83,16 @@ describe('Te deben', () => {
     expect(r.debts).toEqual(d.debts)
   })
 })
+
+describe('Cuenta compartida', () => {
+  it('crear mes nuevo no copia las aportaciones automáticas (las recrea el servidor)', () => {
+    const d = datosIniciales()
+    const nov = d.months.find((m) => m.fecha === '2026-11-01')!
+    d.incomes.push({ id: 'ap-i', month_id: nov.id, concepto: 'Aportación Ana', importe: 15000, orden: 9, aportacion_de: 'u-ana' })
+    d.expenses.push({ id: 'ap-g', month_id: nov.id, concepto: 'Aportación Casa', importe: 21000, orden: 99, fijo: false, presupuesto: null, fecha_vencimiento: null, aportacion_cuenta: 'c-casa' })
+    const plan = planMesNuevo(d, false)
+    expect(plan.incomes.map((x) => x.concepto)).not.toContain('Aportación Ana')
+    expect(plan.expenses.map((x) => x.concepto)).not.toContain('Aportación Casa')
+    expect(plan.expenses.map((x) => x.concepto)).toContain('Restaurantes')
+  })
+})

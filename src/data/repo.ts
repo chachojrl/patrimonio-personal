@@ -1,4 +1,4 @@
-import type { Config, Datos, Tabla } from '../lib/tipos'
+import type { Config, Datos, Gasto, Tabla } from '../lib/tipos'
 import type { PlanMesNuevo } from '../lib/operaciones'
 
 /** Capa de persistencia. La lógica vive en el cliente; el repositorio solo guarda. */
@@ -11,6 +11,8 @@ export interface Repo {
   borrar(tabla: Tabla, ids: string[]): Promise<void>
   crearMes(plan: PlanMesNuevo): Promise<void>
   reemplazarTodo(datos: Datos): Promise<void>
+  /** Gastos de aportación a cuentas compartidas (los recalcula el servidor al cambiar ingresos). */
+  leerAportaciones?(): Promise<Gasto[]>
 }
 
 export class NoAutorizadoError extends Error {

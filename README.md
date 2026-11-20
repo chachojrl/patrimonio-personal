@@ -130,6 +130,40 @@ vez** en *Supabase → SQL Editor*, en orden. Se pueden repetir sin problema.
 | `0002_usuarios_nuevos_en_blanco.sql` | Los usuarios nuevos empiezan con saldos a 0 |
 | `0003_fijos_presupuestos.sql` | Gastos fijos y presupuesto por concepto |
 | `0004_deudas.sql` | Tabla «Te deben» (dinero que te deben) |
+| `0005_cuentas_compartidas.sql` | Cuentas: tu cuenta personal y, opcionalmente, una compartida. Tus datos pasan a tu cuenta personal sin cambios |
+
+## Cuenta compartida (opcional)
+
+Cada usuario tiene su **cuenta personal**, que solo ve él. Si lo activáis, podéis tener además una
+**cuenta compartida** para los gastos comunes (casa, wifi, supermercado…) que veis los dos, cada uno
+con su usuario. Mientras nadie la cree, la app funciona exactamente igual que antes.
+
+**Ponerla en marcha (una vez):**
+
+1. Ejecuta `0005_cuentas_compartidas.sql` en *Supabase → SQL Editor* (si no lo has hecho ya).
+2. Autoriza el email de tu pareja y créale su usuario:
+   ```sql
+   insert into public.app_owner (email) values ('email-de-tu-pareja@ejemplo.com');
+   ```
+   Después, en *Authentication → Users → Add user → Create new user*, con su email y una
+   contraseña (marca **Auto Confirm User**). Podrá cambiarla luego en *Ajustes*.
+3. En la app, desde tu cuenta: *Ajustes → Cuenta compartida → Crear cuenta compartida*, con su
+   email. Cuando tu pareja entre, la verá en el selector de cuenta (👤 Mi cuenta / 🏠 Casa).
+
+**Aportaciones automáticas (interruptor, apagado por defecto):** en *Ajustes* dentro de la cuenta
+compartida, activa «Aportaciones automáticas proporcionales» y elige el porcentaje. Cada mes, cada
+uno aporta ese porcentaje de **todos** sus ingresos del mes:
+
+- se apunta solo como ingreso en la cuenta compartida («Aportación Ana») y como gasto en la cuenta
+  personal de cada uno («Aportación Casa»);
+- se recalcula al cambiar los ingresos, el porcentaje o el nombre, y aparece cuando cada uno tiene
+  creado ese mes en su cuenta personal;
+- los meses **cerrados** no se tocan, así que cambiar el porcentaje no altera el pasado;
+- esas filas no se pueden editar a mano (llevan la marca 🏠 Automático).
+
+Ten en cuenta que, al aportar un porcentaje, la otra persona puede deducir tus ingresos a partir de
+tu aportación. El resto de tu cuenta personal sigue siendo privado: las reglas de la base de datos
+solo dejan ver cada fila a los miembros de su cuenta.
 
 ## Emails (recuperar contraseña)
 

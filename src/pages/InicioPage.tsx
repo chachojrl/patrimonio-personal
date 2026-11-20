@@ -3,6 +3,7 @@ import { useStore } from '../data/store'
 import { BadgeEstado, Card, Dinero, Kpi, cx } from '../components/ui'
 import { CrearMesBoton } from '../components/CrearMes'
 import { InversionesKpi } from '../components/InversionesKpi'
+import { useCuentas } from '../data/cuentas'
 import { aniosConMeses, resumenAnual } from '../lib/calculos'
 import { partes } from '../lib/fechas'
 import type { EstadoMes } from '../lib/tipos'
@@ -21,6 +22,7 @@ interface FilaIndice {
 /** Índice de hojas (equivale a la macro ActualizarIndice, pero siempre al día). */
 export function InicioPage() {
   const { calc, datos, modo } = useStore()
+  const compartida = useCuentas().activa?.tipo === 'compartida'
   const filas: FilaIndice[] = []
   for (const anio of aniosConMeses(calc)) {
     const r = resumenAnual(calc, anio)
@@ -45,8 +47,12 @@ export function InicioPage() {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi titulo="Dinero total actual" valor={k.dineroTotalActual} grande />
         <Kpi titulo="Último mes registrado" valor={k.ultimoMes ?? '–'} grande />
-        <InversionesKpi />
-        <Kpi titulo="Total en cuenta remunerada" valor={k.totalCuentaRem} />
+        {!compartida && (
+          <>
+            <InversionesKpi />
+            <Kpi titulo="Total en cuenta remunerada" valor={k.totalCuentaRem} />
+          </>
+        )}
       </div>
 
       {pendientes.length > 0 && (
