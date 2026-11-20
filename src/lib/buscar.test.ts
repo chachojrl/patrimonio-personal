@@ -96,3 +96,20 @@ describe('Cuenta compartida', () => {
     expect(plan.expenses.map((x) => x.concepto)).toContain('Restaurantes')
   })
 })
+
+describe('Buscador: notas de los apuntes', () => {
+  it('encuentra apuntes por su nota (sin tildes) y respeta el año', () => {
+    const d = datosIniciales()
+    const nov = d.months.find((m) => m.fecha === '2026-11-01')!
+    const sup = d.expenses.find((g) => g.month_id === nov.id && g.concepto === 'Supermercado')!
+    d.expense_entries.push(
+      { id: 'n1', expense_id: sup.id, importe: 2350, creado_en: '2026-11-05T18:00:00Z', nota: 'Mercadona' },
+      { id: 'n2', expense_id: sup.id, importe: 1200, creado_en: '2026-11-12T18:00:00Z', nota: 'mercadona y farmacia' },
+      { id: 'n3', expense_id: sup.id, importe: 999, creado_en: '2026-11-13T18:00:00Z', nota: null },
+    )
+    const r = buscar(d, 'MERCADONA', 2026)
+    expect(r.notas.map((n) => n.id)).toEqual(['n2', 'n1']) // más reciente primero
+    expect(r.notas[0]).toMatchObject({ concepto: 'Supermercado', fecha: '2026-11-01', importe: 1200 })
+    expect(buscar(d, 'mercadona', 2025).notas).toHaveLength(0)
+  })
+})

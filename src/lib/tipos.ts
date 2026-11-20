@@ -77,6 +77,39 @@ export interface Deuda {
   devuelto_en: string | null
 }
 
+/** Artículo de la lista de la compra (por cuenta; la compartida la veis los dos). */
+export interface ArticuloCompra {
+  id: string
+  texto: string
+  hecho: boolean
+  orden: number
+  creado_en: string
+}
+
+export type CategoriaViaje = 'alojamiento' | 'transporte' | 'comida' | 'ocio' | 'compras' | 'otros'
+
+export interface Viaje {
+  id: string
+  nombre: string
+  moneda: string // código ISO: EUR, GBP, USD…
+  cambio: number // euros por 1 unidad de la moneda (por defecto para los gastos nuevos)
+  presupuesto: Cents | null // en euros
+  fecha_inicio: string | null
+  fecha_fin: string | null
+  cerrado: boolean
+}
+
+export interface GastoViaje {
+  id: string
+  viaje_id: string
+  fecha: string
+  concepto: string
+  categoria: CategoriaViaje
+  importe: Cents // en céntimos de la moneda del gasto
+  moneda: string
+  cambio: number // euros por unidad, el del día del gasto
+}
+
 export type TipoCuenta = 'personal' | 'compartida'
 
 export interface MiembroCuenta {
@@ -104,9 +137,12 @@ export interface Datos {
   expense_entries: ApunteGasto[]
   savings: Ahorro[]
   debts: Deuda[]
+  lista_compra: ArticuloCompra[]
+  viajes: Viaje[]
+  viaje_gastos: GastoViaje[]
 }
 
-export type Tabla = 'months' | 'incomes' | 'expenses' | 'expense_entries' | 'savings' | 'debts'
+export type Tabla = 'months' | 'incomes' | 'expenses' | 'expense_entries' | 'savings' | 'debts' | 'lista_compra' | 'viajes' | 'viaje_gastos'
 
 /** Un cambio hecho desde otro dispositivo (o por el servidor), recibido en tiempo real. */
 export type CambioRemoto =
@@ -132,7 +168,7 @@ export const CONFIG_INICIAL: Config = {
 }
 
 export function datosVacios(): Datos {
-  return { config: { ...CONFIG_INICIAL }, months: [], incomes: [], expenses: [], expense_entries: [], savings: [], debts: [] }
+  return { config: { ...CONFIG_INICIAL }, months: [], incomes: [], expenses: [], expense_entries: [], savings: [], debts: [], lista_compra: [], viajes: [], viaje_gastos: [] }
 }
 
 /** Completa campos que pueden faltar en datos antiguos (copias JSON o modo local de versiones previas). */
@@ -142,5 +178,8 @@ export function normalizarDatos(d: Datos): Datos {
     expenses: d.expenses.map((g) => ({ ...g, fijo: g.fijo ?? false, presupuesto: g.presupuesto ?? null })),
     expense_entries: d.expense_entries ?? [],
     debts: d.debts ?? [],
+    lista_compra: d.lista_compra ?? [],
+    viajes: d.viajes ?? [],
+    viaje_gastos: d.viaje_gastos ?? [],
   }
 }

@@ -1,4 +1,5 @@
 import type { CambioRemoto, Config, Datos, Gasto, Tabla } from '../lib/tipos'
+import type { Cambio } from '../lib/actividad'
 import type { PlanMesNuevo } from '../lib/operaciones'
 
 /** Capa de persistencia. La lógica vive en el cliente; el repositorio solo guarda. */
@@ -15,6 +16,8 @@ export interface Repo {
   leerAportaciones?(): Promise<Gasto[]>
   /** Recibe en tiempo real los cambios de esta cuenta hechos desde otros dispositivos. Devuelve cómo dejar de escuchar. */
   suscribir?(alCambiar: (c: CambioRemoto) => void): () => void
+  /** Historial de cambios de la cuenta (más reciente primero). null = no disponible (falta la migración 0009). */
+  leerCambios?(limite?: number): Promise<Cambio[] | null>
 }
 
 export class NoAutorizadoError extends Error {

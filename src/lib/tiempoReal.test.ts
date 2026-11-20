@@ -49,3 +49,30 @@ describe('Tiempo real: aplicar cambios de otro dispositivo', () => {
     expect(aplicarCambioRemoto(r, { tabla: 'config', tipo: 'UPDATE', config: { ...r.config } })).toBe(r)
   })
 })
+
+import { anadirGasto, separarImporteNota } from './operaciones'
+
+describe('Notas en los apuntes', () => {
+  it.each([
+    ['12,50', 1250, null],
+    ['12,50 Mercadona', 1250, 'Mercadona'],
+    ['12,50€ Mercadona', 1250, 'Mercadona'],
+    ['12,50 € regalo mamá', 1250, 'regalo mamá'],
+    ['1.234,56   gasolina  repsol ', 123456, 'gasolina  repsol'],
+    ['7 ', 700, null],
+  ])('«%s»', (texto, importe, nota) => {
+    expect(separarImporteNota(texto)).toEqual({ importe, nota })
+  })
+
+  it('texto sin importe delante: no es válido', () => {
+    expect(separarImporteNota('Mercadona 12').importe).toBeNull()
+  })
+
+  it('el apunte guarda la nota', () => {
+    const d = datosIniciales()
+    const g = d.expenses[0]
+    const r = anadirGasto(d, g.id, 1250, '2026-11-20T10:00:00Z', 'Mercadona')
+    expect(r.apunte.nota).toBe('Mercadona')
+    expect(r.gasto.importe).toBe(g.importe + 1250)
+  })
+})

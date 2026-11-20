@@ -44,6 +44,8 @@ export function importarJSON(texto: string): Datos {
   }
   d.expense_entries = d.expense_entries ?? []
   d.debts = d.debts ?? []
+  const viajes = new Set((d.viajes ?? []).map((v) => v.id))
+  if ((d.viaje_gastos ?? []).some((g) => !viajes.has(g.viaje_id))) throw new Error('El archivo tiene gastos de viaje que no pertenecen a ningún viaje.')
   d.config = { ...CONFIG_INICIAL, ...d.config }
   const ids = new Set(d.months.map((m) => m.id))
   if ([...d.incomes, ...d.expenses, ...d.savings].some((x) => !ids.has(x.month_id))) throw new Error('El archivo tiene filas que no pertenecen a ningún mes.')
