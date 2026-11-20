@@ -10,7 +10,24 @@ import { nombreMes } from '../lib/fechas'
 import type { Mes } from '../lib/tipos'
 
 /** Repaso antes de cerrar un mes: saldo real, inversiones, pendientes y resumen. */
-export function CierreMes({ mes, abierto, onCerrar }: { mes: Mes; abierto: boolean; onCerrar: () => void }) {
+export function CierreMes({
+  mes,
+  abierto,
+  onCerrar,
+  onConfirmar,
+  textoConfirmar = '🔒 Cerrar el mes',
+  textoCancelar = 'Ahora no',
+  ocupado = false,
+}: {
+  mes: Mes
+  abierto: boolean
+  onCerrar: () => void
+  /** Si se indica, sustituye a la acción normal de cerrar (p. ej. cerrar y crear el mes siguiente). */
+  onConfirmar?: () => void
+  textoConfirmar?: string
+  textoCancelar?: string
+  ocupado?: boolean
+}) {
   const { datos, calc, actualizar } = useStore()
   const compartida = useCuentas().activa?.tipo === 'compartida'
   const eur = useEur()
@@ -24,6 +41,7 @@ export function CierreMes({ mes, abierto, onCerrar }: { mes: Mes; abierto: boole
   const varGastos = anterior && anterior.gastosTotales > 0 ? c.gastosTotales / anterior.gastosTotales - 1 : null
 
   function cerrar() {
+    if (onConfirmar) return onConfirmar()
     actualizar('months', mes.id, { estado: 'Cerrado' })
     onCerrar()
   }
@@ -35,8 +53,8 @@ export function CierreMes({ mes, abierto, onCerrar }: { mes: Mes; abierto: boole
       titulo={`Cerrar ${nombreMes(mes.fecha)}`}
       pie={
         <>
-          <Boton onClick={onCerrar}>Ahora no</Boton>
-          <Boton variante="primario" onClick={cerrar}>🔒 Cerrar el mes</Boton>
+          <Boton onClick={onCerrar}>{textoCancelar}</Boton>
+          <Boton variante="primario" onClick={cerrar} disabled={ocupado}>{textoConfirmar}</Boton>
         </>
       }
     >
