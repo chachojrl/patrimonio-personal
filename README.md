@@ -108,6 +108,11 @@ Debe responder `OK` en todas las tablas: sin sesión no se lee nada y el registr
 - **Mes cerrado:** todo pasa a solo lectura, también en la base de datos. Usa **Reabrir mes**.
 - **Saldo real en cuenta:** si lo rellenas, la diferencia con el saldo calculado se apunta sola
   como ingreso extra o como gasto no registrado.
+- **Ahorro y traspasos:** cada fila mueve dinero **Desde** una cuenta **Hacia** otra: cuenta de
+  gastos, cuenta remunerada o inversiones. «＋ Añadir ahorro» crea una fila de la cuenta de gastos a
+  inversiones y «⇄ Traspaso», una de la cuenta remunerada a la cuenta de gastos; luego puedes cambiar
+  las cuentas. Un traspaso no es un ingreso ni un gasto: si llega a la cuenta de gastos, suma al saldo
+  disponible y resta del ahorro del mes; el dinero total no cambia. Necesita la migración `0011_traspasos.sql`.
 - **Valor real de inversiones:** pulsa ✎ en la tarjeta «Total en inversiones» (Inicio o Historial)
   o rellénalo en la página de cada mes. Pon el valor total de la cartera, no la ganancia.
 - **Buscar** (🔍): escribe un concepto («super», «regalos») o una persona y verás cuánto llevas
@@ -170,6 +175,7 @@ vez** en *Supabase → SQL Editor*, en orden. Se pueden repetir sin problema.
 | `0008_tiempo_real.sql` | Tiempo real: los cambios aparecen al momento en los demás dispositivos |
 | `0009_historial_compra_viajes.sql` | Historial de cambios, lista de la compra y viajes |
 | `0010_clasificacion_reparto.sql` | Necesidades/caprichos (50/30/20) y reparto por concepto en la cuenta compartida |
+| `0011_traspasos.sql` | Traspasos entre cualquier par de cuentas (p. ej. de la cuenta remunerada a la cuenta de gastos) |
 
 ## Cuenta compartida (opcional)
 

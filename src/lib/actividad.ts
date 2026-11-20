@@ -73,6 +73,7 @@ export function describir(c: Cambio, eur: FormatoEur): string {
       return `modificó un apunte de ${nombre}`
     }
     case 'savings': {
+      if (c.accion === 'alta' && d.nombre === 'Cuenta de gastos') return `apuntó un traspaso a la cuenta de gastos${d.importe ? ` de ${eur(cent(d.importe))}` : ''}${enMes(c)}`
       if (c.accion === 'alta') return `apuntó un ahorro${d.importe ? ` de ${eur(cent(d.importe))}` : ''} (${d.nombre ?? 'ahorro'})${enMes(c)}`
       if (c.accion === 'baja') return `borró un ahorro${enMes(c)}`
       if (campos.includes('importe')) return `cambió un ahorro: ${eur(cent(de('importe')))} → ${eur(cent(a('importe')))}${enMes(c)}`

@@ -4,6 +4,7 @@ import { parseImporte } from './money'
 import type { Ahorro, ApunteGasto, CambioRemoto, Datos, Gasto, Ingreso, Mes } from './tipos'
 import { CONFIG_INICIAL, PLANTILLA_GASTOS, PLANTILLA_INGRESOS } from './tipos'
 import { indiceMes, mesSiguiente, nombreMes } from './fechas'
+import { cuentaDestino, cuentaOrigen } from './calculos'
 
 export const uid = () => crypto.randomUUID()
 
@@ -180,7 +181,7 @@ export function estadoPresupuesto(g: Pick<Gasto, 'importe' | 'presupuesto'>): { 
 }
 
 export function validarAhorro(a: Pick<Ahorro, 'tipo' | 'origen' | 'importe'>): string | null {
-  if (a.tipo === 'Cuenta remunerada' && a.origen === 'Cuenta remunerada') return 'Origen y tipo no pueden ser ambos "Cuenta remunerada".'
+  if (cuentaOrigen(a) === cuentaDestino(a)) return 'El origen y el destino no pueden ser la misma cuenta.'
   if (a.importe < 0) return 'El importe no puede ser negativo.'
   return null
 }

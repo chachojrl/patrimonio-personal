@@ -175,6 +175,77 @@ describe('Casos límite', () => {
   })
 })
 
+describe('Traspasos entre cuentas', () => {
+  // Diciembre parte de: saldo 709,32 €, cuenta rem. 12.488,75 €, inversiones 17.602,00 €, dinero total 30.800,07 €
+  function diciembre(movs: [number, Datos['savings'][number]['origen'], Datos['savings'][number]['tipo']][]) {
+    let d = datosIniciales()
+    d = aplicarPlan(d, planMesNuevo(d, true))
+    const dic = d.months.find((m) => m.fecha === '2026-12-01')!
+    movs.forEach(([importe, origen, tipo], i) => d.savings.push({ id: `t${i}`, month_id: dic.id, fecha: '2026-12-10', importe, origen, tipo }))
+    return mesPorNombre(d, '2026-12-01')
+  }
+
+  it('de la cuenta remunerada a la cuenta de gastos: sube el saldo, baja la remunerada, el total no cambia', () => {
+    const m = diciembre([[50000, 'Cuenta remunerada', 'Cuenta de gastos']])
+    expect(m.saldoDisponible).toBe(70932 + 50000)
+    expect(m.cuentaRemAcum).toBe(1248875 - 50000)
+    expect(m.inversionesAcum).toBe(1760200)
+    expect(m.dineroTotal).toBe(3080007)
+    // No es un ingreso ni un gasto, pero sí «desahorro»
+    expect(m.ingresosTotales).toBe(0)
+    expect(m.gastosTotales).toBe(0)
+    expect(m.ahorroDesdeIngresos).toBe(-50000)
+    expect(m.ahorroTotal).toBe(-50000)
+    expect(m.ctaRemMes).toBe(-50000)
+    expect(m.traspasoGastos).toBe(50000)
+  })
+
+  it('con el saldo real del banco puesto, el traspaso no se cuenta como ajuste', () => {
+    let d = datosIniciales()
+    d = aplicarPlan(d, planMesNuevo(d, true))
+    const dic = d.months.find((m) => m.fecha === '2026-12-01')!
+    d.savings.push({ id: 't', month_id: dic.id, fecha: '2026-12-10', importe: 50000, origen: 'Cuenta remunerada', tipo: 'Cuenta de gastos' })
+    dic.saldo_real_cuenta = 70932 + 50000
+    expect(mesPorNombre(d, '2026-12-01').ajuste).toBe(0)
+  })
+
+  it('vender inversiones a la cuenta de gastos', () => {
+    const m = diciembre([[30000, 'Inversiones', 'Cuenta de gastos']])
+    expect(m.saldoDisponible).toBe(70932 + 30000)
+    expect(m.inversionesAcum).toBe(1760200 - 30000)
+    expect(m.invMes).toBe(-30000)
+    expect(m.dineroTotal).toBe(3080007)
+  })
+
+  it('de inversiones a la cuenta remunerada: el saldo disponible no cambia', () => {
+    const m = diciembre([[10000, 'Inversiones', 'Cuenta remunerada']])
+    expect(m.saldoDisponible).toBe(70932)
+    expect(m.inversionesAcum).toBe(1760200 - 10000)
+    expect(m.cuentaRemAcum).toBe(1248875 + 10000)
+    expect(m.ahorroDesdeIngresos).toBe(0)
+    expect(m.dineroTotal).toBe(3080007)
+  })
+
+  it('ahorrar y sacar en el mismo mes se compensa', () => {
+    const m = diciembre([[20000, 'Ingresos mensuales', 'Cuenta remunerada'], [5000, 'Cuenta remunerada', 'Cuenta de gastos']])
+    expect(m.saldoDisponible).toBe(70932 - 15000)
+    expect(m.cuentaRemAcum).toBe(1248875 + 15000)
+    expect(m.ahorroDesdeIngresos).toBe(15000)
+    expect(m.ahorroTotal).toBe(15000)
+  })
+
+  it('el saldo del mes siguiente parte del saldo con el traspaso', () => {
+    let d = datosIniciales()
+    d = aplicarPlan(d, planMesNuevo(d, true))
+    const dic = d.months.find((m) => m.fecha === '2026-12-01')!
+    d.savings.push({ id: 't', month_id: dic.id, fecha: '2026-12-10', importe: 50000, origen: 'Cuenta remunerada', tipo: 'Cuenta de gastos' })
+    d = aplicarPlan(d, planMesNuevo(d, true))
+    const ene = mesPorNombre(d, '2027-01-01')
+    expect(ene.anterior).toBe(70932 + 50000)
+    expect(ene.cuentaRemAcum).toBe(1248875 - 50000)
+  })
+})
+
 describe('Crear mes nuevo', () => {
   it('copia conceptos con importe 0, cierra el anterior, título "Presupuesto personal"', () => {
     const d = datosIniciales()
@@ -244,6 +315,13 @@ describe('Validaciones', () => {
   it('Cuenta remunerada → Cuenta remunerada bloqueado', () => {
     expect(validarAhorro({ tipo: 'Cuenta remunerada', origen: 'Cuenta remunerada', importe: 100 })).not.toBeNull()
     expect(validarAhorro({ tipo: 'Inversiones', origen: 'Cuenta remunerada', importe: 100 })).toBeNull()
+  })
+
+  it('origen y destino no pueden ser la misma cuenta', () => {
+    expect(validarAhorro({ tipo: 'Cuenta de gastos', origen: 'Ingresos mensuales', importe: 100 })).not.toBeNull()
+    expect(validarAhorro({ tipo: 'Inversiones', origen: 'Inversiones', importe: 100 })).not.toBeNull()
+    expect(validarAhorro({ tipo: 'Cuenta de gastos', origen: 'Cuenta remunerada', importe: 100 })).toBeNull()
+    expect(validarAhorro({ tipo: 'Cuenta remunerada', origen: 'Inversiones', importe: 100 })).toBeNull()
   })
 })
 
