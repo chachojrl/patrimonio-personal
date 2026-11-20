@@ -4,11 +4,10 @@ import { useStore } from '../data/store'
 import { BadgeEstado, Boton, Card, CeldaFecha, CeldaImporte, CeldaTexto, Dinero, Info, Modal, cx } from '../components/ui'
 import { BarrasIngresosGastos, DonutGastado } from '../components/Graficos'
 import { CrearMesBoton } from '../components/CrearMes'
-import { parseImporte } from '../lib/money'
 import { useEur } from '../lib/discreto'
 import { useCuentas } from '../data/cuentas'
 import { formatFechaHora, nombreMes, hoyISO } from '../lib/fechas'
-import { anadirGasto, borrarCreaHueco, deshacerApunte, estadoPresupuesto, mesesOrdenados, reordenar, uid } from '../lib/operaciones'
+import { anadirGasto, borrarCreaHueco, deshacerApunte, estadoPresupuesto, mesesOrdenados, reordenar, separarImporteNota, uid } from '../lib/operaciones'
 import { Asa, useOrdenable } from '../components/Ordenable'
 import type { Ahorro, Gasto, Ingreso, Mes, OrigenAhorro, TipoAhorro } from '../lib/tipos'
 
@@ -271,12 +270,12 @@ function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
   /** Macro SumarGasto: suma el importe escrito al gasto y vacía la casilla. */
   function sumar(g: Gasto, texto: string, silencioso = false): boolean {
     if (texto.trim() === '') return false
-    const c = parseImporte(texto)
+    const { importe: c, nota } = separarImporteNota(texto)
     if (c === null || c <= 0) {
-      setErrores((e) => ({ ...e, [g.id]: 'Introduce un importe numérico.' }))
+      setErrores((e) => ({ ...e, [g.id]: 'Empieza por el importe (y, si quieres, una nota: «12,50 Mercadona»).' }))
       return false
     }
-    const r = anadirGasto(obtener(), g.id, c)
+    const r = anadirGasto(obtener(), g.id, c, undefined, nota)
     aplicar(r.datos, [() => repo.insertar('expense_entries', [r.apunte])], mes.id)
     actualizar('expenses', g.id, { importe: r.gasto.importe })
     setPendientes((p) => ({ ...p, [g.id]: '' }))
@@ -284,7 +283,7 @@ function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
     if (!silencioso) {
       const e = estadoPresupuesto(r.gasto)
       const aviso = e && e.exceso > 0 ? ` (te has pasado del presupuesto en ${eur(e.exceso)})` : ''
-      avisar({ texto: `Añadido ${eur(c)} a ${g.concepto}${aviso}`, tipo: aviso ? 'error' : 'ok', accion: { texto: 'Deshacer', fn: () => deshacer(r.apunte.id) } })
+      avisar({ texto: `Añadido ${eur(c)} a ${g.concepto}${nota ? ` («${nota}»)` : ''}${aviso}`, tipo: aviso ? 'error' : 'ok', accion: { texto: 'Deshacer', fn: () => deshacer(r.apunte.id) } })
     }
     return true
   }
@@ -328,7 +327,7 @@ function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
         <span className="text-right">Importe</span>
         <span className="text-right">
           Añadir gasto
-          <Info texto="Escribe un importe y pulsa Enter: se suma al importe de la fila y la casilla se vacía (como la macro del Excel). Cada suma queda registrada y se puede deshacer." />
+          <Info texto="Escribe un importe y pulsa Enter: se suma al importe de la fila y la casilla se vacía (como la macro del Excel). Puedes añadir una nota detrás: «12,50 Mercadona». Cada suma queda registrada, con su nota, y se puede deshacer." />
         </span>
         <span />
       </div>
@@ -371,7 +370,7 @@ function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
                   <input
                     inputMode="decimal"
                     aria-label={`Añadir gasto a ${g.concepto}`}
-                    placeholder="+ €"
+                    placeholder="+ € nota"
                     value={pendientes[g.id] ?? ''}
                     onChange={(e) => {
                       setPendientes((p) => ({ ...p, [g.id]: e.target.value }))
@@ -457,12 +456,20 @@ function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
               .filter((a) => a.expense_id === desglose.id)
               .sort((a, b) => a.creado_en.localeCompare(b.creado_en))
               .map((a) => (
-                <li key={a.id} className="flex items-center justify-between py-2">
-                  <span className="text-slate-500">{formatFechaHora(a.creado_en)}</span>
-                  <span className="flex items-center gap-2">
-                    <Dinero c={a.importe} />
-                    {!cerrado && <BotonBorrar etiqueta="Deshacer apunte" onClick={() => deshacer(a.id)} />}
+                <li key={a.id} className="flex items-center gap-2 py-1.5">
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-xs text-slate-500">{formatFechaHora(a.creado_en)}</span>
+                    <CeldaTexto
+                      ariaLabel={`Nota del apunte de ${formatFechaHora(a.creado_en)}`}
+                      valor={a.nota ?? ''}
+                      placeholder={cerrado ? '' : 'Añadir nota…'}
+                      disabled={cerrado}
+                      className="-ml-2 text-sm"
+                      onCambio={(v) => actualizar('expense_entries', a.id, { nota: v.trim() === '' ? null : v })}
+                    />
                   </span>
+                  <Dinero c={a.importe} />
+                  {!cerrado ? <BotonBorrar etiqueta="Deshacer apunte" onClick={() => deshacer(a.id)} /> : <span className="w-8" />}
                 </li>
               ))}
           </ul>

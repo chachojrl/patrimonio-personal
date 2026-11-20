@@ -10,6 +10,7 @@ import type { Cuenta, Datos } from './lib/tipos'
 import { CuentasProvider, cuentaGuardada, guardarCuenta, type CuentasCtx } from './data/cuentas'
 import { Layout } from './components/Layout'
 import { Boton, Spinner } from './components/ui'
+import { Bloqueo } from './components/Bloqueo'
 import { FormularioContrasena } from './components/FormularioContrasena'
 import { InicioPage } from './pages/InicioPage'
 import { MesPage } from './pages/MesPage'
@@ -18,6 +19,10 @@ import { ResumenPage } from './pages/ResumenPage'
 import { AjustesPage } from './pages/AjustesPage'
 import { BuscarPage } from './pages/BuscarPage'
 import { TeDebenPage } from './pages/TeDebenPage'
+import { ActividadPage } from './pages/ActividadPage'
+import { CompraPage } from './pages/CompraPage'
+import { ViajesPage } from './pages/ViajesPage'
+import { ViajePage } from './pages/ViajePage'
 
 export default function App() {
   return supabase ? <ConLogin /> : <ConLocal />
@@ -40,6 +45,10 @@ function Rutas() {
           <Route path="resumen/:anio" element={<ResumenPage />} />
           <Route path="buscar" element={<BuscarPage />} />
           <Route path="te-deben" element={<TeDebenPage />} />
+          <Route path="actividad" element={<ActividadPage />} />
+          <Route path="compra" element={<CompraPage />} />
+          <Route path="viajes" element={<ViajesPage />} />
+          <Route path="viajes/:id" element={<ViajePage />} />
           <Route path="ajustes" element={<AjustesPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
@@ -58,7 +67,9 @@ function ConDatos({ repo }: { repo: Repo }) {
   if (!datos) return <Spinner />
   return (
     <StoreProvider repo={repo} inicial={datos}>
-      <Rutas />
+      <Bloqueo>
+        <Rutas />
+      </Bloqueo>
     </StoreProvider>
   )
 }

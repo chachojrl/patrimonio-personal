@@ -55,6 +55,9 @@ export function crearLocalRepo(): Repo {
       } else if (tabla === 'expenses') {
         d.expenses = d.expenses.filter((x) => !set.has(x.id))
         d.expense_entries = d.expense_entries.filter((x) => !set.has(x.expense_id))
+      } else if (tabla === 'viajes') {
+        d.viajes = d.viajes.filter((x) => !set.has(x.id))
+        d.viaje_gastos = d.viaje_gastos.filter((x) => !set.has(x.viaje_id))
       } else {
         ;(d as unknown as Record<string, { id: string }[]>)[tabla] = (d[tabla] as { id: string }[]).filter((x) => !set.has(x.id))
       }

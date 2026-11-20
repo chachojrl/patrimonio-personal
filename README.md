@@ -119,6 +119,22 @@ Debe responder `OK` en todas las tablas: sin sesión no se lee nada y el registr
 - **Tiempo real:** lo que se apunta en un dispositivo aparece solo en los demás que tengan la app
   abierta (por ejemplo, un gasto que apunta tu pareja en la cuenta compartida), sin recargar. Si
   estás escribiendo en una fila, no se te pisa. Necesita la migración `0008_tiempo_real.sql`.
+- **Notas en los apuntes:** en «+ €» escribe el importe y, detrás, una nota: `12,50 Mercadona`. Se ve
+  (y se edita) en «N apuntes» y el buscador la encuentra.
+- **Lista de la compra** (🛒): una por cuenta; la de la compartida la veis los dos en tiempo real. Al
+  terminar, escribe el total del ticket y se suma como apunte al gasto que elijas (por defecto
+  Supermercado), con lo comprado en la nota.
+- **Actividad** (🕘, en el menú ⋯ del móvil): quién cambió qué y cuándo. Lo apunta la base de datos
+  sola (nadie puede editarlo ni borrarlo) y se guarda un año. En la cuenta compartida, Inicio muestra
+  los últimos cambios.
+- **Viajes** (✈️): presupuesto de un viaje con gastos en cualquier moneda. El cambio se toma de los
+  tipos del Banco Central Europeo (servicio público Frankfurter: solo se le envía el código de la
+  moneda) y se puede escribir a mano; cada gasto guarda el del día. Al volver, «Cerrar y pasar al
+  mes» lo apunta en tu presupuesto (fila nueva o sumado a un gasto).
+- **Bloqueo con Face ID / huella:** *Ajustes → Bloqueo*. Pide Face ID, huella o el código del móvil
+  al abrir la app y al volver a ella tras más de un minuto. Es por dispositivo; la app no ve ni guarda
+  tu cara ni tu huella. Si algún día falla, en la pantalla de bloqueo puedes cerrar sesión y entrar
+  con tu contraseña (eso quita el bloqueo en ese dispositivo).
 - **Exportar:** en Ajustes puedes descargar Excel (.xlsx, una hoja por mes + Índice + Historial +
   Resumen), una copia completa en JSON o CSV.
 
@@ -137,6 +153,7 @@ vez** en *Supabase → SQL Editor*, en orden. Se pueden repetir sin problema.
 | `0006_borrar_cuenta_compartida.sql` | Permite borrar una cuenta compartida (con confirmación) |
 | `0007_borrar_mes_compartido.sql` | Al borrar un mes de la cuenta compartida, desaparece la aportación de ese mes en las cuentas personales |
 | `0008_tiempo_real.sql` | Tiempo real: los cambios aparecen al momento en los demás dispositivos |
+| `0009_historial_compra_viajes.sql` | Historial de cambios, lista de la compra y viajes |
 
 ## Cuenta compartida (opcional)
 

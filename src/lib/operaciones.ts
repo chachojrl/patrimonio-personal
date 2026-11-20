@@ -1,5 +1,6 @@
 // Operaciones puras que transforman los datos (sin red). Las usan la UI y los tests.
 import type { Cents } from './money'
+import { parseImporte } from './money'
 import type { Ahorro, ApunteGasto, CambioRemoto, Datos, Gasto, Ingreso, Mes } from './tipos'
 import { CONFIG_INICIAL, PLANTILLA_GASTOS, PLANTILLA_INGRESOS } from './tipos'
 import { indiceMes, mesSiguiente, nombreMes } from './fechas'
@@ -104,12 +105,24 @@ export function borrarCreaHueco(d: Datos, monthId: string): boolean {
 }
 
 /** Equivale a la macro SumarGasto: suma el importe al gasto y deja un apunte. */
-export function anadirGasto(d: Datos, expenseId: string, importe: Cents, ahora = new Date().toISOString()): { datos: Datos; apunte: ApunteGasto; gasto: Gasto } {
+/**
+ * Lo que se escribe en «+ €»: un importe y, opcionalmente, una nota detrás.
+ * "12,50 Mercadona" → 1250 + "Mercadona"; "12,50 € regalo mamá" → 1250 + "regalo mamá".
+ */
+export function separarImporteNota(texto: string): { importe: Cents | null; nota: string | null } {
+  const t = texto.trim()
+  const m = t.match(/^([-+]?[\d.,]+)\s*€?(?:\s+(.*))?$/s)
+  if (!m) return { importe: parseImporte(t), nota: null }
+  const nota = (m[2] ?? '').trim()
+  return { importe: parseImporte(m[1]), nota: nota === '' ? null : nota }
+}
+
+export function anadirGasto(d: Datos, expenseId: string, importe: Cents, ahora = new Date().toISOString(), nota: string | null = null): { datos: Datos; apunte: ApunteGasto; gasto: Gasto } {
   if (!Number.isInteger(importe) || importe <= 0) throw new Error('Introduce un importe numérico.')
   const g = d.expenses.find((x) => x.id === expenseId)
   if (!g) throw new Error('Gasto no encontrado')
   const gasto = { ...g, importe: g.importe + importe }
-  const apunte: ApunteGasto = { id: uid(), expense_id: expenseId, importe, creado_en: ahora, nota: null }
+  const apunte: ApunteGasto = { id: uid(), expense_id: expenseId, importe, creado_en: ahora, nota }
   return {
     datos: {
       ...d,
@@ -209,6 +222,9 @@ export function datosIniciales(): Datos {
     ],
     expense_entries: [],
     debts: [],
+    lista_compra: [],
+    viajes: [],
+    viaje_gastos: [],
     savings: [
       { id: uid(), month_id: oct.id, fecha: '2026-10-01', importe: 400000, tipo: 'Inversiones', origen: 'Cuenta remunerada' },
       { id: uid(), month_id: oct.id, fecha: '2026-10-16', importe: 200000, tipo: 'Inversiones', origen: 'Cuenta remunerada' },
@@ -237,7 +253,9 @@ export function aplicarCambioRemoto(d: Datos, c: CambioRemoto): Datos {
     if (!filas.some((x) => x.id === c.id)) return d
     if (tabla === 'months') return borrarMes(d, c.id)
     const sin = { ...d, [tabla]: filas.filter((x) => x.id !== c.id) } as Datos
-    return tabla === 'expenses' ? { ...sin, expense_entries: sin.expense_entries.filter((a) => a.expense_id !== c.id) } : sin
+    if (tabla === 'expenses') return { ...sin, expense_entries: sin.expense_entries.filter((a) => a.expense_id !== c.id) }
+    if (tabla === 'viajes') return { ...sin, viaje_gastos: sin.viaje_gastos.filter((g) => g.viaje_id !== c.id) }
+    return sin
   }
   if (!('fila' in c)) return d
   const i = filas.findIndex((x) => x.id === c.fila.id)

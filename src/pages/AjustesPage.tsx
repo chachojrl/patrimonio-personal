@@ -5,6 +5,7 @@ import { descargar, exportarCSV, exportarExcel, exportarJSON, importarJSON } fro
 import { supabase } from '../data/supabase'
 import { FormularioContrasena } from '../components/FormularioContrasena'
 import { CuentaCompartidaCard } from '../components/CuentaCompartidaCard'
+import { BloqueoCard } from '../components/BloqueoCard'
 import { useCuentas } from '../data/cuentas'
 import type { Config, Datos } from '../lib/tipos'
 
@@ -18,6 +19,7 @@ export function AjustesPage() {
         <PlantillaCard />
         <DatosCard />
         <AparienciaCard />
+        <BloqueoCard />
         {supabase && <SeguridadCard />}
       </div>
     </div>

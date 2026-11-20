@@ -2,7 +2,7 @@ import { Link, NavLink, Outlet } from 'react-router-dom'
 import { useStore } from '../data/store'
 import { BotonDiscreto, cx } from './ui'
 import { ultimoMes } from '../lib/operaciones'
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CLAVE_AVISO, nombreMiembro, useCuentas } from '../data/cuentas'
 
 function EstadoGuardadoChip() {
@@ -55,6 +55,51 @@ function AvisoCompartida() {
   )
 }
 
+/** Menú «⋯» del móvil con las secciones que no caben en la cabecera. */
+function MenuMas({ enlaces }: { enlaces: { to: string; txt: string; icono: string }[] }) {
+  const [abierto, setAbierto] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!abierto) return
+    const fuera = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setAbierto(false)
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setAbierto(false)
+    document.addEventListener('mousedown', fuera)
+    document.addEventListener('keydown', esc)
+    return () => {
+      document.removeEventListener('mousedown', fuera)
+      document.removeEventListener('keydown', esc)
+    }
+  }, [abierto])
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        aria-label="Más secciones"
+        aria-expanded={abierto}
+        onClick={() => setAbierto((a) => !a)}
+        className="flex h-8 w-8 items-center justify-center rounded-lg text-lg font-bold leading-none text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+      >
+        ⋯
+      </button>
+      {abierto && (
+        <nav className="absolute right-0 top-10 z-40 w-52 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
+          {enlaces.map((e) => (
+            <NavLink
+              key={e.to}
+              to={e.to}
+              onClick={() => setAbierto(false)}
+              className={({ isActive }) => cx('flex items-center gap-3 px-4 py-2.5 text-sm', isActive ? 'bg-slate-100 font-semibold dark:bg-slate-800' : 'hover:bg-slate-50 dark:hover:bg-slate-800')}
+            >
+              <span aria-hidden>{e.icono}</span>
+              {e.txt}
+            </NavLink>
+          ))}
+        </nav>
+      )}
+    </div>
+  )
+}
+
 const ICONOS: Record<string, string> = { inicio: '☰', mes: '📅', historial: '📈', resumen: '📊', ajustes: '⚙️' }
 
 export function Layout() {
@@ -80,10 +125,14 @@ export function Layout() {
     { to: `/resumen/${anio}`, txt: 'Resumen', icono: ICONOS.resumen, end: false, activo: '/resumen' },
     { to: '/ajustes', txt: 'Ajustes', icono: ICONOS.ajustes, end: false },
   ]
-  // Solo en la barra lateral; en el móvil van como iconos en la cabecera
+  // Barra lateral en escritorio. En el móvil, los dos primeros van como iconos en la cabecera
+  // y el resto en el menú «⋯».
   const extras = [
+    { to: '/compra', txt: 'Lista de la compra', icono: '🛒' },
     { to: '/buscar', txt: 'Buscar', icono: '🔍' },
+    { to: '/viajes', txt: 'Viajes', icono: '✈️' },
     { to: '/te-deben', txt: 'Te deben', icono: '🤝' },
+    { to: '/actividad', txt: 'Actividad', icono: '🕘' },
   ]
   const claseEnlace = ({ isActive }: { isActive: boolean }) =>
     cx('flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium', isActive ? 'bg-marino text-white dark:bg-sky-800' : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800')
@@ -135,11 +184,12 @@ export function Layout() {
         </div>
         <div className="flex items-center gap-1">
           <EstadoGuardadoChip />
-          {extras.map((e) => (
+          {extras.slice(0, 2).map((e) => (
             <Link key={e.to} to={e.to} aria-label={e.txt} title={e.txt} className="flex h-8 w-8 items-center justify-center rounded-lg text-base hover:bg-slate-100 dark:hover:bg-slate-800">
               <span aria-hidden>{e.icono}</span>
             </Link>
           ))}
+          <MenuMas enlaces={extras.slice(2)} />
           <BotonDiscreto />
         </div>
       </header>

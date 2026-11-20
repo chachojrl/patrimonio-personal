@@ -28,7 +28,7 @@ export function BuscarPage() {
   }
 
   const periodo = anio === null ? 'en total' : `en ${anio}`
-  const hayResultados = r.gastos.grupos.length + r.ingresos.grupos.length + r.deudas.length > 0
+  const hayResultados = r.gastos.grupos.length + r.ingresos.grupos.length + r.deudas.length + r.notas.length > 0
 
   return (
     <div className="space-y-4">
@@ -40,7 +40,7 @@ export function BuscarPage() {
           id="buscar"
           type="search"
           className="campo text-base"
-          placeholder="Supermercado, Amazon, regalos, Juan…"
+          placeholder="Supermercado, Mercadona, regalos, Juan…"
           autoFocus
           autoComplete="off"
           value={q}
@@ -64,7 +64,7 @@ export function BuscarPage() {
                 <Chip key={s} onClick={() => cambiar({ q: s })}>{s}</Chip>
               ))}
             </div>
-            <p className="mt-3 text-xs text-slate-500">Busca por concepto de gasto o de ingreso, o por la persona que te debe dinero. No distingue mayúsculas ni tildes.</p>
+            <p className="mt-3 text-xs text-slate-500">Busca por concepto de gasto o de ingreso, por las notas de tus apuntes o por la persona que te debe dinero. No distingue mayúsculas ni tildes.</p>
           </Card>
         )
       ) : !hayResultados ? (
@@ -82,6 +82,27 @@ export function BuscarPage() {
       ) : (
         <>
           {r.gastos.grupos.length > 0 && <Bloque titulo={`Gastado ${periodo}`} bloque={r.gastos} />}
+          {r.notas.length > 0 && (
+            <Card
+              titulo={`En las notas de tus apuntes (${r.notas.length})`}
+              accion={<Dinero c={r.notas.reduce((a, n) => a + n.importe, 0)} dash={false} className="font-semibold" />}
+            >
+              <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+                {r.notas.map((n) => (
+                  <li key={n.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                    <span className="min-w-0">
+                      <span className="font-medium">{n.nota}</span>
+                      <span className="block text-xs text-slate-500">
+                        {n.concepto} · {formatFecha(n.creado_en.slice(0, 10))} ·{' '}
+                        <Link to={`/mes/${n.fecha.slice(0, 7)}`} className="text-sky-700 hover:underline dark:text-sky-400">{nombreMes(n.fecha)}</Link>
+                      </span>
+                    </span>
+                    <Dinero c={n.importe} dash={false} />
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
           {r.ingresos.grupos.length > 0 && <Bloque titulo={`Ingresado ${periodo}`} bloque={r.ingresos} />}
           {r.deudas.length > 0 && (
             <Card titulo="Te deben" accion={<Link to="/te-deben" className="text-xs text-sky-700 hover:underline dark:text-sky-400">Ver todo →</Link>}>

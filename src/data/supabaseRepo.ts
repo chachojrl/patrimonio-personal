@@ -1,7 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { NoAutorizadoError, type Repo } from './repo'
-import type { Ahorro, ApunteGasto, Config, Cuenta, Datos, Deuda, Gasto, Ingreso, Mes, Tabla } from '../lib/tipos'
+import type { Ahorro, ApunteGasto, ArticuloCompra, Config, Cuenta, Datos, Deuda, Gasto, GastoViaje, Ingreso, Mes, Tabla, Viaje } from '../lib/tipos'
 import { CONFIG_INICIAL } from '../lib/tipos'
+import type { Cambio } from '../lib/actividad'
 import { centsToDecimal, toCents, toCentsOrNull } from '../lib/money'
 
 // Campos que son importes (céntimos en la app, NUMERIC(12,2) en la BD)
@@ -18,6 +19,9 @@ const COLUMNAS: Record<Tabla, string[]> = {
   expense_entries: ['id', 'expense_id', 'importe', 'creado_en', 'nota'],
   savings: ['id', 'month_id', 'fecha', 'importe', 'tipo', 'origen'],
   debts: ['id', 'persona', 'concepto', 'importe', 'fecha', 'devuelto_en'],
+  lista_compra: ['id', 'texto', 'hecho', 'orden', 'creado_en'],
+  viajes: ['id', 'nombre', 'moneda', 'cambio', 'presupuesto', 'fecha_inicio', 'fecha_fin', 'cerrado'],
+  viaje_gastos: ['id', 'viaje_id', 'fecha', 'concepto', 'categoria', 'importe', 'moneda', 'cambio'],
 }
 
 function aBD(tabla: Tabla | 'config', obj: Record<string, unknown>): Record<string, unknown> {
@@ -140,6 +144,18 @@ export const MAPEOS: { [T in Tabla]: (x: Fila) => Datos[T][number] } = {
     id: x.id as string, persona: (x.persona as string) ?? '', concepto: (x.concepto as string) ?? '',
     importe: toCents(x.importe as string), fecha: x.fecha as string, devuelto_en: (x.devuelto_en as string) ?? null,
   }),
+  lista_compra: (x): ArticuloCompra => ({
+    id: x.id as string, texto: (x.texto as string) ?? '', hecho: x.hecho === true || x.hecho === 'true', orden: Number(x.orden ?? 0), creado_en: x.creado_en as string,
+  }),
+  viajes: (x): Viaje => ({
+    id: x.id as string, nombre: (x.nombre as string) ?? '', moneda: (x.moneda as string) ?? 'EUR', cambio: Number(x.cambio ?? 1),
+    presupuesto: toCentsOrNull(x.presupuesto as string), fecha_inicio: (x.fecha_inicio as string) ?? null, fecha_fin: (x.fecha_fin as string) ?? null,
+    cerrado: x.cerrado === true || x.cerrado === 'true',
+  }),
+  viaje_gastos: (x): GastoViaje => ({
+    id: x.id as string, viaje_id: x.viaje_id as string, fecha: x.fecha as string, concepto: (x.concepto as string) ?? '',
+    categoria: (x.categoria as GastoViaje['categoria']) ?? 'otros', importe: toCents(x.importe as string), moneda: (x.moneda as string) ?? 'EUR', cambio: Number(x.cambio ?? 1),
+  }),
 }
 
 /**
@@ -162,13 +178,13 @@ export function crearSupabaseRepo(sb: SupabaseClient, cuentaId: string | null): 
     }
   }
 
-  /** Si la migración 0004 aún no se ha ejecutado, devuelve [] para que la app siga funcionando. */
-  async function leerDeudas(): Promise<Fila[]> {
+  /** Tablas de migraciones posteriores: si aún no existen, [] para que la app siga funcionando. */
+  async function leerOpcional(tabla: string, orden: string, migracion: string): Promise<Fila[]> {
     try {
-      return await leerTodo('debts', 'fecha')
+      return await leerTodo(tabla, orden)
     } catch (e) {
       if (faltaEnBD(e as Error_)) {
-        console.warn('Falta la tabla "debts": ejecuta supabase/migrations/0004_deudas.sql')
+        console.warn(`Falta la tabla "${tabla}": ejecuta supabase/migrations/${migracion}`)
         return []
       }
       throw e
@@ -188,13 +204,16 @@ export function crearSupabaseRepo(sb: SupabaseClient, cuentaId: string | null): 
     modo: 'supabase',
     async cargar() {
       const cfg = await asegurarConfig()
-      const [months, incomes, expenses, entries, savings, debts] = await Promise.all([
+      const [months, incomes, expenses, entries, savings, debts, compra, viajes, viajeGastos] = await Promise.all([
         leerTodo('months', 'fecha'),
         leerTodo('incomes', 'orden'),
         leerTodo('expenses', 'orden'),
         leerTodo('expense_entries', 'creado_en'),
         leerTodo('savings', 'fecha'),
-        leerDeudas(),
+        leerOpcional('debts', 'fecha', '0004_deudas.sql'),
+        leerOpcional('lista_compra', 'orden', '0009_historial_compra_viajes.sql'),
+        leerOpcional('viajes', 'created_at', '0009_historial_compra_viajes.sql'),
+        leerOpcional('viaje_gastos', 'fecha', '0009_historial_compra_viajes.sql'),
       ])
       return {
         config: mapConfig(cfg),
@@ -204,12 +223,15 @@ export function crearSupabaseRepo(sb: SupabaseClient, cuentaId: string | null): 
         expense_entries: entries.map(MAPEOS.expense_entries),
         savings: savings.map(MAPEOS.savings),
         debts: debts.map(MAPEOS.debts),
+        lista_compra: compra.map(MAPEOS.lista_compra),
+        viajes: viajes.map(MAPEOS.viajes),
+        viaje_gastos: viajeGastos.map(MAPEOS.viaje_gastos),
       }
     },
     async insertar(tabla, filas) {
       if (filas.length === 0) return
       // months y debts llevan la cuenta; el resto la hereda de su mes en el servidor
-      const conC = tabla === 'months' || tabla === 'debts'
+      const conC = tabla === 'months' || tabla === 'debts' || tabla === 'lista_compra' || tabla === 'viajes'
       const { error } = await sb.from(tabla).insert(filas.map((f) => (conC ? conCuenta(aBD(tabla, f as Fila)) : aBD(tabla, f as Fila))))
       lanzar(error)
     },
@@ -272,6 +294,13 @@ export function crearSupabaseRepo(sb: SupabaseClient, cuentaId: string | null): 
         sb.removeChannel(canal)
       }
     },
+    async leerCambios(limite = 300) {
+      if (!cuentaId) return null
+      const { data, error } = await sb.from('cambios').select('*').eq('cuenta_id', cuentaId).order('creado_en', { ascending: false }).limit(limite)
+      if (faltaEnBD(error)) return null
+      lanzar(error)
+      return data as Cambio[]
+    },
     async leerAportaciones() {
       if (!cuentaId) return []
       const { data, error } = await sb.from('expenses').select('*').eq('cuenta_id', cuentaId).not('aportacion_cuenta', 'is', null)
@@ -286,13 +315,15 @@ export function crearSupabaseRepo(sb: SupabaseClient, cuentaId: string | null): 
       // 1) borrar todos los meses de ESTA cuenta (en cascada se borra todo lo demás) y sus deudas
       const del = await enCuenta(sb.from('months').delete().not('id', 'is', null))
       lanzar(del.error)
-      const delDeudas = await enCuenta(sb.from('debts').delete().not('id', 'is', null))
-      if (delDeudas.error && !faltaEnBD(delDeudas.error)) lanzar(delDeudas.error)
+      for (const t of ['debts', 'lista_compra', 'viajes']) { // viajes borra sus gastos en cascada
+        const del2 = await enCuenta(sb.from(t).delete().not('id', 'is', null))
+        if (del2.error && !faltaEnBD(del2.error)) lanzar(del2.error)
+      }
       // 2) configuración
       await this.actualizarConfig(d.config)
       // 3) meses abiertos primero (los cerrados no admiten hijos), luego hijos, luego estados
       await this.insertar('months', d.months.map((m) => ({ ...m, estado: 'Abierto' })))
-      for (const tabla of ['incomes', 'expenses', 'expense_entries', 'savings', 'debts'] as const) {
+      for (const tabla of ['incomes', 'expenses', 'expense_entries', 'savings', 'debts', 'lista_compra', 'viajes', 'viaje_gastos'] as const) {
         const filas = d[tabla] as object[]
         for (let i = 0; i < filas.length; i += 500) await this.insertar(tabla, filas.slice(i, i + 500))
       }

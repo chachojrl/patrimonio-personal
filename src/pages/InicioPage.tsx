@@ -4,6 +4,7 @@ import { BadgeEstado, Card, Dinero, Kpi, cx } from '../components/ui'
 import { CrearMesBoton } from '../components/CrearMes'
 import { InversionesKpi } from '../components/InversionesKpi'
 import { useCuentas } from '../data/cuentas'
+import { UltimosCambios } from './ActividadPage'
 import { aniosConMeses, resumenAnual } from '../lib/calculos'
 import { partes } from '../lib/fechas'
 import type { EstadoMes } from '../lib/tipos'
@@ -54,6 +55,8 @@ export function InicioPage() {
           </>
         )}
       </div>
+
+      {compartida && <UltimosCambios />}
 
       {pendientes.length > 0 && (
         <Link
