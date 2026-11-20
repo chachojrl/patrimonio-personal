@@ -45,7 +45,7 @@ export function planMesNuevo(d: Datos, cerrarAnterior: boolean): PlanMesNuevo {
     valor_real_inversiones: null,
   }
   let conceptosIng: string[]
-  let gastosBase: Pick<Gasto, 'concepto' | 'fijo' | 'presupuesto' | 'importe' | 'fecha_vencimiento'>[]
+  let gastosBase: Pick<Gasto, 'concepto' | 'fijo' | 'presupuesto' | 'importe' | 'fecha_vencimiento' | 'reparto'>[]
   if (anterior) {
     // Las aportaciones automáticas no se copian: las vuelve a crear el servidor
     conceptosIng = d.incomes.filter((x) => x.month_id === anterior.id && !x.aportacion_de).sort((a, b) => a.orden - b.orden).map((x) => x.concepto)
@@ -56,13 +56,14 @@ export function planMesNuevo(d: Datos, cerrarAnterior: boolean): PlanMesNuevo {
         concepto: x.concepto,
         fijo: x.fijo,
         presupuesto: x.presupuesto,
+        reparto: x.reparto ?? null,
         // Gastos fijos: mismo importe y vencimiento un mes después
         importe: x.fijo ? x.importe : 0,
         fecha_vencimiento: x.fijo && x.fecha_vencimiento ? sumarUnMes(x.fecha_vencimiento) : null,
       }))
   } else {
     conceptosIng = d.config.plantilla_ingresos
-    gastosBase = d.config.plantilla_gastos.map((concepto) => ({ concepto, fijo: false, presupuesto: null, importe: 0, fecha_vencimiento: null }))
+    gastosBase = d.config.plantilla_gastos.map((concepto) => ({ concepto, fijo: false, presupuesto: null, importe: 0, fecha_vencimiento: null, reparto: null }))
   }
   const anio = Number(fecha.slice(0, 4))
   const yaHabiaAnio = d.months.some((m) => m.fecha.startsWith(`${anio}-`))

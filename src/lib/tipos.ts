@@ -12,7 +12,11 @@ export interface Config {
   cuenta_remunerada_inicial: Cents
   plantilla_ingresos: string[]
   plantilla_gastos: string[]
+  /** Regla 50/30/20: concepto de gasto (normalizado) → necesidad o capricho. */
+  clasificacion: Record<string, Clase>
 }
+
+export type Clase = 'necesidad' | 'capricho'
 
 export interface Mes {
   id: string
@@ -47,6 +51,8 @@ export interface Gasto {
   presupuesto: Cents | null
   /** Aportación automática a esa cuenta compartida (la calcula el servidor). */
   aportacion_cuenta?: string | null
+  /** Cuenta compartida: null = proporcional (aportaciones), 'mitad' o 'u:<user_id>' (lo paga ese miembro). */
+  reparto?: string | null
 }
 
 export interface ApunteGasto {
@@ -165,6 +171,7 @@ export const CONFIG_INICIAL: Config = {
   cuenta_remunerada_inicial: 1848875,
   plantilla_ingresos: PLANTILLA_INGRESOS,
   plantilla_gastos: PLANTILLA_GASTOS,
+  clasificacion: {},
 }
 
 export function datosVacios(): Datos {
@@ -175,6 +182,7 @@ export function datosVacios(): Datos {
 export function normalizarDatos(d: Datos): Datos {
   return {
     ...d,
+    config: { ...d.config, clasificacion: d.config?.clasificacion ?? {} },
     expenses: d.expenses.map((g) => ({ ...g, fijo: g.fijo ?? false, presupuesto: g.presupuesto ?? null })),
     expense_entries: d.expense_entries ?? [],
     debts: d.debts ?? [],

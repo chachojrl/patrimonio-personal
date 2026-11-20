@@ -15,7 +15,7 @@ const CAMPOS_DINERO = new Set([
 const COLUMNAS: Record<Tabla, string[]> = {
   months: ['id', 'fecha', 'titulo', 'estado', 'ultimo_cambio', 'saldo_real_cuenta', 'valor_real_inversiones'],
   incomes: ['id', 'month_id', 'concepto', 'importe', 'orden'],
-  expenses: ['id', 'month_id', 'concepto', 'fecha_vencimiento', 'importe', 'orden', 'fijo', 'presupuesto'],
+  expenses: ['id', 'month_id', 'concepto', 'fecha_vencimiento', 'importe', 'orden', 'fijo', 'presupuesto', 'reparto'],
   expense_entries: ['id', 'expense_id', 'importe', 'creado_en', 'nota'],
   savings: ['id', 'month_id', 'fecha', 'importe', 'tipo', 'origen'],
   debts: ['id', 'persona', 'concepto', 'importe', 'fecha', 'devuelto_en'],
@@ -39,12 +39,15 @@ type Error_ = { message: string; code?: string } | null
 
 /** ¿El error es "esa tabla / función no existe todavía" (migración sin ejecutar)? */
 export function faltaEnBD(error: Error_): boolean {
-  return !!error && ['42P01', 'PGRST205', 'PGRST202', '42883', '42703'].includes(error.code ?? '')
+  return !!error && ['42P01', 'PGRST205', 'PGRST202', 'PGRST204', '42883', '42703'].includes(error.code ?? '')
 }
 
 function lanzar(error: Error_) {
   if (!error) return
   if (error.code === '42501') throw new NoAutorizadoError()
+  if (error.code === 'PGRST204' || error.code === '42703') {
+    throw new Error('Falta actualizar la base de datos: ejecuta en Supabase las migraciones nuevas de supabase/migrations (ver README).')
+  }
   throw new Error(error.message)
 }
 
@@ -105,6 +108,7 @@ function mapGasto(x: Fila): Gasto {
     fecha_vencimiento: (x.fecha_vencimiento as string) ?? null, importe: toCents(x.importe as string), orden: Number(x.orden),
     fijo: (x.fijo as boolean) ?? false, presupuesto: toCentsOrNull(x.presupuesto as string),
     aportacion_cuenta: (x.aportacion_cuenta as string) ?? null,
+    reparto: (x.reparto as string) ?? null,
   }
 }
 
@@ -117,6 +121,7 @@ export function mapConfig(cfg: Fila): Config {
     cuenta_remunerada_inicial: toCents(cfg.cuenta_remunerada_inicial as string),
     plantilla_ingresos: (cfg.plantilla_ingresos as string[]) ?? CONFIG_INICIAL.plantilla_ingresos,
     plantilla_gastos: (cfg.plantilla_gastos as string[]) ?? CONFIG_INICIAL.plantilla_gastos,
+    clasificacion: (cfg.clasificacion as Config['clasificacion']) ?? {},
   }
 }
 
@@ -243,7 +248,12 @@ export function crearSupabaseRepo(sb: SupabaseClient, cuentaId: string | null): 
     },
     async actualizarConfig(patch) {
       if (cuentaId) {
-        const { error } = await sb.from('config').update(aBD('config', patch as Fila)).eq('cuenta_id', cuentaId)
+        let { error } = await sb.from('config').update(aBD('config', patch as Fila)).eq('cuenta_id', cuentaId)
+        // Sin la migración 0010 no existe «clasificacion»: se guarda el resto (p. ej. al restaurar una copia)
+        if (error && faltaEnBD(error) && 'clasificacion' in patch && Object.keys(patch).length > 1) {
+          const { clasificacion: _c, ...resto } = patch
+          ;({ error } = await sb.from('config').update(aBD('config', resto as Fila)).eq('cuenta_id', cuentaId))
+        }
         lanzar(error)
         return
       }
@@ -264,6 +274,7 @@ export function crearSupabaseRepo(sb: SupabaseClient, cuentaId: string | null): 
           id: x.id, concepto: x.concepto, orden: x.orden, fijo: x.fijo,
           importe: centsToDecimal(x.importe), fecha_vencimiento: x.fecha_vencimiento,
           presupuesto: x.presupuesto === null ? null : centsToDecimal(x.presupuesto),
+          reparto: x.reparto ?? null,
         })),
         p_cerrar: plan.cerrarMesId,
       }

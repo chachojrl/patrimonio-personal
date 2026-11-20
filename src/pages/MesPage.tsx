@@ -5,7 +5,11 @@ import { BadgeEstado, Boton, Card, CeldaFecha, CeldaImporte, CeldaTexto, Dinero,
 import { BarrasIngresosGastos, DonutGastado } from '../components/Graficos'
 import { CrearMesBoton } from '../components/CrearMes'
 import { useEur } from '../lib/discreto'
-import { useCuentas } from '../data/cuentas'
+import { nombreMiembro, useCuentas } from '../data/cuentas'
+import { Reparto503020Card } from '../components/Reparto503020Card'
+import { GastosRaros } from '../components/GastosRaros'
+import { CierreMes } from '../components/CierreMes'
+import { RepartoCompartidaCard } from '../components/RepartoCompartidaCard'
 import { formatFechaHora, nombreMes, hoyISO } from '../lib/fechas'
 import { anadirGasto, borrarCreaHueco, deshacerApunte, estadoPresupuesto, mesesOrdenados, reordenar, separarImporteNota, uid } from '../lib/operaciones'
 import { Asa, useOrdenable } from '../components/Ordenable'
@@ -68,6 +72,8 @@ function VistaMes({ mes, c }: { mes: Mes; c: NonNullable<ReturnType<ReturnType<t
           ⚠ Exceso de gasto: {eur(exceso)}
         </div>
       )}
+
+      <GastosRaros monthId={mes.id} />
 
       {/* Resumen */}
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1.2fr)]">
@@ -136,6 +142,9 @@ function VistaMes({ mes, c }: { mes: Mes; c: NonNullable<ReturnType<ReturnType<t
           <BarrasIngresosGastos ingresos={c.ingresosTotales} gastos={c.gastosTotales} />
         </Card>
       </div>
+
+      {!compartida && <Reparto503020Card monthId={mes.id} cerrado={cerrado} />}
+      {compartida && <RepartoCompartidaCard monthId={mes.id} />}
 
       <div className="grid gap-4 2xl:grid-cols-[2fr_3fr]">
         <TablaIngresos mes={mes} cerrado={cerrado} />
@@ -245,6 +254,12 @@ function BarraPresupuesto({ g }: { g: Gasto }) {
 function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
   const { datos, actualizar, insertar, borrar, aplicar, repo, avisar, obtener } = useStore()
   const eur = useEur()
+  const { activa, userId } = useCuentas()
+  const miembros = activa?.tipo === 'compartida' ? activa.miembros.filter((m) => m.user_id) : []
+  const nombreDe = (uid: string) => {
+    const m = miembros.find((x) => x.user_id === uid)
+    return m ? (m.user_id === userId ? 'ti' : nombreMiembro(m)) : 'alguien'
+  }
   const filas = datos.expenses.filter((x) => x.month_id === mes.id).sort((a, b) => a.orden - b.orden)
   const total = filas.reduce((a, b) => a + b.importe, 0)
   const [pendientes, setPendientes] = useState<Record<string, string>>({})
@@ -346,9 +361,14 @@ function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
             <div className="min-w-0">
               <CeldaTexto ariaLabel="Concepto de gasto" valor={g.concepto} disabled={bloqueada} onCambio={(v) => actualizar('expenses', g.id, { concepto: v })} />
               {auto && <EtiquetaAuto texto="Tu aportación a la cuenta compartida: se recalcula sola al cambiar tus ingresos." />}
-              {(g.fijo || apuntes.length > 0) && (
+              {(g.fijo || apuntes.length > 0 || g.reparto) && (
                 <div className="flex flex-wrap gap-2 px-2">
                   {g.fijo && <span className="rounded bg-sky-100 px-1.5 text-[10px] font-semibold text-sky-800 dark:bg-sky-900/50 dark:text-sky-300" title="Se copia con el mismo importe al crear el mes siguiente">📌 Fijo</span>}
+                  {g.reparto && (
+                    <span className="rounded bg-violet-100 px-1.5 text-[10px] font-semibold text-violet-800 dark:bg-violet-900/50 dark:text-violet-300" title="Cómo se reparte este gasto">
+                      {g.reparto === 'mitad' ? '½ A medias' : `👤 Lo paga ${nombreDe(g.reparto.slice(2))}`}
+                    </span>
+                  )}
                   {apuntes.length > 0 && (
                     <button type="button" onClick={() => setDesglose(g)} className="text-[11px] text-sky-700 hover:underline dark:text-sky-400">
                       {apuntes.length} apunte{apuntes.length > 1 ? 's' : ''}
@@ -423,6 +443,22 @@ function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
                 <span className="block text-xs text-slate-500">Al crear el mes siguiente se copia con el mismo importe ({eur(opciones.importe, { dash: false })}) y su fecha de vencimiento un mes después.</span>
               </span>
             </label>
+            {miembros.length > 1 && (
+              <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+                <label htmlFor="reparto-gasto" className="font-medium">👥 Cómo se reparte</label>
+                <span className="block text-xs text-slate-500">Proporcional = lo cubren las aportaciones de cada uno. Si no, cada uno pone su parte aparte. Se mantiene en los meses siguientes.</span>
+                <select
+                  id="reparto-gasto"
+                  className="campo mt-2"
+                  value={opciones.reparto ?? ''}
+                  onChange={(e) => actualizar('expenses', opciones.id, { reparto: e.target.value || null })}
+                >
+                  <option value="">Proporcional (de las aportaciones)</option>
+                  <option value="mitad">A medias</option>
+                  {miembros.map((m) => <option key={m.user_id} value={`u:${m.user_id}`}>Lo paga {m.user_id === userId ? 'entero yo' : `entero ${nombreMiembro(m)}`}</option>)}
+                </select>
+              </div>
+            )}
             <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
               <label htmlFor="presupuesto-gasto" className="font-medium">🎯 Presupuesto mensual</label>
               <span className="block text-xs text-slate-500">Límite para este concepto. Déjalo vacío para no tener límite. Se mantiene en los meses siguientes.</span>
@@ -540,6 +576,7 @@ function EstadoMes({ mes }: { mes: Mes }) {
   const { datos, actualizar, borrarMes, avisar } = useStore()
   const navigate = useNavigate()
   const [confirmarReabrir, setConfirmarReabrir] = useState(false)
+  const [cerrando, setCerrando] = useState(false)
   const [borrando, setBorrando] = useState(false)
   const [texto, setTexto] = useState('')
   const [aceptoHueco, setAceptoHueco] = useState(false)
@@ -557,7 +594,7 @@ function EstadoMes({ mes }: { mes: Mes }) {
             value={mes.estado}
             onChange={(e) => {
               if (e.target.value === 'Abierto') setConfirmarReabrir(true)
-              else actualizar('months', mes.id, { estado: 'Cerrado' })
+              else setCerrando(true) // repaso guiado antes de cerrar
             }}
           >
             <option>Abierto</option>
@@ -565,6 +602,7 @@ function EstadoMes({ mes }: { mes: Mes }) {
           </select>
         </div>
         {mes.estado === 'Cerrado' && <Boton onClick={() => setConfirmarReabrir(true)}>🔓 Reabrir mes</Boton>}
+        {mes.estado === 'Abierto' && <Boton variante="primario" onClick={() => setCerrando(true)}>✓ Cerrar mes…</Boton>}
         <div>
           <div className="mb-1 text-xs text-slate-500">Último cambio</div>
           <div className="num py-2 font-medium">{formatFechaHora(mes.ultimo_cambio)}</div>
@@ -574,6 +612,7 @@ function EstadoMes({ mes }: { mes: Mes }) {
         </div>
       </div>
       {mes.estado === 'Cerrado' && <p className="mt-3 text-sm text-slate-500">Mes cerrado: todo está en solo lectura.</p>}
+      <CierreMes mes={mes} abierto={cerrando} onCerrar={() => setCerrando(false)} />
 
       <Modal
         abierto={confirmarReabrir}

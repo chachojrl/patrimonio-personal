@@ -6,6 +6,7 @@ import { supabase } from '../data/supabase'
 import { FormularioContrasena } from '../components/FormularioContrasena'
 import { CuentaCompartidaCard } from '../components/CuentaCompartidaCard'
 import { BloqueoCard } from '../components/BloqueoCard'
+import { AtajosCard } from '../components/AtajosCard'
 import { useCuentas } from '../data/cuentas'
 import type { Config, Datos } from '../lib/tipos'
 
@@ -20,6 +21,7 @@ export function AjustesPage() {
         <DatosCard />
         <AparienciaCard />
         <BloqueoCard />
+        <AtajosCard />
         {supabase && <SeguridadCard />}
       </div>
     </div>

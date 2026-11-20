@@ -5,6 +5,7 @@ import { CrearMesBoton } from '../components/CrearMes'
 import { InversionesKpi } from '../components/InversionesKpi'
 import { useCuentas } from '../data/cuentas'
 import { UltimosCambios } from './ActividadPage'
+import { ColchonCard } from '../components/ColchonCard'
 import { aniosConMeses, resumenAnual } from '../lib/calculos'
 import { partes } from '../lib/fechas'
 import type { EstadoMes } from '../lib/tipos'
@@ -56,6 +57,7 @@ export function InicioPage() {
         )}
       </div>
 
+      {!compartida && <ColchonCard />}
       {compartida && <UltimosCambios />}
 
       {pendientes.length > 0 && (
