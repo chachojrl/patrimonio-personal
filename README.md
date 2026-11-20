@@ -275,14 +275,3 @@ src/pages/                 Inicio (Índice), Mes, Historial, Resumen anual, Ajus
 supabase/migrations/       Tablas, RLS, triggers (mes cerrado, último cambio) y función insertar_mes
 .github/workflows/         Despliegue en Pages y copia semanal cifrada
 ```
-
-## Decisiones tomadas
-
-- Octubre-2026: los gastos sin desglosar (414,55 €) están en la fila «Pendiente de desglosar»,
-  para que el total sea 428,55 €.
-- El ahorro de 1.500 € de octubre, sin fecha en el Excel, tiene fecha 31/10/2026.
-- Si hay un hueco entre meses (solo puede ocurrir al borrar un mes intermedio), el saldo
-  «anterior» es el del último mes existente.
-- El **valor real de inversiones** se puede editar también en meses cerrados. En el Excel vivía en
-  el Historial, no en la hoja del mes.
-- Solo se puede borrar un mes intermedio marcando expresamente «Sé que se creará un hueco».
