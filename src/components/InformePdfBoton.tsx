@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useStore } from '../data/store'
 import { nombreMiembro, useCuentas } from '../data/cuentas'
 import { datosInforme } from '../lib/informe'
@@ -7,16 +7,24 @@ import { Boton, Modal } from './ui'
 
 const CLAVE_NOMBRE = 'informe.nombre'
 
-function leerNombre(): string | null {
+/** Nombre guardado en este dispositivo (modo local o sin perfil de miembro). */
+export function leerNombreLocal(): string {
   try {
-    return localStorage.getItem(CLAVE_NOMBRE)
+    return localStorage.getItem(CLAVE_NOMBRE) ?? ''
   } catch {
-    return null
+    return ''
+  }
+}
+export function guardarNombreLocal(nombre: string) {
+  try {
+    localStorage.setItem(CLAVE_NOMBRE, nombre.trim())
+  } catch {
+    /* sin almacenamiento: no pasa nada */
   }
 }
 
 /** Botón «Informe PDF»: pide el nombre que aparece en la portada y descarga el informe de toda la cuenta. */
-export function InformePdfBoton({ className }: { className?: string }) {
+export function InformePdfBoton({ className, disparador }: { className?: string; disparador?: (abrir: () => void) => ReactNode }) {
   const { datos, calc, avisar } = useStore()
   const { activa, userId } = useCuentas()
   const compartida = activa?.tipo === 'compartida'
@@ -26,18 +34,15 @@ export function InformePdfBoton({ className }: { className?: string }) {
   const [ocupado, setOcupado] = useState(false)
 
   function abrir() {
-    setNombre(leerNombre() ?? (yo ? nombreMiembro(yo) : ''))
+    // El nombre de Ajustes → «Nombre de la cuenta» (tu perfil); si no hay, el último que usaste aquí
+    setNombre((yo ? nombreMiembro(yo) : '') || leerNombreLocal())
     setAbierto(true)
   }
 
   async function generar() {
     setOcupado(true)
     try {
-      try {
-        localStorage.setItem(CLAVE_NOMBRE, nombre.trim())
-      } catch {
-        /* sin almacenamiento: no pasa nada */
-      }
+      if (!yo) guardarNombreLocal(nombre)
       const { generarInformePdf, nombreArchivoInforme } = await import('../lib/informePdf')
       const cuenta = activa?.nombre ?? 'Mi cuenta'
       const inf = datosInforme(datos, calc, {
@@ -58,7 +63,7 @@ export function InformePdfBoton({ className }: { className?: string }) {
 
   return (
     <>
-      <Boton variante="primario" className={className} onClick={abrir}>📄 Informe PDF</Boton>
+      {disparador ? disparador(abrir) : <Boton variante="primario" className={className} onClick={abrir}>📄 Informe PDF</Boton>}
       <Modal
         abierto={abierto}
         onCerrar={() => !ocupado && setAbierto(false)}

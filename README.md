@@ -230,12 +230,13 @@ solo dejan ver cada fila a los miembros de su cuenta.
 
 ## Informe PDF
 
-*Ajustes → 📄 Informe PDF* genera un PDF de la cuenta activa con todo lo apuntado hasta hoy: portada
+*Ajustes → Informes y copias → 📄 Informe PDF* genera un PDF de la cuenta activa con todo lo apuntado hasta hoy: portada
 con tu nombre y las cifras principales, gráficas (dinero total, dónde está tu dinero, ingresos y
 gastos, % de ahorro), en qué se va el dinero por concepto, de dónde vienen los ingresos, resumen por
 año, historial mensual, «Te deben», viajes y el detalle de cada mes. Se genera en el propio
-dispositivo; no se envía nada a ningún sitio. En la cuenta compartida, la portada muestra el nombre de
-la cuenta y de quienes la compartís.
+dispositivo; no se envía nada a ningún sitio. El nombre de la portada se pone en *Ajustes → Tu cuenta →
+Nombre de la cuenta* (se guarda en tu perfil y se ve en todos tus dispositivos). En la cuenta
+compartida, la portada muestra el nombre de la cuenta y de quienes la compartís.
 
 ## Copias de seguridad
 

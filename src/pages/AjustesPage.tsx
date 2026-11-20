@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
-import { InformePdfBoton } from '../components/InformePdfBoton'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { InformePdfBoton, guardarNombreLocal, leerNombreLocal } from '../components/InformePdfBoton'
+import { actualizarMiembro } from '../data/supabaseRepo'
 import { useStore } from '../data/store'
-import { Boton, Card, CeldaImporte, Modal } from '../components/ui'
+import { Boton, Card, CeldaImporte, Modal, cx } from '../components/ui'
 import { descargar, exportarCSV, exportarExcel, exportarJSON, importarJSON } from '../lib/exportar'
 import { supabase } from '../data/supabase'
 import { FormularioContrasena } from '../components/FormularioContrasena'
@@ -11,21 +12,209 @@ import { AtajosCard } from '../components/AtajosCard'
 import { useCuentas } from '../data/cuentas'
 import type { Config, Datos } from '../lib/tipos'
 
+// Secciones de la página (índice lateral en escritorio, fichas en el móvil)
+const SECCIONES = [
+  { id: 'ajustes-datos', icono: '📄', titulo: 'Informes y copias', texto: 'Informe PDF, Excel y copias de seguridad.' },
+  { id: 'ajustes-cuenta', icono: '🧾', titulo: 'Tu cuenta', texto: 'Saldos iniciales, conceptos y cuenta compartida.' },
+  { id: 'ajustes-seguridad', icono: '🔒', titulo: 'Seguridad', texto: 'Contraseña, verificación en dos pasos y bloqueo.' },
+  { id: 'ajustes-app', icono: '📱', titulo: 'Aplicación', texto: 'Apariencia y atajos del iPhone.' },
+] as const
+
+function irA(id: string) {
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+/** Sección que se está viendo, para resaltarla en el índice. */
+function useSeccionVisible(ids: readonly string[]) {
+  const [visible, setVisible] = useState(ids[0])
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') return
+    const obs = new IntersectionObserver(
+      (entradas) => {
+        const arriba = entradas.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0]
+        if (arriba) setVisible(arriba.target.id)
+      },
+      { rootMargin: '-15% 0px -70% 0px' },
+    )
+    for (const id of ids) {
+      const el = document.getElementById(id)
+      if (el) obs.observe(el)
+    }
+    return () => obs.disconnect()
+  }, [ids])
+  return visible
+}
+
 export function AjustesPage() {
+  const { activa } = useCuentas()
+  const ids = useMemo(() => SECCIONES.map((x) => x.id), [])
+  const visible = useSeccionVisible(ids)
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-bold text-marino dark:text-sky-300">Ajustes</h1>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <CuentaCompartidaCard />
-        <ConfigCard />
-        <PlantillaCard />
-        <DatosCard />
-        <AparienciaCard />
-        <BloqueoCard />
-        <AtajosCard />
-        {supabase && <SeguridadCard />}
+    <div className="space-y-5">
+      <header>
+        <h1 className="text-2xl font-bold text-marino dark:text-sky-300">Ajustes</h1>
+        <p className="mt-1 text-sm text-slate-500">
+          {activa ? <>Estás en <strong className="text-slate-700 dark:text-slate-200">{activa.tipo === 'compartida' ? '🏠' : '👤'} {activa.nombre}</strong>. Lo que cambies en «Tu cuenta» se aplica solo a esta cuenta.</> : 'Configura la app a tu gusto.'}
+        </p>
+      </header>
+
+      {/* Móvil: fichas para saltar a cada sección */}
+      <nav aria-label="Secciones de ajustes" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:hidden">
+        {SECCIONES.map((x) => (
+          <button
+            key={x.id}
+            type="button"
+            onClick={() => irA(x.id)}
+            className="shrink-0 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+          >
+            {x.icono} {x.titulo}
+          </button>
+        ))}
+      </nav>
+
+      <div className="lg:grid lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-8">
+        {/* Escritorio: índice fijo */}
+        <nav aria-label="Secciones de ajustes" className="hidden lg:block">
+          <ul className="sticky top-6 space-y-1">
+            {SECCIONES.map((x) => (
+              <li key={x.id}>
+                <button
+                  type="button"
+                  onClick={() => irA(x.id)}
+                  aria-current={visible === x.id ? 'true' : undefined}
+                  className={cx(
+                    'flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-medium transition',
+                    visible === x.id
+                      ? 'bg-marino text-white shadow-sm dark:bg-sky-800'
+                      : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800',
+                  )}
+                >
+                  <span aria-hidden>{x.icono}</span>
+                  {x.titulo}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <div className="space-y-10">
+          <Seccion {...SECCIONES[0]}>
+            <ExportarCard />
+            <CopiasCard />
+          </Seccion>
+          <Seccion {...SECCIONES[1]}>
+            <NombreCard />
+            <ConfigCard />
+            <PlantillaCard />
+            <CuentaCompartidaCard />
+          </Seccion>
+          <Seccion {...SECCIONES[2]}>
+            {supabase && <SeguridadCard />}
+            <BloqueoCard />
+          </Seccion>
+          <Seccion {...SECCIONES[3]}>
+            <AparienciaCard />
+            <AtajosCard />
+          </Seccion>
+        </div>
       </div>
     </div>
+  )
+}
+
+function Seccion({ id, icono, titulo, texto, children }: { id: string; icono: string; titulo: string; texto: string; children: ReactNode }) {
+  return (
+    <section id={id} aria-labelledby={`${id}-t`} className="scroll-mt-20">
+      <div className="mb-3 flex items-center gap-3">
+        <span aria-hidden className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-xl dark:bg-sky-900/40">{icono}</span>
+        <div>
+          <h2 id={`${id}-t`} className="text-lg font-bold text-slate-800 dark:text-slate-100">{titulo}</h2>
+          <p className="text-sm text-slate-500">{texto}</p>
+        </div>
+      </div>
+      {/* Dos columnas en pantallas anchas, sin huecos aunque las tarjetas midan distinto */}
+      <div className="gap-4 xl:columns-2 [&>*]:mb-4 [&>*]:break-inside-avoid">{children}</div>
+    </section>
+  )
+}
+
+/** Opción grande con icono, título y explicación (para exportar). */
+function Opcion({ icono, titulo, texto, onClick, destacada }: { icono: string; titulo: string; texto: string; onClick: () => void; destacada?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cx(
+        'group flex w-full items-start gap-3 rounded-xl border p-3 text-left transition hover:-translate-y-px hover:shadow-md',
+        destacada
+          ? 'border-marino/30 bg-sky-50/70 hover:border-marino/60 dark:border-sky-700/60 dark:bg-sky-900/20'
+          : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600',
+      )}
+    >
+      <span aria-hidden className="text-2xl leading-none">{icono}</span>
+      <span className="min-w-0">
+        <span className="block font-semibold text-slate-800 group-hover:text-marino dark:text-slate-100 dark:group-hover:text-sky-300">{titulo}</span>
+        <span className="mt-0.5 block text-xs text-slate-500">{texto}</span>
+      </span>
+    </button>
+  )
+}
+
+/** Nombre general de la cuenta personal: sale en la portada del informe PDF y en el nombre del archivo. */
+function NombreCard() {
+  const { avisar } = useStore()
+  const { activa, userId, recargarCuentas } = useCuentas()
+  const yo = activa?.miembros.find((m) => m.user_id && m.user_id === userId)
+  const guardado = yo ? yo.nombre : leerNombreLocal()
+  const [valor, setValor] = useState(guardado)
+  const [ocupado, setOcupado] = useState(false)
+  useEffect(() => setValor(guardado), [guardado])
+  // En la cuenta compartida, el nombre de la cuenta y de cada persona se cambian en su tarjeta
+  if (activa?.tipo === 'compartida') return null
+
+  async function guardar() {
+    const v = valor.trim()
+    if (v === guardado.trim()) return
+    setOcupado(true)
+    try {
+      if (yo && supabase) {
+        await actualizarMiembro(supabase, yo.id, v)
+        await recargarCuentas()
+      } else {
+        guardarNombreLocal(v)
+      }
+      avisar({ texto: v ? `Nombre guardado: ${v}.` : 'Nombre quitado.', tipo: 'ok' })
+    } catch (e) {
+      avisar({ texto: `No se pudo guardar el nombre: ${(e as Error).message}`, tipo: 'error' })
+      setValor(guardado)
+    } finally {
+      setOcupado(false)
+    }
+  }
+
+  return (
+    <Card titulo="Nombre de la cuenta">
+      <p className="mb-3 text-sm text-slate-500">El nombre que sale en la portada del informe PDF y en el nombre del archivo.{yo ? ' Se guarda en tu perfil y se ve igual en todos tus dispositivos.' : ''}</p>
+      <form
+        className="flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault()
+          guardar()
+        }}
+      >
+        <input
+          className="campo"
+          aria-label="Nombre de la cuenta"
+          placeholder="Tu nombre"
+          maxLength={60}
+          value={valor}
+          disabled={ocupado}
+          onChange={(e) => setValor(e.target.value)}
+          onBlur={guardar}
+        />
+        <Boton type="submit" variante="primario" disabled={ocupado || valor.trim() === guardado.trim()}>Guardar</Boton>
+      </form>
+    </Card>
   )
 }
 
@@ -36,27 +225,29 @@ function ConfigCard() {
   const todos: { k: keyof Config; t: string; neg?: boolean; ayuda: string }[] = [
     compartida
       ? { k: 'ajuste_cuenta_gastos_inicial', t: 'Saldo inicial de la cuenta común', neg: true, ayuda: 'Lo que había en la cuenta común antes del primer mes.' }
-      : { k: 'ajuste_cuenta_gastos_inicial', t: 'Cuenta de gastos inicial', neg: true, ayuda: 'No es saldo real: es el saldo "anterior" del primer mes para cuadrar los cálculos.' },
-    { k: 'inversiones_iniciales', t: 'Inversiones iniciales', ayuda: 'Base de cálculo de inversiones antes del primer mes.' },
-    { k: 'aportado_inicial_inversiones', t: 'Aportado inicial a inversiones', ayuda: 'Total aportado a inversiones antes del primer mes.' },
-    { k: 'cuenta_remunerada_inicial', t: 'Cuenta remunerada inicial', ayuda: 'Saldo inicial de la cuenta remunerada.' },
+      : { k: 'ajuste_cuenta_gastos_inicial', t: 'Cuenta de gastos', neg: true, ayuda: 'Saldo «anterior» del primer mes, para cuadrar los cálculos.' },
+    { k: 'cuenta_remunerada_inicial', t: 'Cuenta remunerada', ayuda: 'Lo que había en la cuenta remunerada.' },
+    { k: 'inversiones_iniciales', t: 'Inversiones (valor)', ayuda: 'Lo que valían tus inversiones.' },
+    { k: 'aportado_inicial_inversiones', t: 'Inversiones (aportado)', ayuda: 'Lo que habías metido en inversiones.' },
   ]
   // En la cuenta compartida no hay inversiones ni cuenta remunerada iniciales
   const campos = compartida ? todos.slice(0, 1) : todos
+  const conMeses = datos.months.length > 0
   return (
-    <Card titulo="Configuración">
-      <div className="space-y-3">
-        <label className="block">
-          <span className="text-sm font-medium">Mes de inicio del historial</span>
-          <input
-            type="month"
-            className="campo mt-1"
-            value={cfg.mes_inicio.slice(0, 7)}
-            disabled={datos.months.length > 0}
-            onChange={(e) => e.target.value && actualizarConfig({ mes_inicio: `${e.target.value}-01` })}
-          />
-          {datos.months.length > 0 && <span className="text-xs text-slate-500">Solo se puede cambiar cuando no hay meses.</span>}
-        </label>
+    <Card titulo="Punto de partida">
+      <p className="mb-4 text-sm text-slate-500">Cómo estaban tus cuentas antes del primer mes. Son ajustes para que cuadren los cálculos, no valoraciones verificadas.</p>
+      <label className="mb-4 block">
+        <span className="text-sm font-medium">Mes de inicio del historial</span>
+        <input
+          type="month"
+          className="campo mt-1"
+          value={cfg.mes_inicio.slice(0, 7)}
+          disabled={conMeses}
+          onChange={(e) => e.target.value && actualizarConfig({ mes_inicio: `${e.target.value}-01` })}
+        />
+        {conMeses && <span className="mt-1 block text-xs text-slate-500">🔒 Solo se puede cambiar cuando todavía no hay meses.</span>}
+      </label>
+      <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
         {campos.map((c) => (
           <label key={c.k} className="block">
             <span className="text-sm font-medium">{c.t}</span>
@@ -67,12 +258,9 @@ function ConfigCard() {
               className="campo mt-1 text-left"
               onCambio={(v) => actualizarConfig({ [c.k]: v ?? 0 } as Partial<Config>)}
             />
-            <span className="text-xs text-slate-500">{c.ayuda}</span>
+            <span className="mt-1 block text-xs text-slate-500">{c.ayuda}</span>
           </label>
         ))}
-        <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-900/30 dark:text-amber-200">
-          Los saldos iniciales del primer mes son ajustes de conciliación, no valoraciones históricas verificadas.
-        </p>
       </div>
     </Card>
   )
@@ -83,24 +271,56 @@ function PlantillaCard() {
   const [ing, setIng] = useState(datos.config.plantilla_ingresos.join('\n'))
   const [gas, setGas] = useState(datos.config.plantilla_gastos.join('\n'))
   const limpiar = (s: string) => s.split('\n').map((x) => x.trim()).filter(Boolean)
+  const n = (s: string) => limpiar(s).length
   return (
-    <Card titulo="Plantilla de conceptos">
-      <p className="mb-3 text-sm text-slate-500">Se usa solo para el primer mes. Los meses siguientes copian los conceptos del mes anterior. Un concepto por línea.</p>
+    <Card titulo="Conceptos del primer mes">
+      <p className="mb-3 text-sm text-slate-500">Solo se usan al crear el primer mes; después, cada mes copia los conceptos del anterior. Uno por línea.</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block">
-          <span className="text-sm font-medium">Ingresos</span>
-          <textarea className="campo mt-1 h-48 font-mono text-xs" value={ing} onChange={(e) => setIng(e.target.value)} onBlur={() => actualizarConfig({ plantilla_ingresos: limpiar(ing) })} />
+          <span className="flex items-baseline justify-between text-sm font-medium">Ingresos <span className="text-xs font-normal text-slate-400">{n(ing)}</span></span>
+          <textarea className="campo mt-1 h-44 text-sm leading-6" value={ing} onChange={(e) => setIng(e.target.value)} onBlur={() => actualizarConfig({ plantilla_ingresos: limpiar(ing) })} />
         </label>
         <label className="block">
-          <span className="text-sm font-medium">Gastos</span>
-          <textarea className="campo mt-1 h-48 font-mono text-xs" value={gas} onChange={(e) => setGas(e.target.value)} onBlur={() => actualizarConfig({ plantilla_gastos: limpiar(gas) })} />
+          <span className="flex items-baseline justify-between text-sm font-medium">Gastos <span className="text-xs font-normal text-slate-400">{n(gas)}</span></span>
+          <textarea className="campo mt-1 h-44 text-sm leading-6" value={gas} onChange={(e) => setGas(e.target.value)} onBlur={() => actualizarConfig({ plantilla_gastos: limpiar(gas) })} />
         </label>
       </div>
     </Card>
   )
 }
 
-function DatosCard() {
+function ExportarCard() {
+  const { datos, avisar } = useStore()
+  return (
+    <Card titulo="Informes y exportar">
+      <div className="space-y-2">
+        <InformePdfBoton
+          disparador={(abrir) => (
+            <Opcion destacada icono="📄" titulo="Informe PDF" texto="Todo lo apuntado hasta hoy, con gráficas y el detalle de cada mes." onClick={abrir} />
+          )}
+        />
+        <Opcion icono="📗" titulo="Excel (.xlsx)" texto="Un libro con una hoja por mes, el historial y los resúmenes." onClick={() => exportarExcel(datos).catch((e) => avisar({ texto: e.message, tipo: 'error' }))} />
+      </div>
+      <div className="mt-4 border-t border-slate-100 pt-3 dark:border-slate-800">
+        <p className="mb-2 text-xs font-medium text-slate-500">Tablas sueltas en CSV (para Excel o Numbers)</p>
+        <div className="flex flex-wrap gap-1.5">
+          {([['historial', 'Historial'], ['incomes', 'Ingresos'], ['expenses', 'Gastos'], ['savings', 'Ahorro y traspasos']] as const).map(([t, txt]) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => exportarCSV(datos, t)}
+              className="rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              ⬇ {txt}
+            </button>
+          ))}
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+function CopiasCard() {
   const { datos, reemplazarTodo, avisar } = useStore()
   const archivo = useRef<HTMLInputElement>(null)
   const [pendiente, setPendiente] = useState<{ titulo: string; datos: Datos } | null>(null)
@@ -121,46 +341,35 @@ function DatosCard() {
   }
 
   return (
-    <Card titulo="Datos y copias de seguridad">
-      <div className="space-y-4">
-        <div>
-          <h3 className="mb-2 text-sm font-medium">Exportar</h3>
-          <div className="flex flex-wrap gap-2">
-            <InformePdfBoton />
-            <Boton onClick={() => exportarExcel(datos).catch((e) => avisar({ texto: e.message, tipo: 'error' }))}>📗 Excel (.xlsx)</Boton>
-            <Boton onClick={() => descargar(`presupuesto-copia-${new Date().toISOString().slice(0, 10)}.json`, exportarJSON(datos), 'application/json')}>💾 Copia completa (JSON)</Boton>
-          </div>
-          <div className="mt-2 flex flex-wrap gap-2 text-xs">
-            <span className="self-center text-slate-500">CSV:</span>
-            <Boton variante="fantasma" className="text-xs" onClick={() => exportarCSV(datos, 'historial')}>Historial</Boton>
-            <Boton variante="fantasma" className="text-xs" onClick={() => exportarCSV(datos, 'incomes')}>Ingresos</Boton>
-            <Boton variante="fantasma" className="text-xs" onClick={() => exportarCSV(datos, 'expenses')}>Gastos</Boton>
-            <Boton variante="fantasma" className="text-xs" onClick={() => exportarCSV(datos, 'savings')}>Ahorros</Boton>
-          </div>
-        </div>
-        <div>
-          <h3 className="mb-2 text-sm font-medium">Importar / restaurar</h3>
-          <input
-            ref={archivo}
-            type="file"
-            accept="application/json,.json"
-            className="hidden"
-            onChange={async (e) => {
-              const f = e.target.files?.[0]
-              e.target.value = ''
-              if (!f) return
-              try {
-                setPendiente({ titulo: `Restaurar copia "${f.name}"`, datos: importarJSON(await f.text()) })
-              } catch (err) {
-                avisar({ texto: (err as Error).message, tipo: 'error' })
-              }
-            }}
-          />
-          <div className="flex flex-wrap gap-2">
-            <Boton onClick={() => archivo.current?.click()}>📂 Restaurar copia JSON…</Boton>
-          </div>
-        </div>
+    <Card titulo="Copias de seguridad">
+      <div className="space-y-2">
+        <Opcion
+          icono="💾"
+          titulo="Descargar copia completa"
+          texto="Un archivo JSON con todo lo de esta cuenta. Guárdalo de vez en cuando."
+          onClick={() => descargar(`presupuesto-copia-${new Date().toISOString().slice(0, 10)}.json`, exportarJSON(datos), 'application/json')}
+        />
+        <Opcion icono="📂" titulo="Restaurar una copia…" texto="Sustituye todos los datos de esta cuenta por los de un archivo JSON." onClick={() => archivo.current?.click()} />
       </div>
+      <input
+        ref={archivo}
+        type="file"
+        accept="application/json,.json"
+        className="hidden"
+        onChange={async (e) => {
+          const f = e.target.files?.[0]
+          e.target.value = ''
+          if (!f) return
+          try {
+            setPendiente({ titulo: `Restaurar copia "${f.name}"`, datos: importarJSON(await f.text()) })
+          } catch (err) {
+            avisar({ texto: (err as Error).message, tipo: 'error' })
+          }
+        }}
+      />
+      <p className="mt-3 rounded-lg bg-slate-50 p-2.5 text-xs text-slate-500 dark:bg-slate-800/60">
+        🛟 Además, si está configurada, cada lunes se guarda sola una copia cifrada en GitHub (90 días).
+      </p>
       <Modal
         abierto={!!pendiente}
         onCerrar={() => !ocupado && setPendiente(null)}
@@ -173,7 +382,7 @@ function DatosCard() {
         }
       >
         <p>Se <strong>borrarán todos los datos actuales</strong> ({datos.months.length} meses) y se sustituirán por {pendiente?.datos.months.length ?? 0} meses.</p>
-        {datos.months.length > 0 && <p>Te recomiendo exportar antes una copia JSON.</p>}
+        {datos.months.length > 0 && <p>Te recomiendo descargar antes una copia completa.</p>}
       </Modal>
     </Card>
   )
@@ -196,11 +405,30 @@ function AparienciaCard() {
     const oscuro = tema === 'oscuro' || (tema === 'sistema' && window.matchMedia('(prefers-color-scheme: dark)').matches)
     document.documentElement.classList.toggle('dark', oscuro)
   }, [tema])
+  const opciones = [
+    ['sistema', '🖥️', 'Automático'],
+    ['claro', '☀️', 'Claro'],
+    ['oscuro', '🌙', 'Oscuro'],
+  ] as const
   return (
     <Card titulo="Apariencia">
-      <div className="flex gap-2">
-        {[['sistema', 'Sistema'], ['claro', 'Claro'], ['oscuro', 'Oscuro']].map(([v, t]) => (
-          <Boton key={v} variante={tema === v ? 'primario' : 'secundario'} onClick={() => setTema(v)}>{t}</Boton>
+      <p className="mb-3 text-sm text-slate-500">Automático sigue el modo claro u oscuro del dispositivo.</p>
+      <div role="radiogroup" aria-label="Tema" className="grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
+        {opciones.map(([v, ico, t]) => (
+          <button
+            key={v}
+            type="button"
+            role="radio"
+            aria-checked={tema === v}
+            onClick={() => setTema(v)}
+            className={cx(
+              'flex flex-col items-center gap-0.5 rounded-lg px-2 py-2 text-sm font-medium transition',
+              tema === v ? 'bg-white text-marino shadow-sm dark:bg-slate-900 dark:text-sky-300' : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200',
+            )}
+          >
+            <span aria-hidden className="text-lg">{ico}</span>
+            {t}
+          </button>
         ))}
       </div>
     </Card>
