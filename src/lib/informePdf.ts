@@ -293,12 +293,7 @@ export async function generarInformePdf(inf: DatosInforme, d: Datos): Promise<Bl
   y = 74
 
   // Dinero total (destacado)
-  tarjeta(M, y, W, 24, 'Dinero total actual', eur(k.dineroTotal), {
-    grande: true,
-    acento: C.marino,
-    sub: inf.compartida ? undefined : `${conSigno(k.variacion)} desde el inicio (partías de ${eur(k.saldoInicial)})`,
-    subColor: k.variacion >= 0 ? C.verde : C.rojo,
-  })
+  tarjeta(M, y, W, 24, 'Dinero total actual', eur(k.dineroTotal), { grande: true, acento: C.marino })
   y += 29
 
   type Carta = [string, string, { sub?: string; subColor?: RGB; acento?: RGB }]
