@@ -30,6 +30,8 @@ export interface Ingreso {
   concepto: string
   importe: Cents
   orden: number
+  /** Aportación automática a la cuenta compartida: id del usuario que aporta (la calcula el servidor). */
+  aportacion_de?: string | null
 }
 
 export interface Gasto {
@@ -43,6 +45,8 @@ export interface Gasto {
   fijo: boolean
   /** Límite de presupuesto para este concepto (null = sin límite). */
   presupuesto: Cents | null
+  /** Aportación automática a esa cuenta compartida (la calcula el servidor). */
+  aportacion_cuenta?: string | null
 }
 
 export interface ApunteGasto {
@@ -71,6 +75,25 @@ export interface Deuda {
   fecha: string // día en que prestaste o pagaste
   /** Fecha en que te lo devolvieron (null = pendiente). */
   devuelto_en: string | null
+}
+
+export type TipoCuenta = 'personal' | 'compartida'
+
+export interface MiembroCuenta {
+  id: string
+  user_id: string | null // null = invitación pendiente
+  email: string
+  nombre: string
+}
+
+/** Una cuenta: la personal de cada usuario o una compartida entre varios. */
+export interface Cuenta {
+  id: string
+  nombre: string
+  tipo: TipoCuenta
+  aportacion_activa: boolean
+  pct_aportacion: number | null // porcentaje (0–100)
+  miembros: MiembroCuenta[]
 }
 
 export interface Datos {

@@ -46,9 +46,10 @@ export function planMesNuevo(d: Datos, cerrarAnterior: boolean): PlanMesNuevo {
   let conceptosIng: string[]
   let gastosBase: Pick<Gasto, 'concepto' | 'fijo' | 'presupuesto' | 'importe' | 'fecha_vencimiento'>[]
   if (anterior) {
-    conceptosIng = d.incomes.filter((x) => x.month_id === anterior.id).sort((a, b) => a.orden - b.orden).map((x) => x.concepto)
+    // Las aportaciones automáticas no se copian: las vuelve a crear el servidor
+    conceptosIng = d.incomes.filter((x) => x.month_id === anterior.id && !x.aportacion_de).sort((a, b) => a.orden - b.orden).map((x) => x.concepto)
     gastosBase = d.expenses
-      .filter((x) => x.month_id === anterior.id)
+      .filter((x) => x.month_id === anterior.id && !x.aportacion_cuenta)
       .sort((a, b) => a.orden - b.orden)
       .map((x) => ({
         concepto: x.concepto,

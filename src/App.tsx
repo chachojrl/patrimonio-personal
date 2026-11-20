@@ -3,10 +3,11 @@ import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { supabase, urlDeLaApp, vieneDeRecuperacion } from './data/supabase'
 import { crearLocalRepo } from './data/localRepo'
-import { crearSupabaseRepo } from './data/supabaseRepo'
+import { cargarCuentas, crearSupabaseRepo } from './data/supabaseRepo'
 import { NoAutorizadoError, type Repo } from './data/repo'
 import { StoreProvider } from './data/store'
-import type { Datos } from './lib/tipos'
+import type { Cuenta, Datos } from './lib/tipos'
+import { CuentasProvider, cuentaGuardada, guardarCuenta, type CuentasCtx } from './data/cuentas'
 import { Layout } from './components/Layout'
 import { Boton, Spinner } from './components/ui'
 import { FormularioContrasena } from './components/FormularioContrasena'
@@ -53,20 +54,7 @@ function ConDatos({ repo }: { repo: Repo }) {
   useEffect(() => {
     repo.cargar().then(setDatos, setError)
   }, [repo])
-  if (error) {
-    return (
-      <Pantalla titulo={error instanceof NoAutorizadoError ? 'Acceso no autorizado' : 'No se pudieron cargar los datos'}>
-        <p className="text-sm text-slate-600 dark:text-slate-300">{error.message}</p>
-        {error instanceof NoAutorizadoError && (
-          <p className="text-sm text-slate-500">Añade tu email a la tabla <code>app_owner</code> en Supabase (ver README).</p>
-        )}
-        <div className="flex gap-2">
-          <Boton onClick={() => location.reload()}>Reintentar</Boton>
-          {supabase && <Boton onClick={() => supabase!.auth.signOut()}>Cerrar sesión</Boton>}
-        </div>
-      </Pantalla>
-    )
-  }
+  if (error) return <ErrorCarga error={error} />
   if (!datos) return <Spinner />
   return (
     <StoreProvider repo={repo} inicial={datos}>
@@ -75,12 +63,26 @@ function ConDatos({ repo }: { repo: Repo }) {
   )
 }
 
+function ErrorCarga({ error }: { error: Error }) {
+  return (
+    <Pantalla titulo={error instanceof NoAutorizadoError ? 'Acceso no autorizado' : 'No se pudieron cargar los datos'}>
+      <p className="text-sm text-slate-600 dark:text-slate-300">{error.message}</p>
+      {error instanceof NoAutorizadoError && (
+        <p className="text-sm text-slate-500">Añade tu email a la tabla <code>app_owner</code> en Supabase (ver README).</p>
+      )}
+      <div className="flex gap-2">
+        <Boton onClick={() => location.reload()}>Reintentar</Boton>
+        {supabase && <Boton onClick={() => supabase!.auth.signOut()}>Cerrar sesión</Boton>}
+      </div>
+    </Pantalla>
+  )
+}
+
 type EstadoAuth = { fase: 'cargando' } | { fase: 'fuera' } | { fase: 'mfa'; factorId: string } | { fase: 'nueva-clave' } | { fase: 'dentro'; session: Session }
 
 function ConLogin() {
   const sb = supabase!
   const [auth, setAuth] = useState<EstadoAuth>({ fase: 'cargando' })
-  const repo = useMemo(() => crearSupabaseRepo(sb), [sb])
   const recuperando = useRef(vieneDeRecuperacion)
 
   async function evaluar(session: Session | null) {
@@ -121,7 +123,44 @@ function ConLogin() {
         }}
       />
     )
-  return <ConDatos key={auth.session.user.id} repo={repo} />
+  return <ConCuentas key={auth.session.user.id} session={auth.session} />
+}
+
+/** Carga las cuentas del usuario y abre la activa (la personal por defecto). */
+function ConCuentas({ session }: { session: Session }) {
+  const sb = supabase!
+  const [cuentas, setCuentas] = useState<Cuenta[] | null | undefined>(undefined)
+  const [activaId, setActivaId] = useState<string | null>(cuentaGuardada())
+  const [error, setError] = useState<Error | null>(null)
+
+  async function recargarCuentas() {
+    setCuentas(await cargarCuentas(sb))
+  }
+  useEffect(() => {
+    recargarCuentas().catch(setError)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const activa = cuentas ? (cuentas.find((c) => c.id === activaId) ?? cuentas[0] ?? null) : null
+  const repo = useMemo(() => crearSupabaseRepo(sb, activa?.id ?? null), [sb, activa?.id])
+
+  if (error) return <ErrorCarga error={error} />
+  if (cuentas === undefined) return <Spinner />
+  const valor: CuentasCtx = {
+    cuentas,
+    activa,
+    userId: session.user.id,
+    cambiar: (id) => {
+      guardarCuenta(id)
+      setActivaId(id)
+    },
+    recargarCuentas,
+  }
+  return (
+    <CuentasProvider valor={valor}>
+      <ConDatos key={activa?.id ?? 'sin-cuentas'} repo={repo} />
+    </CuentasProvider>
+  )
 }
 
 function Pantalla({ titulo, children }: { titulo: string; children: React.ReactNode }) {

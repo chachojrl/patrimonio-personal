@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { NoAutorizadoError, type Repo } from './repo'
-import type { Ahorro, ApunteGasto, Config, Deuda, Gasto, Ingreso, Mes, Tabla } from '../lib/tipos'
+import type { Ahorro, ApunteGasto, Config, Cuenta, Datos, Deuda, Gasto, Ingreso, Mes, Tabla } from '../lib/tipos'
 import { CONFIG_INICIAL } from '../lib/tipos'
 import { centsToDecimal, toCents, toCentsOrNull } from '../lib/money'
 
@@ -9,7 +9,8 @@ const CAMPOS_DINERO = new Set([
   'importe', 'presupuesto', 'saldo_real_cuenta', 'valor_real_inversiones',
   'ajuste_cuenta_gastos_inicial', 'inversiones_iniciales', 'aportado_inicial_inversiones', 'cuenta_remunerada_inicial',
 ])
-// Columnas que existen en cada tabla (lo demás no se envía)
+// Columnas que la app escribe en cada tabla (lo demás no se envía).
+// aportacion_de / aportacion_cuenta no están: las gestiona el servidor.
 const COLUMNAS: Record<Tabla, string[]> = {
   months: ['id', 'fecha', 'titulo', 'estado', 'ultimo_cambio', 'saldo_real_cuenta', 'valor_real_inversiones'],
   incomes: ['id', 'month_id', 'concepto', 'importe', 'orden'],
@@ -30,48 +31,108 @@ function aBD(tabla: Tabla | 'config', obj: Record<string, unknown>): Record<stri
 }
 
 type Fila = Record<string, unknown>
+type Error_ = { message: string; code?: string } | null
 
-async function leerTodo(sb: SupabaseClient, tabla: string, orden: string): Promise<Fila[]> {
-  const res: Fila[] = []
-  const PAG = 1000
-  for (let desde = 0; ; desde += PAG) {
-    const { data, error } = await sb.from(tabla).select('*').order(orden).order('id').range(desde, desde + PAG - 1)
-    if (error) throw error
-    res.push(...(data as Fila[]))
-    if (!data || data.length < PAG) return res
-  }
+/** ¿El error es "esa tabla / función no existe todavía" (migración sin ejecutar)? */
+export function faltaEnBD(error: Error_): boolean {
+  return !!error && ['42P01', 'PGRST205', 'PGRST202', '42883', '42703'].includes(error.code ?? '')
 }
 
-/** Lee las deudas. Si la migración 0004 aún no se ha ejecutado, devuelve [] para que la app siga funcionando. */
-async function leerDeudas(sb: SupabaseClient): Promise<Fila[]> {
-  try {
-    return await leerTodo(sb, 'debts', 'fecha')
-  } catch (e) {
-    const err = e as { code?: string; message?: string }
-    if (err.code === '42P01' || err.code === 'PGRST205') {
-      console.warn('Falta la tabla "debts": ejecuta supabase/migrations/0004_deudas.sql')
-      return []
-    }
-    throw e
-  }
-}
-
-function lanzar(error: { message: string; code?: string } | null) {
+function lanzar(error: Error_) {
   if (!error) return
   if (error.code === '42501') throw new NoAutorizadoError()
   throw new Error(error.message)
 }
 
-export function crearSupabaseRepo(sb: SupabaseClient): Repo {
+/**
+ * Cuentas del usuario (la personal primero). Devuelve null si la base de datos aún no
+ * tiene cuentas (migración 0005 sin ejecutar): la app funciona entonces como antes.
+ */
+export async function cargarCuentas(sb: SupabaseClient): Promise<Cuenta[] | null> {
+  const { data, error } = await sb.rpc('mis_cuentas')
+  if (faltaEnBD(error)) return null
+  lanzar(error)
+  return (data as Fila[]).map((c) => ({
+    id: c.id as string,
+    nombre: c.nombre as string,
+    tipo: c.tipo as Cuenta['tipo'],
+    aportacion_activa: Boolean(c.aportacion_activa),
+    pct_aportacion: c.pct_aportacion === null || c.pct_aportacion === undefined ? null : Number(c.pct_aportacion),
+    miembros: ((c.miembros as Fila[]) ?? []).map((m) => ({
+      id: m.id as string, user_id: (m.user_id as string) ?? null, email: m.email as string, nombre: (m.nombre as string) ?? '',
+    })),
+  }))
+}
+
+export async function crearCuentaCompartida(
+  sb: SupabaseClient,
+  p: { nombre: string; miNombre: string; emailPareja: string; nombrePareja: string },
+): Promise<string> {
+  const { data, error } = await sb.rpc('crear_cuenta_compartida', {
+    p_nombre: p.nombre, p_mi_nombre: p.miNombre, p_email_pareja: p.emailPareja, p_nombre_pareja: p.nombrePareja,
+  })
+  lanzar(error)
+  return data as string
+}
+
+export async function actualizarCuenta(sb: SupabaseClient, id: string, patch: Partial<Pick<Cuenta, 'nombre' | 'aportacion_activa' | 'pct_aportacion'>>) {
+  const { error } = await sb.from('cuentas').update(patch).eq('id', id)
+  lanzar(error)
+}
+
+export async function actualizarMiembro(sb: SupabaseClient, id: string, nombre: string) {
+  const { error } = await sb.from('cuenta_miembros').update({ nombre }).eq('id', id)
+  lanzar(error)
+}
+
+function mapGasto(x: Fila): Gasto {
+  return {
+    id: x.id as string, month_id: x.month_id as string, concepto: x.concepto as string,
+    fecha_vencimiento: (x.fecha_vencimiento as string) ?? null, importe: toCents(x.importe as string), orden: x.orden as number,
+    fijo: (x.fijo as boolean) ?? false, presupuesto: toCentsOrNull(x.presupuesto as string),
+    aportacion_cuenta: (x.aportacion_cuenta as string) ?? null,
+  }
+}
+
+/**
+ * Repositorio de una cuenta. Con cuentaId = null (base de datos sin cuentas) se comporta
+ * como las versiones anteriores: todo lo que el usuario puede ver.
+ */
+export function crearSupabaseRepo(sb: SupabaseClient, cuentaId: string | null): Repo {
+  // Filtra por la cuenta (si la hay). Tipado laxo: los builders de Supabase son genéricos muy profundos.
+  const enCuenta = <T,>(q: T): T => (cuentaId ? (q as unknown as { eq(c: string, v: string): T }).eq('cuenta_id', cuentaId) : q)
+  const conCuenta = (f: Fila): Fila => (cuentaId ? { ...f, cuenta_id: cuentaId } : f)
+
+  async function leerTodo(tabla: string, orden: string): Promise<Fila[]> {
+    const res: Fila[] = []
+    const PAG = 1000
+    for (let desde = 0; ; desde += PAG) {
+      const { data, error } = await enCuenta(sb.from(tabla).select('*')).order(orden).order('id').range(desde, desde + PAG - 1)
+      if (error) throw error
+      res.push(...(data as Fila[]))
+      if (!data || data.length < PAG) return res
+    }
+  }
+
+  /** Si la migración 0004 aún no se ha ejecutado, devuelve [] para que la app siga funcionando. */
+  async function leerDeudas(): Promise<Fila[]> {
+    try {
+      return await leerTodo('debts', 'fecha')
+    } catch (e) {
+      if (faltaEnBD(e as Error_)) {
+        console.warn('Falta la tabla "debts": ejecuta supabase/migrations/0004_deudas.sql')
+        return []
+      }
+      throw e
+    }
+  }
+
   async function asegurarConfig(): Promise<Fila> {
-    const { data, error } = await sb.from('config').select('*').maybeSingle()
+    const { data, error } = await enCuenta(sb.from('config').select('*')).maybeSingle()
     lanzar(error)
     if (data) return data
-    const ins = await sb.from('config').insert({}).select('*').single()
-    if (ins.error) {
-      if (ins.error.code === '42501') throw new NoAutorizadoError()
-      lanzar(ins.error)
-    }
+    const ins = await sb.from('config').insert(conCuenta({})).select('*').single()
+    lanzar(ins.error)
     return ins.data as Fila
   }
 
@@ -80,12 +141,12 @@ export function crearSupabaseRepo(sb: SupabaseClient): Repo {
     async cargar() {
       const cfg = await asegurarConfig()
       const [months, incomes, expenses, entries, savings, debts] = await Promise.all([
-        leerTodo(sb, 'months', 'fecha'),
-        leerTodo(sb, 'incomes', 'orden'),
-        leerTodo(sb, 'expenses', 'orden'),
-        leerTodo(sb, 'expense_entries', 'creado_en'),
-        leerTodo(sb, 'savings', 'fecha'),
-        leerDeudas(sb),
+        leerTodo('months', 'fecha'),
+        leerTodo('incomes', 'orden'),
+        leerTodo('expenses', 'orden'),
+        leerTodo('expense_entries', 'creado_en'),
+        leerTodo('savings', 'fecha'),
+        leerDeudas(),
       ])
       const config: Config = {
         mes_inicio: String(cfg.mes_inicio),
@@ -107,12 +168,11 @@ export function crearSupabaseRepo(sb: SupabaseClient): Repo {
           saldo_real_cuenta: toCentsOrNull(m.saldo_real_cuenta as string),
           valor_real_inversiones: toCentsOrNull(m.valor_real_inversiones as string),
         })),
-        incomes: incomes.map((x): Ingreso => ({ id: x.id as string, month_id: x.month_id as string, concepto: x.concepto as string, importe: toCents(x.importe as string), orden: x.orden as number })),
-        expenses: expenses.map((x): Gasto => ({
-          id: x.id as string, month_id: x.month_id as string, concepto: x.concepto as string,
-          fecha_vencimiento: (x.fecha_vencimiento as string) ?? null, importe: toCents(x.importe as string), orden: x.orden as number,
-          fijo: (x.fijo as boolean) ?? false, presupuesto: toCentsOrNull(x.presupuesto as string),
+        incomes: incomes.map((x): Ingreso => ({
+          id: x.id as string, month_id: x.month_id as string, concepto: x.concepto as string, importe: toCents(x.importe as string), orden: x.orden as number,
+          aportacion_de: (x.aportacion_de as string) ?? null,
         })),
+        expenses: expenses.map(mapGasto),
         expense_entries: entries.map((x): ApunteGasto => ({ id: x.id as string, expense_id: x.expense_id as string, importe: toCents(x.importe as string), creado_en: x.creado_en as string, nota: (x.nota as string) ?? null })),
         savings: savings.map((x): Ahorro => ({
           id: x.id as string, month_id: x.month_id as string, fecha: (x.fecha as string) ?? null, importe: toCents(x.importe as string),
@@ -126,7 +186,9 @@ export function crearSupabaseRepo(sb: SupabaseClient): Repo {
     },
     async insertar(tabla, filas) {
       if (filas.length === 0) return
-      const { error } = await sb.from(tabla).insert(filas.map((f) => aBD(tabla, f as Fila)))
+      // months y debts llevan la cuenta; el resto la hereda de su mes en el servidor
+      const conC = tabla === 'months' || tabla === 'debts'
+      const { error } = await sb.from(tabla).insert(filas.map((f) => (conC ? conCuenta(aBD(tabla, f as Fila)) : aBD(tabla, f as Fila))))
       lanzar(error)
     },
     async actualizar(tabla, id, patch) {
@@ -136,6 +198,11 @@ export function crearSupabaseRepo(sb: SupabaseClient): Repo {
       lanzar(error)
     },
     async actualizarConfig(patch) {
+      if (cuentaId) {
+        const { error } = await sb.from('config').update(aBD('config', patch as Fila)).eq('cuenta_id', cuentaId)
+        lanzar(error)
+        return
+      }
       const { data: u } = await sb.auth.getUser()
       const { error } = await sb.from('config').update(aBD('config', patch as Fila)).eq('user_id', u.user?.id ?? '')
       lanzar(error)
@@ -146,7 +213,7 @@ export function crearSupabaseRepo(sb: SupabaseClient): Repo {
       lanzar(error)
     },
     async crearMes(plan) {
-      const { error } = await sb.rpc('insertar_mes', {
+      const args = {
         p_mes: { id: plan.mes.id, fecha: plan.mes.fecha, titulo: plan.mes.titulo },
         p_incomes: plan.incomes.map((x) => ({ id: x.id, concepto: x.concepto, orden: x.orden })),
         p_expenses: plan.expenses.map((x) => ({
@@ -155,15 +222,26 @@ export function crearSupabaseRepo(sb: SupabaseClient): Repo {
           presupuesto: x.presupuesto === null ? null : centsToDecimal(x.presupuesto),
         })),
         p_cerrar: plan.cerrarMesId,
-      })
+      }
+      const { error } = await sb.rpc('insertar_mes', cuentaId ? { p_cuenta: cuentaId, ...args } : args)
       lanzar(error)
     },
-    async reemplazarTodo(d) {
-      // 1) borrar todos los meses (en cascada se borra todo lo demás) y las deudas
-      const del = await sb.from('months').delete().not('id', 'is', null)
+    async leerAportaciones() {
+      if (!cuentaId) return []
+      const { data, error } = await sb.from('expenses').select('*').eq('cuenta_id', cuentaId).not('aportacion_cuenta', 'is', null)
+      lanzar(error)
+      return (data as Fila[]).map(mapGasto)
+    },
+    async reemplazarTodo(d: Datos) {
+      // Las aportaciones automáticas no se restauran: el servidor las vuelve a calcular
+      d = { ...d, incomes: d.incomes.filter((x) => !x.aportacion_de), expenses: d.expenses.filter((x) => !x.aportacion_cuenta) }
+      const gastos = new Set(d.expenses.map((x) => x.id))
+      d = { ...d, expense_entries: d.expense_entries.filter((x) => gastos.has(x.expense_id)) }
+      // 1) borrar todos los meses de ESTA cuenta (en cascada se borra todo lo demás) y sus deudas
+      const del = await enCuenta(sb.from('months').delete().not('id', 'is', null))
       lanzar(del.error)
-      const delDeudas = await sb.from('debts').delete().not('id', 'is', null)
-      if (delDeudas.error && d.debts.length > 0) lanzar(delDeudas.error)
+      const delDeudas = await enCuenta(sb.from('debts').delete().not('id', 'is', null))
+      if (delDeudas.error && !faltaEnBD(delDeudas.error)) lanzar(delDeudas.error)
       // 2) configuración
       await this.actualizarConfig(d.config)
       // 3) meses abiertos primero (los cerrados no admiten hijos), luego hijos, luego estados

@@ -4,6 +4,8 @@ import { Boton, Card, CeldaImporte, Modal } from '../components/ui'
 import { descargar, exportarCSV, exportarExcel, exportarJSON, importarJSON } from '../lib/exportar'
 import { supabase } from '../data/supabase'
 import { FormularioContrasena } from '../components/FormularioContrasena'
+import { CuentaCompartidaCard } from '../components/CuentaCompartidaCard'
+import { useCuentas } from '../data/cuentas'
 import type { Config, Datos } from '../lib/tipos'
 
 export function AjustesPage() {
@@ -11,6 +13,7 @@ export function AjustesPage() {
     <div className="space-y-4">
       <h1 className="text-2xl font-bold text-marino dark:text-sky-300">Ajustes</h1>
       <div className="grid gap-4 lg:grid-cols-2">
+        <CuentaCompartidaCard />
         <ConfigCard />
         <PlantillaCard />
         <DatosCard />
@@ -24,12 +27,17 @@ export function AjustesPage() {
 function ConfigCard() {
   const { datos, actualizarConfig } = useStore()
   const cfg = datos.config
-  const campos: { k: keyof Config; t: string; neg?: boolean; ayuda: string }[] = [
-    { k: 'ajuste_cuenta_gastos_inicial', t: 'Cuenta de gastos inicial', neg: true, ayuda: 'No es saldo real: es el saldo "anterior" del primer mes para cuadrar los cálculos.' },
+  const compartida = useCuentas().activa?.tipo === 'compartida'
+  const todos: { k: keyof Config; t: string; neg?: boolean; ayuda: string }[] = [
+    compartida
+      ? { k: 'ajuste_cuenta_gastos_inicial', t: 'Saldo inicial de la cuenta común', neg: true, ayuda: 'Lo que había en la cuenta común antes del primer mes.' }
+      : { k: 'ajuste_cuenta_gastos_inicial', t: 'Cuenta de gastos inicial', neg: true, ayuda: 'No es saldo real: es el saldo "anterior" del primer mes para cuadrar los cálculos.' },
     { k: 'inversiones_iniciales', t: 'Inversiones iniciales', ayuda: 'Base de cálculo de inversiones antes del primer mes.' },
     { k: 'aportado_inicial_inversiones', t: 'Aportado inicial a inversiones', ayuda: 'Total aportado a inversiones antes del primer mes.' },
     { k: 'cuenta_remunerada_inicial', t: 'Cuenta remunerada inicial', ayuda: 'Saldo inicial de la cuenta remunerada.' },
   ]
+  // En la cuenta compartida no hay inversiones ni cuenta remunerada iniciales
+  const campos = compartida ? todos.slice(0, 1) : todos
   return (
     <Card titulo="Configuración">
       <div className="space-y-3">
