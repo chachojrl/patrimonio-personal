@@ -46,3 +46,6 @@ export function guardarCuenta(id: string) {
 export function nombreMiembro(m: { nombre: string; email: string }): string {
   return m.nombre.trim() || m.email.split('@')[0]
 }
+
+/** Avisos que tienen que sobrevivir a un cambio de cuenta (se muestran al cargar la siguiente). */
+export const CLAVE_AVISO = 'presupuesto-aviso-pendiente'

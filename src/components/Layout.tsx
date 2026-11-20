@@ -2,7 +2,8 @@ import { Link, NavLink, Outlet } from 'react-router-dom'
 import { useStore } from '../data/store'
 import { BotonDiscreto, cx } from './ui'
 import { ultimoMes } from '../lib/operaciones'
-import { nombreMiembro, useCuentas } from '../data/cuentas'
+import { useEffect } from 'react'
+import { CLAVE_AVISO, nombreMiembro, useCuentas } from '../data/cuentas'
 
 function EstadoGuardadoChip() {
   const { guardado } = useStore()
@@ -57,7 +58,19 @@ function AvisoCompartida() {
 const ICONOS: Record<string, string> = { inicio: '☰', mes: '📅', historial: '📈', resumen: '📊', ajustes: '⚙️' }
 
 export function Layout() {
-  const { datos, modo, toasts, cerrarToast, guardado } = useStore()
+  const { datos, modo, toasts, cerrarToast, guardado, avisar } = useStore()
+  // Aviso dejado por una acción que cambió de cuenta (p. ej. borrar la compartida)
+  useEffect(() => {
+    try {
+      const t = sessionStorage.getItem(CLAVE_AVISO)
+      if (t) {
+        sessionStorage.removeItem(CLAVE_AVISO)
+        avisar({ texto: t })
+      }
+    } catch {
+      /* sin almacenamiento */
+    }
+  }, [avisar])
   const u = ultimoMes(datos)
   const anio = u ? u.fecha.slice(0, 4) : String(new Date().getFullYear())
   const enlaces = [

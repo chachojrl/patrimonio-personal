@@ -80,6 +80,13 @@ export async function actualizarCuenta(sb: SupabaseClient, id: string, patch: Pa
   lanzar(error)
 }
 
+/** Borra una cuenta compartida. El servidor exige el nombre exacto como confirmación. */
+export async function borrarCuentaCompartida(sb: SupabaseClient, id: string, confirmacion: string) {
+  const { error } = await sb.rpc('borrar_cuenta_compartida', { p_cuenta: id, p_confirmacion: confirmacion })
+  if (faltaEnBD(error)) throw new Error('Falta actualizar la base de datos: ejecuta supabase/migrations/0006_borrar_cuenta_compartida.sql en Supabase.')
+  lanzar(error)
+}
+
 export async function actualizarMiembro(sb: SupabaseClient, id: string, nombre: string) {
   const { error } = await sb.from('cuenta_miembros').update({ nombre }).eq('id', id)
   lanzar(error)
