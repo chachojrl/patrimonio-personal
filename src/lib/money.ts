@@ -74,11 +74,17 @@ function agrupar(n: string): string {
   return n.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
 }
 
-/** 123456 → "1.234,56 €". Con dash=true, 0 se muestra como "–" (como en Excel). */
-export function formatEUR(c: Cents | null | undefined, opts: { dash?: boolean; simbolo?: boolean } = {}): string {
-  const { dash = true, simbolo = true } = opts
+/** 123456 → "1.234,56 €" (o "1.235 €" con redondear). Con dash=true, 0 se muestra como "–" (como en Excel). */
+export function formatEUR(c: Cents | null | undefined, opts: { dash?: boolean; simbolo?: boolean; redondear?: boolean } = {}): string {
+  const { dash = true, simbolo = true, redondear = false } = opts
   if (c === null || c === undefined) return ''
   if (c === 0 && dash) return '–'
+  if (redondear) {
+    // Al euro más cercano (la mitad, hacia arriba en valor absoluto)
+    const e = Math.round(Math.abs(c) / 100)
+    if (e === 0) return `0${simbolo ? ' €' : ''}`
+    return `${c < 0 ? '−' : ''}${agrupar(String(e))}${simbolo ? ' €' : ''}`
+  }
   const neg = c < 0
   const a = Math.abs(Math.round(c))
   const s = `${agrupar(String(Math.floor(a / 100)))},${String(a % 100).padStart(2, '0')}`

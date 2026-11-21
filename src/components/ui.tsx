@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode 
 import { formatEUR, formatInput, parseImporte, type Cents } from '../lib/money'
 import type { EstadoMes } from '../lib/tipos'
 import { OCULTO, setDiscreto, useDiscreto } from '../lib/discreto'
+import { usePreferencias } from '../lib/preferencias'
 
 export function cx(...c: (string | false | null | undefined)[]) {
   return c.filter(Boolean).join(' ')
@@ -9,10 +10,10 @@ export function cx(...c: (string | false | null | undefined)[]) {
 
 export function Card({ children, className, titulo, accion }: { children: ReactNode; className?: string; titulo?: ReactNode; accion?: ReactNode }) {
   return (
-    <section className={cx('min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-5', className)}>
+    <section className={cx('min-w-0 rounded-xl bg-white p-4 dark:bg-[#1c1c1e] sm:p-5', className)}>
       {(titulo || accion) && (
         <div className="mb-3 flex items-center justify-between gap-2">
-          {titulo && <h2 className="text-sm font-semibold uppercase tracking-wide text-marino dark:text-sky-300">{titulo}</h2>}
+          {titulo && <h2 className="text-[17px] font-semibold text-slate-900 dark:text-white">{titulo}</h2>}
           {accion}
         </div>
       )}
@@ -54,20 +55,21 @@ export function BadgeEstado({ estado }: { estado: EstadoMes }) {
 /** Importe con signo de color: rojo si es negativo; verde opcional si es positivo. */
 export function Dinero({ c, verde, dash = true, className }: { c: Cents | null | undefined; verde?: boolean; dash?: boolean; className?: string }) {
   const discreto = useDiscreto()
+  const { redondear, positivosVerde, negativosRojo } = usePreferencias()
   if (c === null || c === undefined) return <span className={className} />
   if (discreto) return <span className={cx('num whitespace-nowrap text-slate-400 dark:text-slate-500', className)} aria-label="Importe oculto">{c === 0 && dash ? '–' : OCULTO}</span>
   return (
-    <span className={cx('num whitespace-nowrap', c < 0 && 'text-red-600 dark:text-red-400', verde && c > 0 && 'text-emerald-700 dark:text-emerald-400', className)}>
-      {formatEUR(c, { dash })}
+    <span className={cx('num whitespace-nowrap', negativosRojo && c < 0 && 'text-red-600 dark:text-red-400', positivosVerde && verde && c > 0 && 'text-emerald-700 dark:text-emerald-400', className)}>
+      {formatEUR(c, { dash, redondear })}
     </span>
   )
 }
 
 export function Kpi({ titulo, valor, sub, verde, grande }: { titulo: string; valor: Cents | string | null; sub?: ReactNode; verde?: boolean; grande?: boolean }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900 sm:p-4">
-      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{titulo}</div>
-      <div className={cx('mt-1 font-semibold', grande ? 'text-xl sm:text-2xl' : 'text-lg')}>
+    <div className="rounded-xl bg-white p-3.5 dark:bg-[#1c1c1e] sm:p-4">
+      <div className="text-[13px] text-slate-500 dark:text-slate-400">{titulo}</div>
+      <div className={cx('mt-0.5 font-bold tracking-tight', grande ? 'text-[22px] sm:text-2xl' : 'text-lg')}>
         {typeof valor === 'number' ? <Dinero c={valor} verde={verde} dash={false} /> : valor ?? '–'}
       </div>
       {sub && <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{sub}</div>}
@@ -87,12 +89,16 @@ export function BotonDiscreto({ className }: { className?: string }) {
       title={txt}
       onClick={() => setDiscreto(!activo)}
       className={cx(
-        'flex h-8 w-8 items-center justify-center rounded-lg text-base',
-        activo ? 'bg-marino text-white dark:bg-sky-800' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800',
+        'flex h-9 w-9 items-center justify-center rounded-full',
+        activo ? 'bg-marino text-white dark:bg-sky-800' : 'text-marino hover:bg-slate-200/70 dark:text-sky-300 dark:hover:bg-white/10',
         className,
       )}
     >
-      <span aria-hidden>{activo ? '🙈' : '👁'}</span>
+      <svg viewBox="0 0 24 24" className="h-[22px] w-[22px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
+        <circle cx="12" cy="12" r="3" />
+        {activo && <path d="M4 4l16 16" />}
+      </svg>
     </button>
   )
 }

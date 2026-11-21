@@ -7,7 +7,9 @@ import { useStore } from '../data/store'
 import { nombreMiembro, useCuentas } from '../data/cuentas'
 import { supabase } from '../data/supabase'
 import { actualizarMiembro } from '../data/supabaseRepo'
-import { Boton, CeldaImporte, Modal, cx } from '../components/ui'
+import { Boton, CeldaImporte, Dinero, Modal, cx } from '../components/ui'
+import { ACENTOS, guardarFechaCopia, haceCuanto, leerFechaCopia, mesesSinCerrar, setPreferencias, usePreferencias } from '../lib/preferencias'
+import { setDiscreto, useDiscreto } from '../lib/discreto'
 import { descargar, exportarCSV, exportarExcel, exportarJSON, importarJSON } from '../lib/exportar'
 import { FormularioContrasena } from '../components/FormularioContrasena'
 import { CuentaCompartidaCard } from '../components/CuentaCompartidaCard'
@@ -17,11 +19,11 @@ import { useBloqueo } from '../components/useBloqueo'
 import { bloquearAhora } from '../components/Bloqueo'
 import { MINUTOS_EN_SEGUNDO_PLANO } from '../lib/bloqueo'
 import { NOMBRE_TEMA, useTema, type Tema } from '../lib/tema'
-import { MESES, partes } from '../lib/fechas'
+import { MESES, nombreMes, partes } from '../lib/fechas'
 import { Avatar, BotonGrande, COLOR, Fila, FilaCampo, FilaLibre, Grupo, Icono, IconoApp, Interruptor, claseCampoIos, type NombreIcono } from '../components/ios'
 import type { Config, Datos } from '../lib/tipos'
 
-type Id = 'perfil' | 'informe' | 'exportar' | 'copias' | 'partida' | 'conceptos' | 'compartida' | 'seguridad' | 'faceid' | 'apariencia' | 'atajos'
+type Id = 'perfil' | 'informe' | 'exportar' | 'copias' | 'partida' | 'conceptos' | 'compartida' | 'seguridad' | 'faceid' | 'discreto' | 'apariencia' | 'recordatorios' | 'atajos'
 
 interface Apartado {
   id: Id
@@ -39,9 +41,29 @@ const APARTADOS: Record<Exclude<Id, 'perfil'>, Apartado> = {
   compartida: { id: 'compartida', titulo: 'Cuenta compartida', icono: 'casa', color: COLOR.marron },
   seguridad: { id: 'seguridad', titulo: 'Contraseña y seguridad', icono: 'candado', color: COLOR.grafito },
   faceid: { id: 'faceid', titulo: 'Face ID', icono: 'cara', color: COLOR.verde },
-  apariencia: { id: 'apariencia', titulo: 'Apariencia', icono: 'luna', color: COLOR.indigo },
+  discreto: { id: 'discreto', titulo: 'Modo discreto', icono: 'ojoTachado', color: COLOR.indigo },
+  apariencia: { id: 'apariencia', titulo: 'Apariencia', icono: 'paleta', color: COLOR.azul },
+  recordatorios: { id: 'recordatorios', titulo: 'Recordatorios', icono: 'campana', color: COLOR.naranja },
   atajos: { id: 'atajos', titulo: 'Siri y Atajos', icono: 'microfono', color: COLOR.rosa },
 }
+
+/** Palabras con las que se encuentra cada apartado en el buscador de Ajustes (además del título). */
+const CLAVES: Record<Exclude<Id, 'perfil'>, string> = {
+  informe: 'pdf patrimonio imprimir',
+  exportar: 'excel xlsx csv numbers descargar tablas',
+  copias: 'copia seguridad backup json restaurar icloud',
+  partida: 'saldos iniciales inicio primer mes inversiones cuenta remunerada',
+  conceptos: 'plantilla ingresos gastos primer mes',
+  compartida: 'pareja casa compartir invitar miembros',
+  seguridad: 'contraseña verificacion dos pasos 2fa sesion cerrar',
+  faceid: 'bloqueo huella codigo bloquear',
+  discreto: 'ocultar cifras importes privacidad ojo',
+  apariencia: 'tema oscuro claro color centimos redondear verde rojo',
+  recordatorios: 'aviso cerrar mes notificacion',
+  atajos: 'siri atajos shortcuts apuntar enlace',
+}
+
+const sinTildes = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 
 /** Correo de la sesión (vacío en modo local). */
 function useEmail() {
@@ -62,6 +84,9 @@ export function AjustesPage() {
   const { datos } = useStore()
   const { activa, userId, cuentas } = useCuentas()
   const [tema, setTema] = useTema()
+  const prefs = usePreferencias()
+  const discreto = useDiscreto()
+  const [busqueda, setBusqueda] = useState('')
   const bloqueo = useBloqueo()
   const email = useEmail()
   const compartida = activa?.tipo === 'compartida'
@@ -71,7 +96,7 @@ export function AjustesPage() {
   const disponibles: Id[] = [
     'perfil', 'informe', 'exportar', 'copias', 'partida', 'conceptos',
     ...(supabase ? (['compartida', 'seguridad'] as Id[]) : []),
-    'faceid', 'apariencia', 'atajos',
+    'faceid', 'discreto', 'apariencia', 'recordatorios', 'atajos',
   ]
   if (seccion && !disponibles.includes(seccion as Id)) return <Navigate to="/ajustes" replace />
   const actual = (seccion as Id | undefined) ?? null
@@ -86,18 +111,49 @@ export function AjustesPage() {
     conceptos: String(datos.config.plantilla_ingresos.length + datos.config.plantilla_gastos.length),
     compartida: nombreCompartida ?? 'No',
     faceid: bloqueo.activo ? 'Sí' : 'No',
+    discreto: prefs.discretoAlAbrir ? 'Al abrir' : discreto ? 'Activado' : 'No',
     apariencia: NOMBRE_TEMA[tema],
+    recordatorios: prefs.recordarCierre ? 'Sí' : 'No',
+  }
+  const fechaCopia = leerFechaCopia()
+  const subs: Partial<Record<Id, string>> = {
+    copias: fechaCopia ? `Última descargada aquí: ${haceCuanto(fechaCopia)}` : 'Aún no has descargado ninguna en este dispositivo',
   }
 
   const fila = (id: Exclude<Id, 'perfil'>) => {
     if (!disponibles.includes(id)) return null
     const a = APARTADOS[id]
-    return <Fila key={id} icono={a.icono} color={a.color} titulo={a.titulo} valor={valores[id]} to={`/ajustes/${id}`} activa={actual === id} valorSoloMovil />
+    return <Fila key={id} icono={a.icono} color={a.color} titulo={a.titulo} sub={subs[id]} valor={valores[id]} to={`/ajustes/${id}`} activa={actual === id} valorSoloMovil />
   }
+
+  const q = sinTildes(busqueda.trim())
+  const encontrados = q
+    ? (Object.keys(APARTADOS) as Exclude<Id, 'perfil'>[]).filter((id) => disponibles.includes(id) && sinTildes(`${APARTADOS[id].titulo} ${CLAVES[id]}`).includes(q))
+    : []
 
   const lista = (
     <div>
-      <h1 className="mb-4 px-1 text-[34px] font-bold leading-tight tracking-tight text-slate-900 dark:text-white">Ajustes</h1>
+      <h1 className="mb-3 px-1 text-[34px] font-bold leading-tight tracking-tight text-slate-900 dark:text-white">Ajustes</h1>
+      <label className="mb-6 flex h-9 items-center gap-1.5 rounded-[10px] bg-[#e3e3e8] px-2 text-slate-500 dark:bg-[#1c1c1e] dark:text-slate-400">
+        <Icono nombre="lupa" className="h-[18px] w-[18px] shrink-0" grosor={2.2} />
+        <input
+          type="search"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          onKeyDown={(e) => e.key === 'Escape' && setBusqueda('')}
+          placeholder="Buscar"
+          aria-label="Buscar en Ajustes"
+          className="min-w-0 flex-1 bg-transparent text-[17px] text-slate-900 outline-none placeholder:text-slate-500 dark:text-white dark:placeholder:text-slate-400"
+        />
+      </label>
+      {q ? (
+        encontrados.length > 0 ? (
+          <Grupo>{encontrados.map(fila)}</Grupo>
+        ) : (
+          <p className="mb-8 px-4 py-6 text-center text-[15px] text-slate-500 dark:text-slate-400">Nada en Ajustes coincide con «{busqueda.trim()}».</p>
+        )
+      ) : (
+      <>
       <Grupo>
         <Link
           to={compartida && supabase ? '/ajustes/compartida' : '/ajustes/perfil'}
@@ -126,8 +182,10 @@ export function AjustesPage() {
       </Grupo>
       <Grupo>{fila('informe')}{fila('exportar')}{fila('copias')}</Grupo>
       <Grupo>{fila('partida')}{fila('conceptos')}{fila('compartida')}</Grupo>
-      <Grupo>{fila('seguridad')}{fila('faceid')}</Grupo>
-      <Grupo>{fila('apariencia')}{fila('atajos')}</Grupo>
+      <Grupo>{fila('seguridad')}{fila('faceid')}{fila('discreto')}</Grupo>
+      <Grupo>{fila('apariencia')}{fila('recordatorios')}{fila('atajos')}</Grupo>
+      </>
+      )}
       <p className="pb-4 text-center text-[13px] text-slate-400">Presupuesto personal</p>
     </div>
   )
@@ -144,7 +202,9 @@ export function AjustesPage() {
       {enPanel === 'compartida' && <div className="mb-8"><CuentaCompartidaCard /></div>}
       {enPanel === 'seguridad' && <SeguridadDetalle email={email} />}
       {enPanel === 'faceid' && <FaceIdDetalle bloqueo={bloqueo} />}
+      {enPanel === 'discreto' && <DiscretoDetalle />}
       {enPanel === 'apariencia' && <AparienciaDetalle tema={tema} setTema={setTema} />}
+      {enPanel === 'recordatorios' && <RecordatoriosDetalle />}
       {enPanel === 'atajos' && <div className="mb-8"><AtajosCard /></div>}
     </Detalle>
   )
@@ -317,6 +377,7 @@ function CopiasDetalle() {
   const archivo = useRef<HTMLInputElement>(null)
   const [pendiente, setPendiente] = useState<{ titulo: string; datos: Datos } | null>(null)
   const [ocupado, setOcupado] = useState(false)
+  const [ultima, setUltima] = useState(leerFechaCopia)
 
   async function confirmar() {
     if (!pendiente) return
@@ -335,8 +396,12 @@ function CopiasDetalle() {
   return (
     <>
       <Portada icono="archivo" color={COLOR.azul} titulo="Copias de seguridad" texto="Guarda de vez en cuando una copia de todo lo de esta cuenta, por ejemplo en iCloud Drive." />
-      <Grupo pie="Un archivo JSON con todo: meses, ingresos, gastos, ahorros, Te deben, viajes y ajustes.">
-        <Fila titulo="Descargar copia completa" accion="azul" onClick={() => descargar(`presupuesto-copia-${new Date().toISOString().slice(0, 10)}.json`, exportarJSON(datos), 'application/json')} />
+      <Grupo pie={<>Un archivo JSON con todo: meses, ingresos, gastos, ahorros, Te deben, viajes y ajustes. {ultima ? `La última que descargaste en este dispositivo fue ${haceCuanto(ultima)}.` : 'Todavía no has descargado ninguna en este dispositivo.'}</>}>
+        <Fila titulo="Descargar copia completa" accion="azul" onClick={() => {
+          descargar(`presupuesto-copia-${new Date().toISOString().slice(0, 10)}.json`, exportarJSON(datos), 'application/json')
+          guardarFechaCopia()
+          setUltima(new Date())
+        }} />
       </Grupo>
       <Grupo pie="Sustituye todos los datos de esta cuenta por los de un archivo de copia. Antes te pide confirmación.">
         <Fila titulo="Restaurar una copia…" accion="rojo" onClick={() => archivo.current?.click()} />
@@ -554,29 +619,131 @@ function FaceIdDetalle({ bloqueo }: { bloqueo: ReturnType<typeof useBloqueo> }) 
   )
 }
 
-// ---------------- Apariencia ----------------
-function AparienciaDetalle({ tema, setTema }: { tema: Tema; setTema: (t: Tema) => void }) {
-  // Con «Automático», se marca el modo que se está usando ahora
-  const enUso = tema === 'sistema' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'oscuro' : 'claro') : tema
+// ---------------- Modo discreto ----------------
+function DiscretoDetalle() {
+  const discreto = useDiscreto()
+  const { discretoAlAbrir } = usePreferencias()
   return (
     <>
-      <div className="mb-6 grid grid-cols-2 gap-4 rounded-[10px] bg-white px-6 py-5 dark:bg-[#1c1c1e]">
-        {(['claro', 'oscuro'] as const).map((t) => (
-          <button key={t} type="button" onClick={() => setTema(t)} className="flex flex-col items-center gap-2" aria-pressed={enUso === t}>
-            <span className={cx('flex h-28 w-16 flex-col gap-1.5 rounded-xl border-2 p-2', t === 'claro' ? 'bg-slate-100' : 'bg-slate-900', enUso === t ? 'border-[#007AFF]' : 'border-transparent')}>
-              <span className={cx('h-2 w-8 rounded', t === 'claro' ? 'bg-slate-300' : 'bg-slate-600')} />
-              <span className={cx('h-6 rounded', t === 'claro' ? 'bg-white' : 'bg-slate-700')} />
-              <span className={cx('h-6 rounded', t === 'claro' ? 'bg-white' : 'bg-slate-700')} />
+      <Grupo pie="Cambia los importes por •••• € en pantalla. También puedes activarlo o quitarlo con el ojo de la parte de arriba.">
+        <Fila icono="ojoTachado" color={COLOR.indigo} titulo="Ocultar cifras" derecha={<Interruptor etiqueta="Ocultar cifras" activo={discreto} onCambio={setDiscreto} />} />
+      </Grupo>
+      <Grupo pie="Cada vez que abras la app, empezará con las cifras ocultas. Útil si la abres delante de otras personas. Es para este dispositivo.">
+        <Fila titulo="Ocultar al abrir la app" derecha={<Interruptor etiqueta="Ocultar al abrir la app" activo={discretoAlAbrir} onCambio={(v) => setPreferencias({ discretoAlAbrir: v })} />} />
+      </Grupo>
+      <Grupo titulo="Privacidad">
+        <FilaLibre>Solo afecta a lo que se ve en pantalla. El informe PDF, las exportaciones y las copias llevan siempre los importes reales.</FilaLibre>
+      </Grupo>
+    </>
+  )
+}
+
+// ---------------- Recordatorios ----------------
+function RecordatoriosDetalle() {
+  const { datos } = useStore()
+  const { recordarCierre } = usePreferencias()
+  const abiertos = mesesSinCerrar(datos.months)
+  return (
+    <>
+      <Grupo pie="Si un mes ya ha terminado y sigue abierto, Inicio te lo recuerda con un aviso hasta que lo cierres.">
+        <Fila icono="campana" color={COLOR.naranja} titulo="Recordar cerrar el mes" derecha={<Interruptor etiqueta="Recordar cerrar el mes" activo={recordarCierre} onCambio={(v) => setPreferencias({ recordarCierre: v })} />} />
+      </Grupo>
+      <Grupo titulo="Ahora mismo">
+        {abiertos.length === 0 ? (
+          <FilaLibre>No tienes meses pasados sin cerrar.</FilaLibre>
+        ) : (
+          abiertos.map((f) => <Fila key={f} titulo={nombreMes(f).replace('-', ' ')} valor="Abierto" to={`/mes/${f.slice(0, 7)}`} />)
+        )}
+      </Grupo>
+    </>
+  )
+}
+
+// ---------------- Apariencia ----------------
+function MiniPantalla({ modo }: { modo: 'claro' | 'oscuro' }) {
+  const claro = modo === 'claro'
+  return (
+    <span className={cx('flex flex-1 flex-col gap-1.5 px-2 pt-3', claro ? 'bg-[#f2f2f7]' : 'bg-black')}>
+      <span className={cx('h-2 w-3/5 rounded-sm', claro ? 'bg-slate-800' : 'bg-slate-200')} />
+      <span className={cx('h-7 rounded', claro ? 'bg-white' : 'bg-[#2c2c2e]')} />
+      <span className={cx('h-5 rounded', claro ? 'bg-white' : 'bg-[#2c2c2e]')} />
+      <span className={cx('h-5 rounded', claro ? 'bg-white' : 'bg-[#2c2c2e]')} />
+    </span>
+  )
+}
+
+const Marcado = ({ si }: { si: boolean }) => (
+  <span className={cx('flex h-[22px] w-[22px] items-center justify-center rounded-full border', si ? 'border-[#007AFF] bg-[#007AFF] text-white dark:border-[#0A84FF] dark:bg-[#0A84FF]' : 'border-slate-300 dark:border-slate-600')}>
+    {si && <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={3.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="m5 12.5 4.5 4.5L19 7" /></svg>}
+  </span>
+)
+
+function AparienciaDetalle({ tema, setTema }: { tema: Tema; setTema: (t: Tema) => void }) {
+  const prefs = usePreferencias()
+  const opciones: { t: Tema; pantalla: ReactNode }[] = [
+    { t: 'claro', pantalla: <MiniPantalla modo="claro" /> },
+    { t: 'oscuro', pantalla: <MiniPantalla modo="oscuro" /> },
+    { t: 'sistema', pantalla: <><MiniPantalla modo="claro" /><MiniPantalla modo="oscuro" /></> },
+  ]
+  return (
+    <>
+      <Grupo titulo="Tema" pie="Automático sigue el modo claro u oscuro del dispositivo.">
+        <div className="grid grid-cols-3 gap-2 px-3 py-5">
+          {opciones.map(({ t, pantalla }) => (
+            <button key={t} type="button" onClick={() => setTema(t)} aria-pressed={tema === t} className="flex flex-col items-center gap-2.5">
+              <span className={cx('flex h-[132px] w-[72px] overflow-hidden rounded-[14px] border', tema === t ? 'border-[#007AFF] ring-2 ring-[#007AFF]/40' : 'border-slate-300 dark:border-slate-600')}>{pantalla}</span>
+              <span className="text-[15px] text-slate-900 dark:text-slate-100">{NOMBRE_TEMA[t]}</span>
+              <Marcado si={tema === t} />
+            </button>
+          ))}
+        </div>
+      </Grupo>
+
+      <Grupo titulo="Color de la app" pie="Se usa en botones, enlaces y en la pestaña elegida. Es para este dispositivo.">
+        <div className="flex flex-wrap gap-4 px-4 py-3.5" role="radiogroup" aria-label="Color de la app">
+          {ACENTOS.map((a) => (
+            <button
+              key={a.id}
+              type="button"
+              role="radio"
+              aria-checked={prefs.acento === a.id}
+              aria-label={a.nombre}
+              title={a.nombre}
+              onClick={() => setPreferencias({ acento: a.id })}
+              className={cx('h-11 w-11 rounded-full border-[3px] border-white dark:border-[#1c1c1e]', prefs.acento === a.id && 'ring-2')}
+              style={{ backgroundColor: a.color, ['--tw-ring-color' as string]: a.color }}
+            />
+          ))}
+        </div>
+      </Grupo>
+
+      <Grupo titulo="Cifras">
+        <div className="ios-fila">
+          <div className="ios-sep ml-4 flex min-h-[52px] items-center gap-3 pr-4">
+            <span className="flex-1 text-[17px] text-slate-900 dark:text-slate-100">Céntimos</span>
+            <span role="radiogroup" aria-label="Céntimos" className="flex rounded-[9px] bg-[#eeeef0] p-0.5 dark:bg-[#2c2c2e]">
+              {([[false, 'Mostrar'], [true, 'Redondear']] as const).map(([v, txt]) => (
+                <button
+                  key={txt}
+                  type="button"
+                  role="radio"
+                  aria-checked={prefs.redondear === v}
+                  onClick={() => setPreferencias({ redondear: v })}
+                  className={cx('rounded-[7px] px-3.5 py-1.5 text-[13px] font-medium text-slate-900 dark:text-white', prefs.redondear === v && 'bg-white shadow-sm dark:bg-[#636366]')}
+                >
+                  {txt}
+                </button>
+              ))}
             </span>
-            <span className="text-[15px] text-slate-900 dark:text-slate-100">{NOMBRE_TEMA[t]}</span>
-            <span className={cx('flex h-5 w-5 items-center justify-center rounded-full border', enUso === t ? 'border-[#007AFF] bg-[#007AFF] text-white' : 'border-slate-300 dark:border-slate-600')}>
-              {enUso === t && <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={3.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="m5 12.5 4.5 4.5L19 7" /></svg>}
-            </span>
-          </button>
-        ))}
-      </div>
-      <Grupo pie="Cambia entre claro y oscuro según el modo de tu dispositivo.">
-        <Fila titulo="Automático" derecha={<Interruptor etiqueta="Apariencia automática" activo={tema === 'sistema'} onCambio={(v) => setTema(v ? 'sistema' : document.documentElement.classList.contains('dark') ? 'oscuro' : 'claro')} />} />
+          </div>
+        </div>
+        <Fila titulo="Saldos positivos en verde" derecha={<Interruptor etiqueta="Saldos positivos en verde" activo={prefs.positivosVerde} onCambio={(v) => setPreferencias({ positivosVerde: v })} />} />
+        <Fila titulo="Negativos en rojo" derecha={<Interruptor etiqueta="Negativos en rojo" activo={prefs.negativosRojo} onCambio={(v) => setPreferencias({ negativosRojo: v })} />} />
+      </Grupo>
+
+      <Grupo titulo="Vista previa" pie="Así se ven los importes en la app. El PDF y las exportaciones siempre llevan céntimos.">
+        <Fila titulo="Ahorro del mes" derecha={<Dinero c={93760} verde dash={false} className="text-[17px]" />} />
+        <Fila titulo="Saldo en negativo" derecha={<Dinero c={-8437} dash={false} className="text-[17px]" />} />
       </Grupo>
     </>
   )

@@ -27,8 +27,38 @@
   --series-3: #199e70;
 }
 
+/* Fondo gris de iOS en toda la app; las tarjetas y listas van en blanco encima */
 body {
-  @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 antialiased;
+  @apply bg-[#f2f2f7] text-slate-900 dark:bg-black dark:text-slate-100 antialiased;
+}
+
+/*
+ * Color de la app (Ajustes › Apariencia). «Marino» es el de siempre; los demás sustituyen el marino
+ * y la gama «sky» que usa el modo oscuro, así toda la app cambia a la vez.
+ */
+:root[data-acento='verde'] {
+  --color-marino: #1d7a45; --color-marino-claro: #23924f;
+  --color-sky-50: #ecf7f0; --color-sky-100: #d3eedd; --color-sky-200: #a9dcbc; --color-sky-300: #74c394;
+  --color-sky-400: #45a56f; --color-sky-500: #2a8a55; --color-sky-600: #23824c; --color-sky-700: #1d6b3e;
+  --color-sky-800: #185634; --color-sky-900: #12432a; --color-sky-950: #0a2818;
+}
+:root[data-acento='grafito'] {
+  --color-marino: #3a3a3c; --color-marino-claro: #55575e;
+  --color-sky-50: #f5f5f6; --color-sky-100: #e7e7ea; --color-sky-200: #cfd0d4; --color-sky-300: #b3b4ba;
+  --color-sky-400: #8e9098; --color-sky-500: #6b6d75; --color-sky-600: #55575e; --color-sky-700: #44464c;
+  --color-sky-800: #36373c; --color-sky-900: #2a2b2f; --color-sky-950: #18181b;
+}
+:root[data-acento='ciruela'] {
+  --color-marino: #7a2e5c; --color-marino-claro: #933766;
+  --color-sky-50: #fbf1f6; --color-sky-100: #f5dcea; --color-sky-200: #ebb9d4; --color-sky-300: #dc8eb8;
+  --color-sky-400: #c76398; --color-sky-500: #ad467d; --color-sky-600: #933766; --color-sky-700: #7a2e5c;
+  --color-sky-800: #63264b; --color-sky-900: #4d1e3b; --color-sky-950: #2e1123;
+}
+:root[data-acento='teja'] {
+  --color-marino: #a94a1f; --color-marino-claro: #c65a2b;
+  --color-sky-50: #fdf3ee; --color-sky-100: #f9e1d4; --color-sky-200: #f2c0a6; --color-sky-300: #e99772;
+  --color-sky-400: #db7346; --color-sky-500: #c65a2b; --color-sky-600: #a94a1f; --color-sky-700: #8c3d1a;
+  --color-sky-800: #723317; --color-sky-900: #5a2913; --color-sky-950: #34170a;
 }
 
 .num { font-variant-numeric: tabular-nums; }

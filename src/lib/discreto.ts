@@ -2,6 +2,7 @@
 // se guarda en el navegador y no afecta a los datos ni a las exportaciones.
 import { useCallback, useSyncExternalStore } from 'react'
 import { formatEUR, type Cents } from './money'
+import { leerPreferencias, usePreferencias } from './preferencias'
 
 const CLAVE = 'presupuesto-discreto'
 const oyentes = new Set<() => void>()
@@ -14,7 +15,8 @@ function leer(): boolean {
   }
 }
 
-let activo = leer()
+// Con «Ocultar al abrir», cada vez que se abre la app empieza con las cifras ocultas
+let activo = leer() || leerPreferencias().discretoAlAbrir
 
 export function setDiscreto(v: boolean) {
   activo = v
@@ -41,8 +43,9 @@ export const OCULTO = '•••• €'
 /** Como formatEUR, pero respeta el modo discreto. Solo para pantalla (nunca para exportar). */
 export function useEur() {
   const d = useDiscreto()
+  const { redondear } = usePreferencias()
   return useCallback(
-    (c: Cents, opts?: { dash?: boolean }) => (d ? OCULTO : formatEUR(c, opts)),
-    [d],
+    (c: Cents, opts?: { dash?: boolean }) => (d ? OCULTO : formatEUR(c, { ...opts, redondear })),
+    [d, redondear],
   )
 }
