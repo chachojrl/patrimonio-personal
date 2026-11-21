@@ -8,6 +8,7 @@ import { descargar, exportarJSON } from '../lib/exportar'
 import { mesesOrdenados } from '../lib/operaciones'
 import { nombreMes } from '../lib/fechas'
 import type { Cuenta } from '../lib/tipos'
+import { COLOR, Fila, Grupo } from './ios'
 
 /** En Ajustes: crear la cuenta compartida (desde la personal) o configurarla (dentro de ella). */
 export function CuentaCompartidaCard() {
@@ -23,30 +24,58 @@ export function CuentaCompartidaCard() {
       </Card>
     )
   }
-  return activa.tipo === 'compartida' ? <Configurar cuenta={activa} /> : <Crear />
+  const compartidas = cuentas.filter((c) => c.tipo === 'compartida')
+  return (
+    <>
+      {compartidas.length > 0 && <ListaCompartidas compartidas={compartidas} />}
+      {activa.tipo === 'compartida' && <div className="mb-8"><Configurar cuenta={activa} /></div>}
+      <Crear hayOtras={compartidas.length > 0} />
+    </>
+  )
 }
 
-function Crear() {
-  const { cuentas, cambiar, recargarCuentas, userId } = useCuentas()
+/** Con quién compartes una cuenta: «Ana y Luis», o quién falta por entrar. */
+export function conQuien(cuenta: Cuenta, userId: string | null): { con: string; pendientes: string[] } {
+  const otros = cuenta.miembros.filter((m) => !userId || m.user_id !== userId)
+  const nombres = otros.map(nombreMiembro)
+  const con = nombres.length === 0 ? 'Solo tú por ahora' : `Con ${nombres.length === 1 ? nombres[0] : `${nombres.slice(0, -1).join(', ')} y ${nombres.at(-1)}`}`
+  return { con, pendientes: otros.filter((m) => !m.user_id).map(nombreMiembro) }
+}
+
+/** Todas las cuentas compartidas del usuario, con quién las comparte. Al tocar una, se abre. */
+function ListaCompartidas({ compartidas }: { compartidas: Cuenta[] }) {
+  const { activa, cambiar, userId } = useCuentas()
+  return (
+    <Grupo
+      titulo={compartidas.length === 1 ? 'Tu cuenta compartida' : `Tus cuentas compartidas · ${compartidas.length}`}
+      pie="Toca una para abrirla. Lo que apuntas en tu cuenta personal no lo ve nadie más."
+    >
+      {compartidas.map((c) => {
+        const { con, pendientes } = conQuien(c, userId)
+        const abierta = activa?.id === c.id
+        return (
+          <Fila
+            key={c.id}
+            icono="casa"
+            color={COLOR.marron}
+            titulo={c.nombre}
+            sub={pendientes.length ? `${con} · ${pendientes.join(', ')} aún no ${pendientes.length === 1 ? 'ha' : 'han'} entrado` : con}
+            valor={abierta ? 'Abierta' : undefined}
+            onClick={abierta ? undefined : () => cambiar(c.id)}
+          />
+        )
+      })}
+    </Grupo>
+  )
+}
+
+function Crear({ hayOtras }: { hayOtras: boolean }) {
+  const { recargarCuentas } = useCuentas()
   const { avisar } = useStore()
-  const existente = cuentas?.find((c) => c.tipo === 'compartida')
   const [abierto, setAbierto] = useState(false)
-  const [f, setF] = useState({ nombre: 'Casa', miNombre: '', emailPareja: '', nombrePareja: '' })
+  const [f, setF] = useState({ nombre: hayOtras ? '' : 'Casa', miNombre: '', emailPareja: '', nombrePareja: '' })
   const [error, setError] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
-
-  if (existente) {
-    const otros = existente.miembros.filter((m) => m.user_id !== userId)
-    return (
-      <Card titulo="Cuenta compartida">
-        <p className="mb-3 text-sm text-slate-600 dark:text-slate-300">
-          Tienes la cuenta compartida <strong>«{existente.nombre}»</strong>
-          {otros.length > 0 && <> con {otros.map(nombreMiembro).join(', ')}</>}. Lo que apuntas en tu cuenta personal no lo ve nadie más.
-        </p>
-        <Boton variante="primario" onClick={() => cambiar(existente.id)}>🏠 Abrir «{existente.nombre}»</Boton>
-      </Card>
-    )
-  }
 
   async function crear(e: FormEvent) {
     e.preventDefault()
@@ -55,7 +84,8 @@ function Crear() {
     try {
       await crearCuentaCompartida(supabase!, f)
       await recargarCuentas()
-      avisar({ texto: `Cuenta «${f.nombre}» creada. Cámbiate a ella con el selector de arriba.` })
+      avisar({ texto: `Cuenta «${f.nombre}» creada. Ábrela desde la lista de cuentas compartidas.` })
+      setAbierto(false)
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -64,13 +94,14 @@ function Crear() {
   }
 
   return (
-    <Card titulo="Cuenta compartida (opcional)">
+    <Card titulo={hayOtras ? 'Nueva cuenta compartida' : 'Cuenta compartida (opcional)'}>
       <p className="text-sm text-slate-600 dark:text-slate-300">
-        Una cuenta para los gastos comunes (casa, wifi, supermercado…) que veis los dos, cada uno con su usuario.
-        Vuestras cuentas personales siguen siendo privadas. Mientras no la crees, nada cambia.
+        {hayOtras
+          ? 'Puedes tener varias: por ejemplo, una para la casa y otra para un piso compartido o con tu familia. Cada una con sus propios meses.'
+          : 'Una cuenta para los gastos comunes (casa, wifi, supermercado…) que veis los dos, cada uno con su usuario. Vuestras cuentas personales siguen siendo privadas. Mientras no la crees, nada cambia.'}
       </p>
       {!abierto ? (
-        <Boton className="mt-3" onClick={() => setAbierto(true)}>＋ Crear cuenta compartida</Boton>
+        <Boton className="mt-3" onClick={() => setAbierto(true)}>＋ {hayOtras ? 'Crear otra cuenta compartida' : 'Crear cuenta compartida'}</Boton>
       ) : (
         <form onSubmit={crear} className="mt-3 space-y-3">
           <Campo etiqueta="Nombre de la cuenta" valor={f.nombre} onCambio={(v) => setF({ ...f, nombre: v })} placeholder="Casa" />
@@ -130,7 +161,7 @@ function Configurar({ cuenta }: { cuenta: Cuenta }) {
   const totalAport = aportaciones.reduce((a, i) => a + i.importe, 0)
 
   return (
-    <Card titulo="Cuenta compartida">
+    <Card titulo={`Ajustes de «${cuenta.nombre}»`}>
       <div className="space-y-4">
         <label className="block">
           <span className="text-sm font-medium">Nombre de la cuenta</span>
