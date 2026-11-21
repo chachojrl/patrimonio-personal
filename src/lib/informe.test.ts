@@ -78,3 +78,42 @@ describe('Informe PDF: utilidades', () => {
     expect(nombreArchivoInforme('Cuenta común 🏠', new Date('2026-11-20T10:00:00Z'))).toBe('informe-cuenta-comun-2026-11-20.pdf')
   })
 })
+
+describe('Informe PDF: periodo', () => {
+  const d = datosIniciales()
+  const c = calcular(d)
+  const [oct, nov] = c.meses
+
+  it('de mes a mes: solo entran esos meses y las cifras son las del final del periodo', () => {
+    const inf = datosInforme(d, c, { cuenta: 'x', compartida: false, periodo: { desde: '2026-11-01', hasta: '2026-11-01' } })
+    expect(inf.meses.map((m) => m.mes.fecha)).toEqual(['2026-11-01'])
+    expect(inf.kpis.ingresos).toBe(nov.ingresosTotales)
+    expect(inf.kpis.gastos).toBe(nov.gastosTotales)
+    expect(inf.kpis.dineroTotal).toBe(nov.dineroTotal)
+    expect(inf.kpis.variacion).toBe(nov.dineroTotal - oct.dineroTotal)
+    expect(inf.gastosPorConcepto.reduce((a, g) => a + g.total, 0)).toBe(nov.gastosTotales)
+    expect(inf.anios.map((a) => a.total.ingresos)).toEqual([nov.ingresosTotales])
+    expect(inf.periodo).toBe('noviembre 2026 – noviembre 2026')
+  })
+
+  it('un año entero, y un periodo sin meses', () => {
+    const anio = datosInforme(d, c, { cuenta: 'x', compartida: false, periodo: { desde: '2026-01-01', hasta: '2026-12-01' } })
+    expect(anio.periodo).toBe('Año 2026')
+    expect(anio.kpis.ingresos).toBe(oct.ingresosTotales + nov.ingresosTotales)
+    const vacio = datosInforme(d, c, { cuenta: 'x', compartida: false, periodo: { desde: '2024-01-01', hasta: '2024-12-01' } })
+    expect(vacio.meses).toEqual([])
+  })
+
+  it('«todo» es lo de siempre', () => {
+    const todo = datosInforme(d, c, { cuenta: 'x', compartida: false })
+    expect(todo.periodo).toBe('Todo')
+    expect(todo.kpis.dineroTotal).toBe(c.kpis.dineroTotalActual)
+  })
+
+  it('el nombre del archivo lleva el periodo', () => {
+    const f = new Date('2026-11-21T10:00:00Z')
+    expect(nombreArchivoInforme('Mi cuenta', f, { desde: '2026-01-01', hasta: '2026-12-01' })).toBe('informe-mi-cuenta-2026-2026-11-21.pdf')
+    expect(nombreArchivoInforme('Mi cuenta', f, { desde: '2025-11-01', hasta: '2026-12-01' })).toBe('informe-mi-cuenta-2025-11_2026-12-2026-11-21.pdf')
+    expect(nombreArchivoInforme('Mi cuenta', f)).toBe('informe-mi-cuenta-2026-11-21.pdf')
+  })
+})

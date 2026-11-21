@@ -14,7 +14,7 @@ import { descargar, exportarCSV, exportarExcel, exportarJSON, importarJSON } fro
 import { FormularioContrasena } from '../components/FormularioContrasena'
 import { CuentaCompartidaCard, conQuien } from '../components/CuentaCompartidaCard'
 import { AtajosCard } from '../components/AtajosCard'
-import { guardarNombreLocal, leerNombreLocal, useInformePdf } from '../components/InformePdfBoton'
+import { SelectorPeriodo, guardarNombreLocal, leerNombreLocal, useInformePdf, useSelectorPeriodo } from '../components/InformePdfBoton'
 import { useBloqueo } from '../components/useBloqueo'
 import { bloquearAhora } from '../components/Bloqueo'
 import { MINUTOS_EN_SEGUNDO_PLANO } from '../lib/bloqueo'
@@ -351,6 +351,7 @@ function PerfilDetalle({ email }: { email: string }) {
 // ---------------- Informe PDF ----------------
 function InformeDetalle() {
   const { generar, ocupado, compartida, activa, nombrePorDefecto, meses } = useInformePdf()
+  const periodo = useSelectorPeriodo()
   const [nombre, setNombre] = useState(nombrePorDefecto)
   useEffect(() => setNombre(nombrePorDefecto), [nombrePorDefecto])
   const incluye = [
@@ -367,7 +368,7 @@ function InformeDetalle() {
         icono="documento"
         color={COLOR.naranja}
         titulo="Informe de patrimonio"
-        texto={<>Un PDF con todo lo apuntado hasta hoy en {compartida ? <>«{activa?.nombre}»</> : 'tu cuenta'}{meses ? ` (${meses} ${meses === 1 ? 'mes' : 'meses'})` : ''}.</>}
+        texto={<>Un PDF con lo apuntado en {compartida ? <>«{activa?.nombre}»</> : 'tu cuenta'}: de todo{meses ? ` (${meses} ${meses === 1 ? 'mes' : 'meses'})` : ''}, de un año o de los meses que elijas.</>}
       />
       <Grupo
         titulo="Portada"
@@ -377,12 +378,20 @@ function InformeDetalle() {
           <input className={claseCampoIos} placeholder="Tu nombre" maxLength={60} value={nombre} onChange={(e) => setNombre(e.target.value)} />
         </FilaCampo>
       </Grupo>
+      <Grupo
+        titulo="Periodo"
+        pie={periodo.error ?? (periodo.meses === 0
+          ? 'No hay meses apuntados en ese periodo.'
+          : `Entran ${periodo.meses} ${periodo.meses === 1 ? 'mes' : 'meses'}. Las cifras de la portada son las del final del periodo.`)}
+      >
+        <SelectorPeriodo s={periodo} />
+      </Grupo>
       <Grupo titulo="Incluye">
         {incluye.map((t) => (
           <Fila key={t} titulo={<span className="text-[15px]">{t}</span>} derecha={<Icono nombre="check" className="h-5 w-5 text-[#34C759]" grosor={2.4} />} />
         ))}
       </Grupo>
-      <BotonGrande onClick={() => generar(nombre)} disabled={ocupado}>{ocupado ? 'Generando…' : 'Generar PDF'}</BotonGrande>
+      <BotonGrande onClick={() => generar(nombre, periodo.periodo)} disabled={ocupado || !!periodo.error || periodo.meses === 0}>{ocupado ? 'Generando…' : 'Generar PDF'}</BotonGrande>
       <p className="-mt-5 mb-8 px-4 text-center text-[13px] text-slate-500">Se genera en este dispositivo. No se envía a ningún sitio.</p>
     </>
   )

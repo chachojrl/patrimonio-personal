@@ -2,7 +2,7 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useStore } from '../data/store'
 import { BotonDiscreto, cx } from './ui'
 import { ultimoMes } from '../lib/operaciones'
-import { useCallback, useEffect, useState } from 'react'
+import { Suspense, useCallback, useEffect, useState } from 'react'
 import { Icono, type NombreIcono } from './ios'
 import { PanelApuntar } from './PanelApuntar'
 import { CLAVE_AVISO, nombreMiembro, useCuentas } from '../data/cuentas'
@@ -53,6 +53,15 @@ function AvisoCompartida() {
     <div className="bg-sky-50 px-4 py-2 text-center text-xs text-sky-900 dark:bg-sky-950/50 dark:text-sky-200">
       Cuenta compartida{otros.length ? ` con ${otros.map(nombreMiembro).join(', ')}` : ''}: lo que hay aquí lo veis {otros.length > 1 ? 'todos' : 'los dos'}.
       {pendiente && ' (Aún no ha entrado en la app.)'}
+    </div>
+  )
+}
+
+/** Mientras se descarga una pantalla por primera vez (suele ser un instante). */
+function CargandoPantalla() {
+  return (
+    <div className="flex min-h-[40vh] items-center justify-center" role="status" aria-label="Cargando">
+      <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-marino motion-reduce:animate-none dark:border-slate-600 dark:border-t-sky-300" />
     </div>
   )
 }
@@ -121,6 +130,7 @@ export function Layout() {
     { to: '/buscar', txt: 'Buscar', icono: 'lupa' },
     { to: '/viajes', txt: 'Viajes', icono: 'avion' },
     { to: '/te-deben', txt: 'Te deben', icono: 'billete' },
+    { to: '/permitir', txt: '¿Me lo puedo permitir?', icono: 'balanza' },
     { to: '/actividad', txt: 'Actividad', icono: 'reloj' },
   ]
   // Móvil: Inicio, Mes, Apuntar, Resumen y «Más» (el resto, en una hoja que sube desde abajo)
@@ -207,7 +217,9 @@ export function Layout() {
       )}
 
       <main className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6">
-        <Outlet />
+        <Suspense fallback={<CargandoPantalla />}>
+          <Outlet />
+        </Suspense>
       </main>
 
       {/* Navegación inferior (móvil) */}

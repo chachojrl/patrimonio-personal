@@ -267,9 +267,10 @@ export async function generarInformePdf(inf: DatosInforme, d: Datos): Promise<Bl
   const k = inf.kpis
   const meses = inf.meses
   const etiquetas = meses.map((m) => mesCorto(m.mes.fecha))
+  const conPeriodo = inf.periodo !== 'Todo'
   const periodo = inf.desde && inf.hasta
-    ? `${nombreMes(inf.desde)} – ${nombreMes(inf.hasta)} · ${meses.length} ${meses.length === 1 ? 'mes' : 'meses'}`
-    : 'Todavía no hay ningún mes'
+    ? `${conPeriodo ? inf.periodo.charAt(0).toUpperCase() + inf.periodo.slice(1) : `${nombreMes(inf.desde)} – ${nombreMes(inf.hasta)}`} · ${meses.length} ${meses.length === 1 ? 'mes' : 'meses'}${conPeriodo ? ' con datos' : ''}`
+    : conPeriodo ? `${inf.periodo} · no hay meses en este periodo` : 'Todavía no hay ningún mes'
 
   // ================= PORTADA =================
   relleno(C.marino)
@@ -293,7 +294,7 @@ export async function generarInformePdf(inf: DatosInforme, d: Datos): Promise<Bl
   y = 74
 
   // Dinero total (destacado)
-  tarjeta(M, y, W, 24, 'Dinero total actual', eur(k.dineroTotal), { grande: true, acento: C.marino })
+  tarjeta(M, y, W, 24, conPeriodo ? 'Dinero total al final del periodo' : 'Dinero total actual', eur(k.dineroTotal), { grande: true, acento: C.marino })
   y += 29
 
   type Carta = [string, string, { sub?: string; subColor?: RGB; acento?: RGB }]
@@ -515,7 +516,10 @@ export async function generarInformePdf(inf: DatosInforme, d: Datos): Promise<Bl
   return doc.output('blob')
 }
 
-export function nombreArchivoInforme(cuenta: string, fecha = new Date()): string {
+export function nombreArchivoInforme(cuenta: string, fecha = new Date(), periodo?: { desde: string; hasta: string } | null): string {
+  const tramo = !periodo ? '' : periodo.desde.slice(0, 4) === periodo.hasta.slice(0, 4) && periodo.desde.slice(5, 7) === '01' && periodo.hasta.slice(5, 7) === '12'
+    ? `-${periodo.desde.slice(0, 4)}`
+    : `-${periodo.desde.slice(0, 7)}_${periodo.hasta.slice(0, 7)}`
   const slug = cuenta.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '').toLowerCase() || 'cuenta'
-  return `informe-${slug}-${fecha.toISOString().slice(0, 10)}.pdf`
+  return `informe-${slug}${tramo}-${fecha.toISOString().slice(0, 10)}.pdf`
 }

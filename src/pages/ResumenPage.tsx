@@ -5,6 +5,7 @@ import { BarrasDineroAnual, type PuntoDinero } from '../components/Graficos'
 import { aniosConMeses, resumenAnual } from '../lib/calculos'
 import { MESES, MESES_CORTOS } from '../lib/fechas'
 import { formatPct } from '../lib/money'
+import { Icono } from '../components/ios'
 
 export function ResumenPage() {
   const { anio: anioParam } = useParams()
@@ -46,6 +47,20 @@ export function ResumenPage() {
           </div>
         )}
       </div>
+
+      {anios.includes(anio) && (
+        <Link
+          to={`/anio/${anio}`}
+          className="flex items-center gap-3 rounded-xl bg-marino px-4 py-3.5 text-white active:opacity-90 dark:bg-sky-800"
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/15"><Icono nombre="estrella" className="h-6 w-6" /></span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[17px] font-semibold">Tu {anio} en cifras</span>
+            <span className="block text-[13px] opacity-80">Tu año resumido en unas pocas pantallas, para ver o compartir</span>
+          </span>
+          <Icono nombre="siguiente" className="h-5 w-5 shrink-0 opacity-80" grosor={2.2} />
+        </Link>
+      )}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi titulo="Ingresos del año" valor={r.total.ingresos} grande />

@@ -6,6 +6,7 @@ import { CrearMesBoton } from '../components/CrearMes'
 import { FilaInversiones } from '../components/InversionesKpi'
 import { Icono } from '../components/ios'
 import { usePreferencias, mesesSinCerrar } from '../lib/preferencias'
+import { anioParaAviso } from '../lib/anioEnCifras'
 import { OCULTO, useDiscreto } from '../lib/discreto'
 import { formatEUR, type Cents } from '../lib/money'
 import { MESES, MESES_CORTOS } from '../lib/fechas'
@@ -83,6 +84,7 @@ export function InicioPage() {
   const anterior = calc.meses.at(-2)
   const variacion = ultimo && anterior ? ultimo.dineroTotal - anterior.dineroTotal : null
   const serie = calc.meses.slice(-12)
+  const anioAviso = anioParaAviso()
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -101,6 +103,17 @@ export function InicioPage() {
             <span className="block text-[13px] text-slate-500 dark:text-slate-400">Ciérralo cuando tengas todo apuntado. Puedes quitar este aviso en Ajustes.</span>
           </span>
           <Chevron />
+        </Link>
+      )}
+
+      {anioAviso !== null && anios.includes(anioAviso) && (
+        <Link to={`/anio/${anioAviso}`} className="flex items-center gap-3 rounded-xl bg-marino px-4 py-3 text-white active:opacity-90 dark:bg-sky-800">
+          <span className="flex h-[29px] w-[29px] shrink-0 items-center justify-center rounded-[7px] bg-white/15"><Icono nombre="estrella" className="h-[18px] w-[18px]" /></span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-semibold">Ya está tu {anioAviso} en cifras</span>
+            <span className="block text-[13px] opacity-80">Tu año resumido en unas pocas pantallas</span>
+          </span>
+          <Icono nombre="siguiente" className="h-5 w-5 shrink-0 opacity-80" grosor={2.2} />
         </Link>
       )}
 
