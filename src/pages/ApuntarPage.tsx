@@ -82,7 +82,7 @@ function Apuntar() {
 
   if (hecho) {
     return (
-      <Card titulo={hecho.deshecho ? 'Deshecho' : '✓ Apuntado'}>
+      <Card titulo={hecho.deshecho ? 'Deshecho' : 'Apuntado'}>
         <p className="text-lg">
           {hecho.deshecho ? 'No se ha apuntado nada.' : <>{eur(hecho.importe, { dash: false })} en <strong>{hecho.gasto.concepto}</strong> ({nombreMes(mes.fecha)}).</>}
         </p>

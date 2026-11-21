@@ -6,6 +6,7 @@ import { useEur } from '../lib/discreto'
 import { formatFecha, hoyISO } from '../lib/fechas'
 import { uid } from '../lib/operaciones'
 import type { Deuda } from '../lib/tipos'
+import { Icono } from '../components/ios'
 
 /** Dinero que te deben: no entra en los meses ni en el dinero total. */
 export function TeDebenPage() {
@@ -44,7 +45,7 @@ export function TeDebenPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold text-marino dark:text-sky-300">Te deben</h1>
+      <h1 className="text-[34px] font-bold leading-tight tracking-tight text-slate-900 dark:text-white">Te deben</h1>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi titulo="Te deben en total" valor={total} grande />
@@ -55,16 +56,16 @@ export function TeDebenPage() {
 
       {grupos.length === 0 ? (
         <Card>
-          <p className="text-sm text-slate-600 dark:text-slate-300">Nadie te debe nada. 🎉</p>
+          <p className="text-sm text-slate-600 dark:text-slate-300">Nadie te debe nada.</p>
         </Card>
       ) : (
         grupos.map((g) => (
           <Card
             key={g.persona}
             titulo={<>{g.persona} · <Dinero c={g.total} dash={false} /></>}
-            accion={<Boton variante="secundario" className="text-xs" onClick={() => devolver(g.filas)}>✓ {g.filas.length > 1 ? 'Todo devuelto' : 'Devuelto'}</Boton>}
+            accion={<Boton variante="secundario" className="text-xs" onClick={() => devolver(g.filas)}><Icono nombre="check" className="h-4 w-4" grosor={2.4} />{g.filas.length > 1 ? 'Todo devuelto' : 'Devuelto'}</Boton>}
           >
-            <div className="hidden grid-cols-[1fr_1fr_8.5rem_8rem_5.5rem] gap-x-1 px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500 sm:grid">
+            <div className="hidden grid-cols-[1fr_1fr_8.5rem_8rem_5.5rem] gap-x-1 px-2 pb-1 text-[13px] text-slate-500 dark:text-slate-400 sm:grid">
               <span>Persona</span><span>Concepto</span><span>Fecha</span><span className="text-right">Importe</span><span />
             </div>
             {g.filas.map((x) => (
@@ -73,8 +74,8 @@ export function TeDebenPage() {
                 <CeldaImporte ariaLabel={`Importe que te debe ${x.persona}`} valor={x.importe} onCambio={(v) => actualizar('debts', x.id, { importe: v ?? 0 })} className="sm:order-4" />
                 <CeldaTexto ariaLabel="Concepto" valor={x.concepto} placeholder="Concepto" onCambio={(v) => actualizar('debts', x.id, { concepto: v })} className="text-sm text-slate-600 dark:text-slate-300 sm:order-2 sm:text-base sm:text-inherit" />
                 <div className="flex items-center justify-end gap-1 sm:order-5">
-                  <button type="button" title="Marcar como devuelto" aria-label={`Marcar como devuelto: ${x.concepto || x.persona}`} onClick={() => devolver([x])} className="flex h-8 w-8 items-center justify-center rounded-md text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40">✓</button>
-                  <button type="button" title="Borrar" aria-label={`Borrar: ${x.concepto || x.persona}`} onClick={() => quitar(x)} className="flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40">✕</button>
+                  <button type="button" title="Marcar como devuelto" aria-label={`Marcar como devuelto: ${x.concepto || x.persona}`} onClick={() => devolver([x])} className="flex h-9 w-9 items-center justify-center rounded-full text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40"><Icono nombre="check" className="h-4 w-4" grosor={2.4} /></button>
+                  <button type="button" title="Borrar" aria-label={`Borrar: ${x.concepto || x.persona}`} onClick={() => quitar(x)} className="flex h-9 w-9 items-center justify-center rounded-full text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40"><Icono nombre="cerrar" className="h-4 w-4" grosor={2} /></button>
                 </div>
                 <div className="col-span-2 sm:order-3 sm:col-span-1">
                   <CeldaFecha ariaLabel="Fecha" valor={x.fecha} onCambio={(v) => v && actualizar('debts', x.id, { fecha: v })} />
@@ -89,7 +90,7 @@ export function TeDebenPage() {
       {devueltas.length > 0 && (
         <Card className="p-0 sm:p-0">
           <details>
-            <summary className="cursor-pointer px-4 py-3 text-sm font-semibold uppercase tracking-wide text-marino dark:text-sky-300 sm:px-5">
+            <summary className="cursor-pointer px-4 py-3 text-[17px] font-semibold text-slate-900 dark:text-white sm:px-5">
               Ya devuelto ({devueltas.length})
             </summary>
             <ul className="divide-y divide-slate-100 px-4 pb-3 dark:divide-slate-800 sm:px-5">
@@ -103,7 +104,7 @@ export function TeDebenPage() {
                   <span className="flex shrink-0 items-center gap-2">
                     <Dinero c={x.importe} dash={false} className="text-slate-500" />
                     <button type="button" className="text-xs text-sky-700 hover:underline dark:text-sky-400" onClick={() => actualizar('debts', x.id, { devuelto_en: null })}>Pendiente</button>
-                    <button type="button" aria-label={`Borrar: ${x.concepto || x.persona}`} title="Borrar" className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40" onClick={() => quitar(x)}>✕</button>
+                    <button type="button" aria-label={`Borrar: ${x.concepto || x.persona}`} title="Borrar" className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40" onClick={() => quitar(x)}><Icono nombre="cerrar" className="h-4 w-4" grosor={2} /></button>
                   </span>
                 </li>
               ))}
@@ -162,7 +163,7 @@ function NuevaDeuda() {
           Fecha
           <input className="campo mt-1" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
         </label>
-        <Boton type="submit" variante="primario">＋ Apuntar</Boton>
+        <Boton type="submit" variante="primario"><Icono nombre="mas" className="h-4 w-4" grosor={2.4} />Apuntar</Boton>
       </form>
       {error && <p className="mt-2 text-sm text-red-600" role="alert">{error}</p>}
     </Card>

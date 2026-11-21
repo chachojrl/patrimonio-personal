@@ -185,6 +185,7 @@ export function AjustesPage() {
       <Grupo>{fila('partida')}{fila('conceptos')}{fila('compartida')}</Grupo>
       <Grupo>{fila('seguridad')}{fila('faceid')}{fila('discreto')}</Grupo>
       <Grupo>{fila('apariencia')}{fila('recordatorios')}{fila('atajos')}</Grupo>
+      {supabase && <CerrarSesion />}
       </>
       )}
       <p className="pb-4 text-center text-[13px] text-slate-400">Presupuesto personal</p>
@@ -217,6 +218,40 @@ export function AjustesPage() {
       </div>
       <div className={cx(actual ? 'block' : 'hidden lg:block')}>{detalle}</div>
     </div>
+  )
+}
+
+/** Botón «Cerrar sesión» al final de Ajustes, con la opción de cerrarla en todos los dispositivos. */
+function CerrarSesion() {
+  const [preguntando, setPreguntando] = useState(false)
+  return (
+    <>
+      <Grupo>
+        <button
+          type="button"
+          onClick={() => setPreguntando(true)}
+          className="block min-h-11 w-full px-4 text-center text-[17px] text-[#FF3B30] active:bg-slate-200/70 dark:text-[#FF453A] dark:active:bg-white/10"
+        >
+          Cerrar sesión
+        </button>
+      </Grupo>
+      <Modal
+        abierto={preguntando}
+        onCerrar={() => setPreguntando(false)}
+        titulo="¿Cerrar sesión?"
+        pie={
+          <>
+            <Boton onClick={() => setPreguntando(false)}>Cancelar</Boton>
+            <Boton variante="peligro" onClick={() => supabase?.auth.signOut()}>Cerrar sesión</Boton>
+          </>
+        }
+      >
+        <p>Para volver a entrar necesitarás tu correo y tu contraseña.</p>
+        <button type="button" className="text-left text-[15px] text-[#FF3B30] underline dark:text-[#FF453A]" onClick={() => supabase?.auth.signOut({ scope: 'global' })}>
+          Cerrar sesión en todos los dispositivos
+        </button>
+      </Modal>
+    </>
   )
 }
 
@@ -306,7 +341,7 @@ function PerfilDetalle({ email }: { email: string }) {
         </FilaCampo>
       </Grupo>
       <Grupo>
-        <Fila titulo="Cuenta" valor={activa ? `${activa.tipo === 'compartida' ? '🏠' : '👤'} ${activa.nombre}` : 'En este navegador'} />
+        <Fila titulo="Cuenta" valor={activa ? `${activa.nombre}${activa.tipo === 'compartida' ? ' (compartida)' : ''}` : 'En este navegador'} />
         {email && <Fila titulo="Correo" valor={email} />}
       </Grupo>
     </>
@@ -344,7 +379,7 @@ function InformeDetalle() {
       </Grupo>
       <Grupo titulo="Incluye">
         {incluye.map((t) => (
-          <Fila key={t} titulo={<span className="text-[15px]">{t}</span>} derecha={<span className="text-[#34C759]">✓</span>} />
+          <Fila key={t} titulo={<span className="text-[15px]">{t}</span>} derecha={<Icono nombre="check" className="h-5 w-5 text-[#34C759]" grosor={2.4} />} />
         ))}
       </Grupo>
       <BotonGrande onClick={() => generar(nombre)} disabled={ocupado}>{ocupado ? 'Generando…' : 'Generar PDF'}</BotonGrande>
@@ -581,10 +616,6 @@ function SeguridadDetalle({ email }: { email: string }) {
             </div>
           </FilaLibre>
         )}
-      </Grupo>
-      <Grupo>
-        <Fila titulo="Cerrar sesión" accion="rojo" onClick={() => supabase?.auth.signOut()} />
-        <Fila titulo="Cerrar sesión en todos los dispositivos" accion="rojo" onClick={() => supabase?.auth.signOut({ scope: 'global' })} />
       </Grupo>
     </>
   )

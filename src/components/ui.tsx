@@ -47,7 +47,11 @@ export function BadgeEstado({ estado }: { estado: EstadoMes }) {
         estado === 'Abierto' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300' : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200',
       )}
     >
-      {estado === 'Abierto' ? '● Abierto' : '🔒 Cerrado'}
+      {estado === 'Abierto' ? (
+        <><span className="mr-1 h-1.5 w-1.5 rounded-full bg-current" aria-hidden />Abierto</>
+      ) : (
+        <><svg viewBox="0 0 24 24" className="mr-0.5 h-3 w-3" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>Cerrado</>
+      )}
     </span>
   )
 }
@@ -247,15 +251,15 @@ export function Modal({ abierto, onCerrar, titulo, children, pie }: { abierto: b
   }, [abierto, onCerrar])
   if (!abierto) return null
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" onMouseDown={onCerrar}>
+    <div className="anim-fondo fixed inset-0 z-[60] flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" onMouseDown={onCerrar}>
       <div
         role="dialog"
         aria-modal="true"
         aria-label={titulo}
-        className="w-full max-w-md rounded-t-2xl bg-white p-5 shadow-xl dark:bg-slate-900 sm:rounded-2xl"
+        className="anim-subir max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-t-[14px] bg-white p-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] shadow-xl dark:bg-[#1c1c1e] sm:rounded-[14px] sm:pb-5"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <h3 className="mb-3 text-lg font-semibold">{titulo}</h3>
+        <h3 className="mb-3 text-[20px] font-semibold">{titulo}</h3>
         <div className="space-y-3 text-sm">{children}</div>
         {pie && <div className="mt-5 flex flex-wrap justify-end gap-2">{pie}</div>}
       </div>
@@ -265,9 +269,12 @@ export function Modal({ abierto, onCerrar, titulo, children, pie }: { abierto: b
 
 export function Spinner({ texto = 'Cargando…' }: { texto?: string }) {
   return (
-    <div className="flex min-h-[50vh] items-center justify-center gap-3 text-slate-500">
-      <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-marino" />
-      {texto}
+    <div className="flex min-h-[80vh] flex-col items-center justify-center gap-5 text-[15px] text-slate-500 dark:text-slate-400" role="status">
+      <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" className="h-[72px] w-[72px] rounded-2xl" />
+      <span className="flex items-center gap-2.5">
+        <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-marino motion-reduce:animate-none dark:border-slate-600 dark:border-t-sky-300" aria-hidden />
+        {texto}
+      </span>
     </div>
   )
 }

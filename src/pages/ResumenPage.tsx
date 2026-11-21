@@ -21,20 +21,30 @@ export function ResumenPage() {
       : { mes: MESES_CORTOS[f.mes - 1] },
   )
 
-  const th0 = 'px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-white'
+  const th0 = 'px-3 py-2.5 text-[13px] font-medium text-slate-500 dark:text-slate-400'
   const th = `${th0} text-right`
-  const td0 = 'px-3 py-2 border-b border-slate-100 dark:border-slate-800'
+  const td0 = 'px-3 py-2.5 border-b border-slate-100 dark:border-white/10'
   const td = `${td0} text-right`
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold text-marino dark:text-sky-300">Resumen {anio}</h1>
-        <label className="flex items-center gap-2 text-sm">
-          Año
-          <select className="campo w-28" value={anio} onChange={(e) => navigate(`/resumen/${e.target.value}`)}>
-            {lista.map((a) => <option key={a} value={a}>{a}</option>)}
-          </select>
-        </label>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <h1 className="text-[34px] font-bold leading-tight tracking-tight text-slate-900 dark:text-white">Resumen {anio}</h1>
+        {lista.length > 1 && (
+          <div className="flex flex-wrap gap-0.5 rounded-[9px] bg-[#e3e3e8] p-0.5 dark:bg-[#1c1c1e]" role="tablist" aria-label="Año">
+            {lista.map((a) => (
+              <button
+                key={a}
+                type="button"
+                role="tab"
+                aria-selected={a === anio}
+                onClick={() => navigate(`/resumen/${a}`)}
+                className={cx('rounded-[7px] px-3 py-1 text-[13px] font-medium', a === anio ? 'bg-white text-slate-900 shadow-sm dark:bg-[#636366] dark:text-white' : 'text-slate-700 dark:text-slate-300')}
+              >
+                {a}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -44,10 +54,43 @@ export function ResumenPage() {
         <Kpi titulo="% de ahorro sobre ingresos" valor={formatPct(r.total.pctAhorro) || '–'} grande />
       </div>
 
-      <Card className="p-0 sm:p-0">
-        <div className="overflow-x-auto rounded-2xl">
+      <Card titulo="Dónde está el dinero cada mes">
+        <BarrasDineroAnual datos={grafico} />
+      </Card>
+
+      {/* Móvil: lista de meses */}
+      <section className="md:hidden" aria-label="Meses del año">
+        <div className="overflow-hidden rounded-xl bg-white dark:bg-[#1c1c1e]">
+          {r.filas.filter((f) => f.calc).map((f) => {
+            const c = f.calc!
+            return (
+              <Link key={f.mes} to={`/mes/${c.mes.fecha.slice(0, 7)}`} className="ios-fila flex items-stretch active:bg-slate-100 dark:active:bg-white/10">
+                <span className="ios-sep ml-4 flex min-h-11 flex-1 items-center gap-3 py-2.5 pr-4">
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[17px]">{MESES[f.mes - 1]}</span>
+                    <span className="block text-[13px] text-slate-500 dark:text-slate-400"><Dinero c={c.ingresosTotales} /> entran · <Dinero c={c.gastosTotales} /> salen</span>
+                  </span>
+                  <span className="text-right">
+                    <Dinero c={c.neto} verde className="block text-[17px] font-semibold" />
+                    <span className="block text-[13px] text-slate-500 dark:text-slate-400">{formatPct(c.pctAhorro) || '–'} ahorro</span>
+                  </span>
+                </span>
+              </Link>
+            )
+          })}
+          <div className="ios-fila">
+            <div className="ios-sep ml-4 flex min-h-11 items-center justify-between py-2.5 pr-4 text-[17px] font-semibold">
+              <span>Total del año</span>
+              <Dinero c={r.total.neto} verde />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <Card className="hidden p-0 sm:p-0 md:block">
+        <div className="overflow-x-auto rounded-xl">
           <table className="w-full min-w-[52rem] text-sm">
-            <thead className="bg-marino dark:bg-sky-900">
+            <thead className="border-b border-slate-200 dark:border-white/15">
               <tr>
                 <th className={cx(th0, 'text-left')}>Mes</th>
                 <th className={th}>Ingresos</th>
@@ -63,9 +106,9 @@ export function ResumenPage() {
               {r.filas.map((f) => {
                 const c = f.calc
                 return (
-                  <tr key={f.mes} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                  <tr key={f.mes} className="hover:bg-slate-50 dark:hover:bg-white/5">
                     <td className={cx(td0, 'text-left')}>
-                      {c ? <Link className="text-sky-800 hover:underline dark:text-sky-300" to={`/mes/${c.mes.fecha.slice(0, 7)}`}>{MESES[f.mes - 1]}</Link> : <span className="text-slate-400">{MESES[f.mes - 1]}</span>}
+                      {c ?  <Link className="text-marino hover:underline dark:text-sky-300" to={`/mes/${c.mes.fecha.slice(0, 7)}`}>{MESES[f.mes - 1]}</Link> : <span className="text-slate-400">{MESES[f.mes - 1]}</span>}
                     </td>
                     <td className={td}>{c && <Dinero c={c.ingresosTotales} />}</td>
                     <td className={td}>{c && <Dinero c={c.gastosTotales} />}</td>
@@ -77,7 +120,7 @@ export function ResumenPage() {
                   </tr>
                 )
               })}
-              <tr className="bg-emerald-50 font-semibold dark:bg-emerald-900/20">
+              <tr className="font-semibold [&>td]:border-0 [&>td]:border-t [&>td]:border-slate-300 dark:[&>td]:border-white/20">
                 <td className={cx(td0, 'text-left')}>Total año</td>
                 <td className={td}><Dinero c={r.total.ingresos} /></td>
                 <td className={td}><Dinero c={r.total.gastos} /></td>
@@ -90,11 +133,7 @@ export function ResumenPage() {
             </tbody>
           </table>
         </div>
-        <p className="px-4 py-3 text-xs italic text-slate-500">En la fila Total, saldo disponible y dinero total corresponden al último mes con datos del año.</p>
-      </Card>
-
-      <Card titulo={`Dinero total por mes en ${anio}: inversiones, cuenta remunerada y saldo disponible`}>
-        <BarrasDineroAnual datos={grafico} />
+        <p className="px-4 py-3 text-[13px] text-slate-500 dark:text-slate-400">En la fila Total, saldo disponible y dinero total son los del último mes con datos del año.</p>
       </Card>
     </div>
   )

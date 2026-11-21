@@ -32,7 +32,7 @@ export function BuscarPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold text-marino dark:text-sky-300">Buscar</h1>
+      <h1 className="text-[34px] font-bold leading-tight tracking-tight text-slate-900 dark:text-white">Buscar</h1>
 
       <Card>
         <label htmlFor="buscar" className="sr-only">Buscar concepto o persona</label>

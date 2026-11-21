@@ -39,7 +39,7 @@ export function FormularioContrasena({ textoBoton = 'Cambiar contraseña', onHec
       <input className="campo" type="password" autoComplete="new-password" placeholder="Contraseña nueva" aria-label="Contraseña nueva" value={nueva} onChange={(e) => setNueva(e.target.value)} />
       <input className="campo" type="password" autoComplete="new-password" placeholder="Repite la contraseña" aria-label="Repite la contraseña" value={repetir} onChange={(e) => setRepetir(e.target.value)} />
       {error && <p className="text-sm text-red-600">{error}</p>}
-      {ok && <p className="text-sm text-emerald-700 dark:text-emerald-400">✔ Contraseña cambiada.</p>}
+      {ok && <p className="text-sm text-emerald-700 dark:text-emerald-400">Contraseña cambiada.</p>}
       <Boton type="submit" variante="primario" className="w-full sm:w-auto" disabled={ocupado || !nueva}>{ocupado ? 'Guardando…' : textoBoton}</Boton>
     </form>
   )

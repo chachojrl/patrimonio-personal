@@ -86,7 +86,7 @@ export function ActividadPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-marino dark:text-sky-300">Actividad</h1>
+        <h1 className="text-[34px] font-bold leading-tight tracking-tight text-slate-900 dark:text-white">Actividad</h1>
         <p className="text-sm text-slate-500">
           {compartida ? 'Quién ha cambiado qué en esta cuenta compartida.' : 'Lo que has cambiado en tu cuenta.'} Se guarda un año.
         </p>

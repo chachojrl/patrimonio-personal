@@ -4,6 +4,7 @@ import { nombreMiembro, useCuentas } from '../data/cuentas'
 import { datosInforme } from '../lib/informe'
 import { descargar } from '../lib/exportar'
 import { Boton, Modal } from './ui'
+import { Icono } from './ios'
 
 const CLAVE_NOMBRE = 'informe.nombre'
 
@@ -76,7 +77,7 @@ export function InformePdfBoton({ className, disparador }: { className?: string;
 
   return (
     <>
-      {disparador ? disparador(abrir) : <Boton variante="primario" className={className} onClick={abrir}>📄 Informe PDF</Boton>}
+      {disparador ? disparador(abrir) : <Boton variante="primario" className={className} onClick={abrir}><Icono nombre="documento" className="h-4 w-4" />Informe PDF</Boton>}
       <Modal
         abierto={abierto}
         onCerrar={() => !ocupado && setAbierto(false)}

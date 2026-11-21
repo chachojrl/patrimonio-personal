@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useStore } from '../data/store'
 import { BadgeEstado, Boton, Card, CeldaFecha, CeldaImporte, CeldaTexto, Dinero, Info, Modal, cx } from '../components/ui'
-import { BarrasIngresosGastos, DonutGastado } from '../components/Graficos'
+import { Fila, FilaCampo, Icono } from '../components/ios'
 import { CrearMesBoton } from '../components/CrearMes'
 import { useEur } from '../lib/discreto'
 import { nombreMiembro, useCuentas } from '../data/cuentas'
@@ -10,7 +10,7 @@ import { Reparto503020Card } from '../components/Reparto503020Card'
 import { GastosRaros } from '../components/GastosRaros'
 import { CierreMes } from '../components/CierreMes'
 import { RepartoCompartidaCard } from '../components/RepartoCompartidaCard'
-import { formatFechaHora, nombreMes, hoyISO } from '../lib/fechas'
+import { MESES_CORTOS, formatFechaHora, nombreMes, hoyISO, partes } from '../lib/fechas'
 import { cuentaDestino, cuentaOrigen } from '../lib/calculos'
 import { anadirGasto, borrarCreaHueco, deshacerApunte, estadoPresupuesto, mesesOrdenados, reordenar, separarImporteNota, uid } from '../lib/operaciones'
 import { Asa, useOrdenable } from '../components/Ordenable'
@@ -45,62 +45,68 @@ function VistaMes({ mes, c }: { mes: Mes; c: NonNullable<ReturnType<ReturnType<t
   const next = ordenados[idx + 1]
   const exceso = c.gastosTotales - c.ingresosTotales
 
+  const pct = Math.round(c.pctGastado * 100)
   return (
-    <div className="space-y-4">
-      {/* Cabecera */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 text-sm text-slate-500">
-            {prev ? <Link className="rounded px-1.5 hover:bg-slate-200 dark:hover:bg-slate-800" to={`/mes/${prev.fecha.slice(0, 7)}`} aria-label="Mes anterior">←</Link> : <span className="px-1.5 opacity-30">←</span>}
-            <span className="font-semibold text-slate-700 dark:text-slate-200">{c.nombre}</span>
-            {next ? <Link className="rounded px-1.5 hover:bg-slate-200 dark:hover:bg-slate-800" to={`/mes/${next.fecha.slice(0, 7)}`} aria-label="Mes siguiente">→</Link> : <span className="px-1.5 opacity-30">→</span>}
-            <BadgeEstado estado={mes.estado} />
-          </div>
-          <input
-            aria-label="Título del mes"
-            className="celda -ml-2 mt-1 text-2xl font-bold text-marino dark:text-sky-300 sm:text-3xl"
-            value={mes.titulo}
-            disabled={cerrado}
-            onChange={(e) => actualizar('months', mes.id, { titulo: e.target.value })}
-          />
-          <div className="text-xs text-slate-500 dark:text-slate-400">Último cambio: {formatFechaHora(mes.ultimo_cambio)}</div>
+    <div className="space-y-6">
+      {/* Cabecera: mes anterior / siguiente, título editable y estado */}
+      <div>
+        <nav aria-label="Cambiar de mes" className="-mx-2 flex items-center justify-between">
+          {prev ? (
+            <Link className="flex h-11 items-center gap-0.5 rounded-lg px-1 text-[17px] text-marino dark:text-sky-300" to={`/mes/${prev.fecha.slice(0, 7)}`} aria-label={`Mes anterior: ${nombreMes(prev.fecha)}`}>
+              <Icono nombre="anterior" className="h-6 w-6" grosor={2.2} />{corto(prev.fecha)}
+            </Link>
+          ) : <span />}
+          {next && (
+            <Link className="flex h-11 items-center gap-0.5 rounded-lg px-1 text-[17px] text-marino dark:text-sky-300" to={`/mes/${next.fecha.slice(0, 7)}`} aria-label={`Mes siguiente: ${nombreMes(next.fecha)}`}>
+              {corto(next.fecha)}<Icono nombre="siguiente" className="h-6 w-6" grosor={2.2} />
+            </Link>
+          )}
+        </nav>
+        <input
+          aria-label="Título del mes"
+          className="celda -ml-2 text-[28px] font-bold leading-tight tracking-tight text-slate-900 dark:text-white sm:text-[34px]"
+          value={mes.titulo}
+          disabled={cerrado}
+          onChange={(e) => actualizar('months', mes.id, { titulo: e.target.value })}
+        />
+        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2">
+          <BadgeEstado estado={mes.estado} />
+          <span className="text-[13px] text-slate-500 dark:text-slate-400">Último cambio: {formatFechaHora(mes.ultimo_cambio)}</span>
+          {!next && <CrearMesBoton className="ml-auto" />}
         </div>
-        {!next && <CrearMesBoton className="self-start" />}
       </div>
 
       {exceso > 0 && (
-        <div role="alert" className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
-          ⚠ Exceso de gasto: {eur(exceso)}
+        <div role="alert" className="flex items-center gap-3 rounded-xl bg-white px-4 py-3 text-[15px] dark:bg-[#1c1c1e]">
+          <span className="flex h-[29px] w-[29px] shrink-0 items-center justify-center rounded-[7px] bg-[#FF3B30] text-white"><Icono nombre="alerta" className="h-[18px] w-[18px]" /></span>
+          <span><strong>Has gastado más de lo que ha entrado:</strong> {eur(exceso)} de más.</span>
         </div>
       )}
 
       <GastosRaros monthId={mes.id} />
 
-      {/* Resumen */}
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1.2fr)]">
-        <Card titulo="Porcentaje de ingresos gastado">
-          <DonutGastado pctGastado={c.pctGastado} />
-        </Card>
-        <Card titulo="Resumen">
-          <div className="grid grid-cols-2 gap-3">
-            <Tarjeta titulo="Ingresos mensuales totales" valor={c.ingresosTotales} />
-            <Tarjeta titulo="Gastos mensuales totales" valor={c.gastosTotales} />
-            <Tarjeta titulo="Ahorro mensual total" valor={c.ahorroTotal} />
-            <Tarjeta titulo="Saldo disponible" valor={c.saldoDisponible} destacado />
+      {/* Resumen del mes */}
+      <div className="grid gap-6 md:grid-cols-2 md:items-start">
+        <section className="rounded-xl bg-white p-4 dark:bg-[#1c1c1e]" aria-labelledby="titulo-saldo">
+          <h2 id="titulo-saldo" className="text-[15px] text-slate-500 dark:text-slate-400">Saldo disponible</h2>
+          <p className="mt-0.5 text-[34px] font-bold leading-tight tracking-tight"><Dinero c={c.saldoDisponible} dash={false} /></p>
+          <p className="mt-3 text-[15px]">
+            {c.ingresosTotales > 0 ? <>Has gastado el <strong>{pct} %</strong> de lo que ha entrado.</> : 'Todavía no hay ingresos este mes.'}
+          </p>
+          <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700" role="meter" aria-label="Porcentaje de los ingresos gastado" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+            <div className={cx('h-full rounded-full', pct >= 100 ? 'bg-red-500' : pct >= 90 ? 'bg-amber-500' : 'bg-marino dark:bg-sky-400')} style={{ width: `${Math.min(100, pct)}%` }} />
           </div>
-          <div className="mt-4 grid gap-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-800/60 sm:grid-cols-2">
-            <div>
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                Ajuste de saldo (automático)
-                <Info texto="Diferencia entre el saldo real que escribas y el calculado. Si es positiva cuenta como ingreso extra; si es negativa, como gasto no registrado." />
-              </div>
-              <div className="mt-1 text-lg font-semibold"><Dinero c={c.ajuste} verde /></div>
-              <div className="text-xs text-slate-500">Calculado: {eur(c.saldoCalculado, { dash: false })}</div>
-            </div>
-            <div>
-              <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500" htmlFor="saldo-real">
-                Saldo real en cuenta (opcional)
-              </label>
+          <div className="mt-4 overflow-hidden rounded-lg border border-slate-100 dark:border-white/10">
+            <FilaResumen titulo="Ingresos" c={c.ingresosTotales} />
+            <FilaResumen titulo="Gastos" c={c.gastosTotales} />
+            <FilaResumen titulo="Ahorro y traspasos" c={c.ahorroTotal} />
+          </div>
+        </section>
+
+        <section aria-labelledby="titulo-cuadrar">
+          <h2 id="titulo-cuadrar" className="mb-1.5 px-4 text-[13px] text-slate-500 dark:text-slate-400">Cuadrar con el banco (opcional)</h2>
+          <div className="overflow-hidden rounded-xl bg-white dark:bg-[#1c1c1e]">
+            <FilaCampo etiqueta="Saldo real en cuenta">
               <CeldaImporte
                 ariaLabel="Saldo real en cuenta"
                 valor={mes.saldo_real_cuenta}
@@ -108,46 +114,38 @@ function VistaMes({ mes, c }: { mes: Mes; c: NonNullable<ReturnType<ReturnType<t
                 permitirNegativo
                 disabled={cerrado}
                 placeholder="Vacío"
-                className="mt-1 border-slate-300 bg-white text-left dark:border-slate-600 dark:bg-slate-900"
+                className="w-40 text-right"
                 onCambio={(v) => actualizar('months', mes.id, { saldo_real_cuenta: v })}
               />
-            </div>
+            </FilaCampo>
+            <Fila titulo="Ajuste automático" sub={`Calculado: ${eur(c.saldoCalculado, { dash: false })}`} derecha={<Dinero c={c.ajuste} verde className="text-[17px]" />} />
             {!compartida && (
               <>
-                <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                    Inversiones acumuladas
-                    <Info texto="Si escribes el valor real de tu cartera, sustituye a la estimación (última valoración + aportaciones) y se recalculan el ahorro acumulado, el dinero total y la ganancia/pérdida, también de los meses siguientes." />
-                  </div>
-                  <div className="mt-1 text-lg font-semibold"><Dinero c={c.inversionesAcum} dash={false} /></div>
-                  <div className="text-xs text-slate-500">{mes.valor_real_inversiones === null ? 'Estimado' : 'Valor real'}</div>
-                </div>
-                <div>
-                  <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                    Valor real de inversiones (opcional)
-                  </label>
+                <FilaCampo etiqueta="Valor real de inversiones">
                   <CeldaImporte
                     ariaLabel="Valor real de inversiones"
                     valor={mes.valor_real_inversiones}
                     permitirVacio
                     placeholder="Vacío"
-                    className="mt-1 border-slate-300 bg-white text-left dark:border-slate-600 dark:bg-slate-900"
+                    className="w-40 text-right"
                     onCambio={(v) => actualizar('months', mes.id, { valor_real_inversiones: v })}
                   />
-                </div>
+                </FilaCampo>
+                <Fila titulo="Inversiones acumuladas" sub={mes.valor_real_inversiones === null ? 'Estimado' : 'Valor real'} derecha={<Dinero c={c.inversionesAcum} dash={false} className="text-[17px]" />} />
               </>
             )}
           </div>
-        </Card>
-        <Card titulo="Ingresos vs gastos">
-          <BarrasIngresosGastos ingresos={c.ingresosTotales} gastos={c.gastosTotales} />
-        </Card>
+          <p className="mt-1.5 px-4 text-[13px] leading-snug text-slate-500 dark:text-slate-400">
+            Si escribes el saldo real, la diferencia con el calculado cuenta como ingreso extra o como gasto no apuntado.
+            {!compartida && ' El valor real de las inversiones sustituye a la estimación en este mes y los siguientes.'}
+          </p>
+        </section>
       </div>
 
       {!compartida && <Reparto503020Card monthId={mes.id} cerrado={cerrado} />}
       {compartida && <RepartoCompartidaCard monthId={mes.id} />}
 
-      <div className="grid gap-4 2xl:grid-cols-[2fr_3fr]">
+      <div className="grid gap-6 xl:grid-cols-[2fr_3fr]">
         <TablaIngresos mes={mes} cerrado={cerrado} />
         <TablaAhorro mes={mes} cerrado={cerrado} />
       </div>
@@ -157,23 +155,42 @@ function VistaMes({ mes, c }: { mes: Mes; c: NonNullable<ReturnType<ReturnType<t
   )
 }
 
-function Tarjeta({ titulo, valor, destacado }: { titulo: string; valor: number; destacado?: boolean }) {
+const corto = (fecha: string) => {
+  const { anio, mes } = partes(fecha)
+  return `${MESES_CORTOS[mes - 1]}${anio !== new Date().getFullYear() ? ` ${String(anio).slice(2)}` : ''}`
+}
+
+function FilaResumen({ titulo, c }: { titulo: string; c: number }) {
   return (
-    <div className={cx('rounded-xl border p-3', destacado ? 'border-marino/30 bg-marino/5 dark:border-sky-700 dark:bg-sky-900/20' : 'border-slate-200 dark:border-slate-700')}>
-      <div className="text-[10px] font-semibold uppercase leading-tight tracking-wide text-slate-500 sm:text-[11px]">{titulo}</div>
-      <div className="mt-1 text-lg font-bold sm:text-2xl"><Dinero c={valor} dash={false} /></div>
+    <div className="ios-fila">
+      <div className="ios-sep ml-3 flex min-h-11 items-center justify-between pr-3 text-[17px]">
+        <span>{titulo}</span>
+        <Dinero c={c} dash={false} />
+      </div>
     </div>
   )
 }
 
 function Total({ etiqueta, valor, cols }: { etiqueta: string; valor: number; cols?: string }) {
   return (
-    <div className={cx('mt-2 flex items-center justify-between border-t-2 border-marino/60 px-2 pt-2 font-semibold dark:border-sky-700', cols)}>
+    <div className={cx('mt-1 flex items-center justify-between border-t border-slate-200 px-2 pt-2.5 text-[17px] font-semibold dark:border-white/15', cols)}>
       <span>{etiqueta}</span>
       <Dinero c={valor} dash={false} />
     </div>
   )
 }
+
+/** Botón de texto con el color de la app para añadir filas («+ Añadir ingreso»). */
+function BotonAnadir({ children, onClick }: { children: string; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} className="inline-flex h-9 items-center gap-1 rounded-lg px-2 text-[15px] font-medium text-marino hover:bg-slate-100 dark:text-sky-300 dark:hover:bg-white/10">
+      <Icono nombre="mas" className="h-4 w-4" grosor={2.4} />{children}
+    </button>
+  )
+}
+
+/** Cabecera de columnas de las tablas del mes. */
+const claseCabecera = 'px-2 pb-1 text-[13px] text-slate-500 dark:text-slate-400'
 
 // ---------------- Ingresos ----------------
 function TablaIngresos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
@@ -187,16 +204,16 @@ function TablaIngresos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
     for (const c of reordenar(filas, desde, hasta)) actualizar('incomes', c.id, { orden: c.orden })
   })
   return (
-    <Card titulo="Ingresos mensuales" accion={!cerrado && (
-      <Boton variante="fantasma" className="text-xs" onClick={() => insertar('incomes', { id: uid(), month_id: mes.id, concepto: 'Nuevo ingreso', importe: 0, orden: (filas.at(-1)?.orden ?? -1) + 1 } satisfies Ingreso)}>＋ Añadir ingreso</Boton>
+    <Card titulo="Ingresos" accion={!cerrado && (
+      <BotonAnadir onClick={() => insertar('incomes', { id: uid(), month_id: mes.id, concepto: 'Nuevo ingreso', importe: 0, orden: (filas.at(-1)?.orden ?? -1) + 1 } satisfies Ingreso)}>Añadir</BotonAnadir>
     )}>
-      <div className="grid grid-cols-[1.25rem_1fr_9rem_2rem] gap-x-1 px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+      <div className={cx('grid grid-cols-[1.25rem_minmax(0,1fr)_7.5rem_2rem] sm:grid-cols-[1.25rem_minmax(0,1fr)_9rem_2rem] gap-x-1', claseCabecera)}>
         <span /><span>Concepto</span><span className="text-right">Importe</span><span />
       </div>
       {filas.map((f, i) => {
         const auto = !!f.aportacion_de
         return (
-          <div key={f.id} ref={ord.refFila(i)} style={ord.estilo(i)} className="grid grid-cols-[1.25rem_1fr_9rem_2rem] items-center gap-x-1 border-b border-slate-100 dark:border-slate-800">
+          <div key={f.id} ref={ord.refFila(i)} style={ord.estilo(i)} className="grid min-h-11 grid-cols-[1.25rem_minmax(0,1fr)_7.5rem_2rem] sm:grid-cols-[1.25rem_minmax(0,1fr)_9rem_2rem] items-center gap-x-1 border-b border-slate-100 dark:border-white/10">
             {!cerrado ? <Asa {...ord.asa(i)} /> : <span />}
             <div className="min-w-0">
               <CeldaTexto ariaLabel="Concepto de ingreso" valor={f.concepto} disabled={cerrado || auto} onCambio={(v) => actualizar('incomes', f.id, { concepto: v })} />
@@ -216,8 +233,8 @@ function TablaIngresos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
 function EtiquetaAuto({ texto }: { texto: string }) {
   return (
     <div className="px-2">
-      <span className="rounded bg-violet-100 px-1.5 text-[10px] font-semibold text-violet-800 dark:bg-violet-900/50 dark:text-violet-300" title={texto}>
-        🏠 Automático
+      <span className="rounded bg-violet-100 px-1.5 text-[11px] font-semibold text-violet-800 dark:bg-violet-900/50 dark:text-violet-300" title={texto}>
+        Automático
       </span>
       <span className="ml-1.5 text-[11px] text-slate-500">{texto}</span>
     </div>
@@ -226,8 +243,8 @@ function EtiquetaAuto({ texto }: { texto: string }) {
 
 function BotonBorrar({ onClick, etiqueta = 'Borrar fila' }: { onClick: () => void; etiqueta?: string }) {
   return (
-    <button type="button" aria-label={etiqueta} title={etiqueta} onClick={onClick} className="flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40">
-      ✕
+    <button type="button" aria-label={etiqueta} title={etiqueta} onClick={onClick} className="flex h-9 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40">
+      <Icono nombre="cerrar" className="h-4 w-4" grosor={2} />
     </button>
   )
 }
@@ -313,30 +330,34 @@ function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
   const columnas = 'md:grid-cols-[1.25rem_minmax(0,1fr)_11rem_9rem_10rem_2rem]'
   return (
     <Card
-      titulo="Gastos mensuales"
+      titulo="Gastos"
       accion={
         !cerrado && (
           <div className="flex gap-2">
-            {nPend > 0 && <Boton variante="primario" className="text-xs" onClick={aplicarTodos}>Aplicar todos ({nPend})</Boton>}
-            <Boton
-              variante="fantasma"
-              className="text-xs"
-              onClick={() => insertar('expenses', { id: uid(), month_id: mes.id, concepto: 'Nuevo gasto', fecha_vencimiento: null, importe: 0, orden: (filas.at(-1)?.orden ?? -1) + 1, fijo: false, presupuesto: null } satisfies Gasto)}
-            >
-              ＋ Nueva fila de gasto
-            </Boton>
+            {nPend > 0 && <Boton variante="primario" className="text-xs" onClick={aplicarTodos}>Sumar todos ({nPend})</Boton>}
+            <BotonAnadir onClick={() => insertar('expenses', { id: uid(), month_id: mes.id, concepto: 'Nuevo gasto', fecha_vencimiento: null, importe: 0, orden: (filas.at(-1)?.orden ?? -1) + 1, fijo: false, presupuesto: null } satisfies Gasto)}>
+              Añadir
+            </BotonAnadir>
           </div>
         )
       }
     >
       {conPresupuesto.length > 0 && (
-        <div className="mb-3 rounded-lg bg-slate-50 px-3 py-2 text-xs dark:bg-slate-800/60">
-          🎯 Conceptos con presupuesto: <strong className="num">{eur(gastadoConPresupuesto, { dash: false })}</strong> gastados de{' '}
-          <strong className="num">{eur(totalPresupuesto, { dash: false })}</strong>
-          {gastadoConPresupuesto > totalPresupuesto && <span className="font-semibold text-red-600 dark:text-red-400"> · {eur(gastadoConPresupuesto - totalPresupuesto)} por encima</span>}
+        <div className="mb-4 rounded-lg bg-[#f2f2f7] px-3 py-2.5 text-[15px] dark:bg-white/5">
+          <div>
+            Conceptos con presupuesto: <strong className="num">{eur(gastadoConPresupuesto, { dash: false })}</strong> de{' '}
+            <strong className="num">{eur(totalPresupuesto, { dash: false })}</strong>
+            {gastadoConPresupuesto > totalPresupuesto && <span className="font-semibold text-red-600 dark:text-red-400"> · {eur(gastadoConPresupuesto - totalPresupuesto)} por encima</span>}
+          </div>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700" aria-hidden>
+            <div
+              className={cx('h-full rounded-full', gastadoConPresupuesto > totalPresupuesto ? 'bg-red-500' : gastadoConPresupuesto >= totalPresupuesto * 0.9 ? 'bg-amber-500' : 'bg-emerald-500')}
+              style={{ width: `${totalPresupuesto > 0 ? Math.min(100, (gastadoConPresupuesto / totalPresupuesto) * 100) : 0}%` }}
+            />
+          </div>
         </div>
       )}
-      <div className={cx('hidden gap-x-1 px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500 md:grid', columnas)}>
+      <div className={cx('hidden gap-x-1 md:grid', claseCabecera, columnas)}>
         <span />
         <span>Concepto</span>
         <span>Vencimiento</span>
@@ -356,7 +377,7 @@ function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
             key={g.id}
             ref={ord.refFila(i)}
             style={ord.estilo(i)}
-            className={cx('grid grid-cols-[1.25rem_minmax(0,1fr)_7.5rem_2rem] items-center gap-x-1 border-b border-slate-100 py-1 dark:border-slate-800 md:py-0', columnas)}
+            className={cx('grid grid-cols-[1.25rem_minmax(0,1fr)_7.5rem_2rem] items-center gap-x-1 border-b border-slate-100 py-1.5 dark:border-white/10 md:min-h-11 md:py-0.5', columnas)}
           >
             <div className="row-span-2 self-start pt-1 md:row-span-1 md:self-center md:pt-0">{!cerrado && <Asa {...ord.asa(i)} />}</div>
             <div className="min-w-0">
@@ -364,14 +385,14 @@ function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
               {auto && <EtiquetaAuto texto="Tu aportación a la cuenta compartida: se recalcula sola al cambiar tus ingresos." />}
               {(g.fijo || apuntes.length > 0 || g.reparto) && (
                 <div className="flex flex-wrap gap-2 px-2">
-                  {g.fijo && <span className="rounded bg-sky-100 px-1.5 text-[10px] font-semibold text-sky-800 dark:bg-sky-900/50 dark:text-sky-300" title="Se copia con el mismo importe al crear el mes siguiente">📌 Fijo</span>}
+                  {g.fijo && <span className="rounded bg-sky-100 px-1.5 text-[11px] font-semibold text-sky-800 dark:bg-sky-900/50 dark:text-sky-300" title="Se copia con el mismo importe al crear el mes siguiente">Fijo</span>}
                   {g.reparto && (
-                    <span className="rounded bg-violet-100 px-1.5 text-[10px] font-semibold text-violet-800 dark:bg-violet-900/50 dark:text-violet-300" title="Cómo se reparte este gasto">
-                      {g.reparto === 'mitad' ? '½ A medias' : `👤 Lo paga ${nombreDe(g.reparto.slice(2))}`}
+                    <span className="rounded bg-violet-100 px-1.5 text-[11px] font-semibold text-violet-800 dark:bg-violet-900/50 dark:text-violet-300" title="Cómo se reparte este gasto">
+                      {g.reparto === 'mitad' ? 'A medias' : `Lo paga ${nombreDe(g.reparto.slice(2))}`}
                     </span>
                   )}
                   {apuntes.length > 0 && (
-                    <button type="button" onClick={() => setDesglose(g)} className="text-[11px] text-sky-700 hover:underline dark:text-sky-400">
+                    <button type="button" onClick={() => setDesglose(g)} className="text-[12px] font-medium text-marino hover:underline dark:text-sky-300">
                       {apuntes.length} apunte{apuntes.length > 1 ? 's' : ''}
                     </button>
                   )}
@@ -407,8 +428,8 @@ function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
                     )}
                   />
                   {(pendientes[g.id] ?? '') !== '' && (
-                    <button type="button" aria-label="Sumar" onClick={() => sumar(g, pendientes[g.id] ?? '')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-marino text-white">
-                      ✓
+                    <button type="button" aria-label="Sumar" onClick={() => sumar(g, pendientes[g.id] ?? '')} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-marino text-white dark:bg-sky-700">
+                      <Icono nombre="check" className="h-4 w-4" grosor={2.6} />
                     </button>
                   )}
                 </div>
@@ -422,9 +443,9 @@ function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
                   aria-label={`Opciones de ${g.concepto}`}
                   title="Fijo, presupuesto y borrar"
                   onClick={() => setOpcionesId(g.id)}
-                  className="flex h-8 w-8 items-center justify-center rounded-md text-lg leading-none text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-marino hover:bg-slate-100 dark:text-sky-300 dark:hover:bg-white/10"
                 >
-                  ⋯
+                  <Icono nombre="puntos" className="h-5 w-5" />
                 </button>
               )}
             </div>
@@ -432,7 +453,7 @@ function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
         )
       })}
       <Total etiqueta="Total gastos" valor={total} />
-      {!cerrado && filas.length > 1 && <p className="mt-2 text-[11px] text-slate-500">Arrastra ⋮⋮ para reordenar. En ⋯ puedes marcar un gasto como fijo o ponerle un presupuesto.</p>}
+      {!cerrado && filas.length > 1 && <p className="mt-2 text-[13px] text-slate-500 dark:text-slate-400">Arrastra ⋮⋮ para reordenar. En los tres puntos puedes marcar un gasto como fijo o ponerle un presupuesto.</p>}
 
       <Modal abierto={!!opciones} onCerrar={() => setOpcionesId(null)} titulo={opciones ? `Opciones de «${opciones.concepto}»` : ''} pie={<Boton variante="primario" onClick={() => setOpcionesId(null)}>Listo</Boton>}>
         {opciones && (
@@ -440,13 +461,13 @@ function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
             <label className="flex items-start gap-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
               <input type="checkbox" className="mt-0.5 h-4 w-4" checked={opciones.fijo} onChange={(e) => actualizar('expenses', opciones.id, { fijo: e.target.checked })} />
               <span>
-                <span className="font-medium">📌 Gasto fijo</span>
+                <span className="font-medium">Gasto fijo</span>
                 <span className="block text-xs text-slate-500">Al crear el mes siguiente se copia con el mismo importe ({eur(opciones.importe, { dash: false })}) y su fecha de vencimiento un mes después.</span>
               </span>
             </label>
             {miembros.length > 1 && (
               <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
-                <label htmlFor="reparto-gasto" className="font-medium">👥 Cómo se reparte</label>
+                <label htmlFor="reparto-gasto" className="font-medium">Cómo se reparte</label>
                 <span className="block text-xs text-slate-500">Proporcional = lo cubren las aportaciones de cada uno. Si no, cada uno pone su parte aparte. Se mantiene en los meses siguientes.</span>
                 <select
                   id="reparto-gasto"
@@ -461,7 +482,7 @@ function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
               </div>
             )}
             <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
-              <label htmlFor="presupuesto-gasto" className="font-medium">🎯 Presupuesto mensual</label>
+              <label htmlFor="presupuesto-gasto" className="font-medium">Presupuesto mensual</label>
               <span className="block text-xs text-slate-500">Límite para este concepto. Déjalo vacío para no tener límite. Se mantiene en los meses siguientes.</span>
               <CeldaImporte
                 ariaLabel={`Presupuesto de ${opciones.concepto}`}
@@ -480,7 +501,7 @@ function TablaGastos({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
                 setOpcionesId(null)
               }}
             >
-              🗑 Borrar esta fila
+              Borrar esta fila
             </Boton>
           </>
         )}
@@ -537,30 +558,34 @@ function TablaAhorro({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
   const c = calc.porId.get(mes.id)
   const hoy = hoyISO()
   const fechaDef = hoy.slice(0, 7) === mes.fecha.slice(0, 7) ? hoy : mes.fecha
-  const cols = 'grid-cols-[8.5rem_7.5rem_minmax(9rem,1fr)_1rem_minmax(9rem,1fr)_2rem]'
+  // Móvil: fecha · importe · borrar, y debajo «desde → hacia». Escritorio: todo en una fila.
+  const cols = 'grid-cols-[minmax(0,1fr)_7.5rem_2rem] md:grid-cols-[8.5rem_7.5rem_minmax(9rem,1fr)_1rem_minmax(9rem,1fr)_2rem]'
   const nuevo = (origen: OrigenAhorro, tipo: TipoAhorro) =>
     insertar('savings', { id: uid(), month_id: mes.id, fecha: fechaDef, importe: 0, tipo, origen } satisfies Ahorro)
   const hayTraspasos = filas.some((f) => cuentaDestino(f) === 'gastos' || cuentaOrigen(f) !== 'gastos')
   return (
     <Card titulo="Ahorro y traspasos" accion={!cerrado && (
       <div className="flex flex-wrap justify-end gap-1">
-        <Boton variante="fantasma" className="text-xs" onClick={() => nuevo('Ingresos mensuales', 'Inversiones')}>＋ Añadir ahorro</Boton>
-        <Boton variante="fantasma" className="text-xs" onClick={() => nuevo('Cuenta remunerada', 'Cuenta de gastos')}>⇄ Traspaso</Boton>
+        <BotonAnadir onClick={() => nuevo('Ingresos mensuales', 'Inversiones')}>Ahorro</BotonAnadir>
+        <button type="button" onClick={() => nuevo('Cuenta remunerada', 'Cuenta de gastos')} className="inline-flex h-9 items-center gap-1 rounded-lg px-2 text-[15px] font-medium text-marino hover:bg-slate-100 dark:text-sky-300 dark:hover:bg-white/10">
+          <Icono nombre="traspaso" className="h-4 w-4" grosor={2.2} />Traspaso
+        </button>
       </div>
     )}>
-      <div className="-mx-2 overflow-x-auto px-2">
-        <div className="min-w-[38rem]">
-          <div className={cx('grid gap-x-1 px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500', cols)}>
-            <span>Fecha</span><span className="text-right">Importe</span><span>Desde</span><span /><span>Hacia</span><span />
+      <div>
+        <div>
+          <div className={cx('hidden gap-x-1 md:grid', claseCabecera, cols)}>
+            <span>Fecha</span><span className="text-right">Importe</span><span className="pl-2">Desde</span><span /><span>Hacia</span><span />
           </div>
-          {filas.length === 0 && <p className="px-2 py-3 text-sm text-slate-500">Sin ahorros ni traspasos este mes.</p>}
+          {filas.length === 0 && <p className="px-2 py-3 text-[15px] text-slate-500 dark:text-slate-400">Sin ahorros ni traspasos este mes. Usa «Ahorro» para apuntar lo que mandas a inversiones o a la cuenta remunerada.</p>}
           {filas.map((f) => (
-            <div key={f.id} className={cx('grid items-center gap-x-1 border-b border-slate-100 dark:border-slate-800', cols)}>
+            <div key={f.id} className={cx('grid min-h-11 items-center gap-x-1 border-b border-slate-100 py-1 dark:border-white/10 md:py-0', cols)}>
               <CeldaFecha ariaLabel="Fecha del movimiento" valor={f.fecha} disabled={cerrado} onCambio={(v) => actualizar('savings', f.id, { fecha: v })} />
               <CeldaImporte ariaLabel="Importe del movimiento" valor={f.importe} disabled={cerrado} onCambio={(v) => actualizar('savings', f.id, { importe: v ?? 0 })} />
+              <div className="col-span-3 flex items-center gap-1 md:contents">
               <select
                 aria-label="Desde"
-                className="celda"
+                className="celda min-w-0 flex-1"
                 disabled={cerrado}
                 value={f.origen}
                 onChange={(e) => {
@@ -575,7 +600,7 @@ function TablaAhorro({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
               <span className="text-center text-slate-400" aria-hidden>→</span>
               <select
                 aria-label="Hacia"
-                className="celda"
+                className="celda min-w-0 flex-1"
                 disabled={cerrado}
                 value={f.tipo}
                 onChange={(e) => {
@@ -586,7 +611,8 @@ function TablaAhorro({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
               >
                 {HACIA.map((h) => <option key={h.valor} value={h.valor} disabled={mismaCuenta(f.origen, h.valor)}>{h.texto}</option>)}
               </select>
-              {!cerrado ? <BotonBorrar onClick={() => borrar('savings', f.id)} /> : <span />}
+              </div>
+              <div className="col-start-3 row-start-1 md:col-auto md:row-auto">{!cerrado && <BotonBorrar onClick={() => borrar('savings', f.id)} />}</div>
             </div>
           ))}
         </div>
@@ -615,34 +641,22 @@ function EstadoMes({ mes }: { mes: Mes }) {
   const hueco = useMemo(() => borrarCreaHueco(datos, mes.id), [datos, mes.id])
 
   return (
-    <Card titulo="Estado del mes">
-      <div className="flex flex-wrap items-end gap-4">
-        <div>
-          <label htmlFor="estado-mes" className="mb-1 block text-xs text-slate-500">Estado</label>
-          <select
-            id="estado-mes"
-            className="campo w-40"
-            value={mes.estado}
-            onChange={(e) => {
-              if (e.target.value === 'Abierto') setConfirmarReabrir(true)
-              else setCerrando(true) // repaso guiado antes de cerrar
-            }}
-          >
-            <option>Abierto</option>
-            <option>Cerrado</option>
-          </select>
-        </div>
-        {mes.estado === 'Cerrado' && <Boton onClick={() => setConfirmarReabrir(true)}>🔓 Reabrir mes</Boton>}
-        {mes.estado === 'Abierto' && <Boton variante="primario" onClick={() => setCerrando(true)}>✓ Cerrar mes…</Boton>}
-        <div>
-          <div className="mb-1 text-xs text-slate-500">Último cambio</div>
-          <div className="num py-2 font-medium">{formatFechaHora(mes.ultimo_cambio)}</div>
-        </div>
-        <div className="ml-auto">
-          <Boton variante="fantasma" className="text-red-600" onClick={() => setBorrando(true)}>🗑 Borrar mes</Boton>
-        </div>
+    <section aria-labelledby="titulo-estado">
+      <h2 id="titulo-estado" className="mb-1.5 px-4 text-[13px] text-slate-500 dark:text-slate-400">Estado del mes</h2>
+      <div className="overflow-hidden rounded-xl bg-white dark:bg-[#1c1c1e]">
+        <Fila titulo="Estado" derecha={<BadgeEstado estado={mes.estado} />} />
+        {mes.estado === 'Abierto' ? (
+          <Fila titulo="Cerrar mes…" accion="azul" onClick={() => setCerrando(true)} />
+        ) : (
+          <Fila titulo="Reabrir mes" accion="azul" onClick={() => setConfirmarReabrir(true)} />
+        )}
       </div>
-      {mes.estado === 'Cerrado' && <p className="mt-3 text-sm text-slate-500">Mes cerrado: todo está en solo lectura.</p>}
+      <p className="mb-6 mt-1.5 px-4 text-[13px] leading-snug text-slate-500 dark:text-slate-400">
+        {mes.estado === 'Cerrado' ? 'Mes cerrado: todo está en solo lectura.' : 'Antes de cerrarlo te enseña un repaso del mes. Al cerrarlo queda en solo lectura.'}
+      </p>
+      <div className="overflow-hidden rounded-xl bg-white dark:bg-[#1c1c1e]">
+        <Fila titulo="Borrar mes…" accion="rojo" onClick={() => setBorrando(true)} />
+      </div>
       <CierreMes mes={mes} abierto={cerrando} onCerrar={() => setCerrando(false)} />
 
       <Modal
@@ -696,7 +710,7 @@ function EstadoMes({ mes }: { mes: Mes }) {
           </label>
         )}
       </Modal>
-    </Card>
+    </section>
   )
 }
 

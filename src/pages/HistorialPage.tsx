@@ -25,8 +25,14 @@ export function HistorialPage() {
   ]
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-bold text-marino dark:text-sky-300">Historial</h1>
+    <div className="space-y-6">
+      <h1 className="text-[34px] font-bold leading-tight tracking-tight text-slate-900 dark:text-white">Historial</h1>
+
+      {lineas.length > 1 && (
+        <Card titulo="Dinero total por mes">
+          <LineaDineroTotal datos={lineas} />
+        </Card>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card titulo="General">
@@ -53,7 +59,7 @@ export function HistorialPage() {
       </div>
 
       <Card className="p-0 sm:p-0">
-        <div className="max-h-[70vh] overflow-auto rounded-2xl">
+        <div className="max-h-[70vh] overflow-auto rounded-xl">
           <table className="w-full min-w-[110rem] border-separate border-spacing-0 text-sm">
             <thead>
               <tr>
@@ -61,7 +67,7 @@ export function HistorialPage() {
                   <th
                     key={c.t}
                     className={cx(
-                      'sticky top-0 z-10 bg-marino px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-white dark:bg-sky-900',
+                      'sticky top-0 z-10 border-b border-slate-200 bg-white px-3 py-2.5 text-left text-[13px] font-medium text-slate-500 dark:border-white/15 dark:bg-[#1c1c1e] dark:text-slate-400',
                       i === 0 && 'left-0 z-20',
                       i >= 3 && i <= 15 && 'text-right',
                     )}
@@ -75,12 +81,12 @@ export function HistorialPage() {
             <tbody>
               {calc.historial.map((h) => {
                 const c = h.calc
-                const td = 'border-b border-slate-100 px-3 py-1.5 dark:border-slate-800'
+                const td = 'border-b border-slate-100 px-3 py-2 dark:border-white/10'
                 return (
-                  <tr key={h.fecha} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                    <td className={cx(td, 'num sticky left-0 bg-white dark:bg-slate-900')}>{formatFecha(h.fecha)}</td>
+                  <tr key={h.fecha} className="hover:bg-slate-50 dark:hover:bg-white/5">
+                    <td className={cx(td, 'num sticky left-0 bg-white dark:bg-[#1c1c1e]')}>{formatFecha(h.fecha)}</td>
                     <td className={td}>
-                      {c ? <Link className="text-sky-800 hover:underline dark:text-sky-300" to={`/mes/${h.fecha.slice(0, 7)}`}>{h.nombre}</Link> : <span className="text-slate-400">{h.nombre}</span>}
+                      {c ?  <Link className="text-marino hover:underline dark:text-sky-300" to={`/mes/${h.fecha.slice(0, 7)}`}>{h.nombre}</Link> : <span className="text-slate-400">{h.nombre}</span>}
                     </td>
                     <td className={cx(td, !c && 'text-slate-400')}>{c ? 'Registrado' : 'Sin hoja'}</td>
                     {c ? (
@@ -122,11 +128,6 @@ export function HistorialPage() {
         </div>
       </Card>
 
-      {lineas.length > 0 && (
-        <Card titulo="Dinero total por mes">
-          <LineaDineroTotal datos={lineas} />
-        </Card>
-      )}
     </div>
   )
 }

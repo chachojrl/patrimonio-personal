@@ -9,6 +9,7 @@ import { mesesOrdenados } from '../lib/operaciones'
 import { nombreMes } from '../lib/fechas'
 import type { Cuenta } from '../lib/tipos'
 import { COLOR, Fila, Grupo } from './ios'
+import { Icono } from './ios'
 
 /** En Ajustes: crear la cuenta compartida (desde la personal) o configurarla (dentro de ella). */
 export function CuentaCompartidaCard() {
@@ -101,7 +102,7 @@ function Crear({ hayOtras }: { hayOtras: boolean }) {
           : 'Una cuenta para los gastos comunes (casa, wifi, supermercado…) que veis los dos, cada uno con su usuario. Vuestras cuentas personales siguen siendo privadas. Mientras no la crees, nada cambia.'}
       </p>
       {!abierto ? (
-        <Boton className="mt-3" onClick={() => setAbierto(true)}>＋ {hayOtras ? 'Crear otra cuenta compartida' : 'Crear cuenta compartida'}</Boton>
+        <Boton className="mt-3" onClick={() => setAbierto(true)}><Icono nombre="mas" className="h-4 w-4" grosor={2.4} />{hayOtras ? 'Crear otra cuenta compartida' : 'Crear cuenta compartida'}</Boton>
       ) : (
         <form onSubmit={crear} className="mt-3 space-y-3">
           <Campo etiqueta="Nombre de la cuenta" valor={f.nombre} onCambio={(v) => setF({ ...f, nombre: v })} placeholder="Casa" />
@@ -240,7 +241,7 @@ function Configurar({ cuenta }: { cuenta: Cuenta }) {
           )}
           {cuenta.aportacion_activa && cuenta.pct_aportacion !== null && mesAbierto && (
             <div className="mt-3 rounded-lg bg-slate-50 p-3 text-sm dark:bg-slate-800/60">
-              <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{nombreMes(mesAbierto.fecha)}</div>
+              <div className="mb-1 text-[13px] font-semibold text-slate-500">{nombreMes(mesAbierto.fecha)}</div>
               {aportaciones.length === 0 ? (
                 <p className="text-xs text-slate-500">Todavía no hay aportaciones: aparecen cuando cada uno tiene creado este mes en su cuenta personal.</p>
               ) : (
@@ -326,7 +327,7 @@ function ZonaPeligrosa({ cuenta }: { cuenta: Cuenta }) {
       <div className="text-sm font-semibold text-red-700 dark:text-red-400">Zona peligrosa</div>
       <p className="mt-1 text-xs text-slate-500">Borra la cuenta compartida y todo lo que contiene, para todos sus miembros.</p>
       <Boton variante="secundario" className="mt-2 border-red-300 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/40" onClick={() => setAbierto(true)}>
-        🗑 Borrar cuenta compartida…
+        Borrar cuenta compartida…
       </Boton>
 
       <Modal
@@ -355,8 +356,8 @@ function ZonaPeligrosa({ cuenta }: { cuenta: Cuenta }) {
           En los meses cerrados se queda como un gasto normal.
         </p>
         <div className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
-          <span>{copiaHecha ? '✓ Copia descargada' : 'Antes, guarda una copia por si acaso.'}</span>
-          <Boton className="shrink-0 text-xs" onClick={copia}>💾 Descargar copia</Boton>
+          <span>{copiaHecha ? 'Copia descargada' : 'Antes, guarda una copia por si acaso.'}</span>
+          <Boton className="shrink-0 text-xs" onClick={copia}>Descargar copia</Boton>
         </div>
         <label className="flex items-start gap-2">
           <input type="checkbox" className="mt-0.5 h-4 w-4" checked={entiendo} onChange={(e) => setEntiendo(e.target.checked)} />
