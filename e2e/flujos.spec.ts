@@ -111,3 +111,17 @@ test('recorrido guiado desde Ajustes › Guía de uso', async ({ app }) => {
   await dialogo.getByRole('button', { name: 'Terminar' }).click()
   await expect(dialogo).toHaveCount(0)
 })
+
+test('¿Me lo puedo permitir? a plazos a medida, con entrada y TAE', async ({ app }) => {
+  await app.goto('/#/permitir')
+  await app.getByLabel('Importe').fill('20000')
+  await app.getByRole('radio', { name: 'Otro' }).click()
+  await app.getByLabel('Número de meses').fill('60')
+  await app.getByLabel('Entrada').fill('4000')
+  await app.getByLabel('TAE en porcentaje').fill('7,5')
+  await expect(app.getByText('60 meses al 7,5 % TAE')).toBeVisible()
+  await expect(app.getByText('Intereses', { exact: true })).toBeVisible()
+  await expect(app.getByText('Total que pagarás')).toBeVisible()
+  await app.getByLabel('Número de meses').fill('900')
+  await expect(app.getByText('Escribe entre 2 y 480 meses.')).toBeVisible()
+})
