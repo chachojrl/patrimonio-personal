@@ -10,6 +10,7 @@ import { actualizarMiembro } from '../data/supabaseRepo'
 import { Boton, CeldaImporte, Dinero, Modal, cx } from '../components/ui'
 import { ACENTOS, guardarFechaCopia, haceCuanto, leerFechaCopia, mesesSinCerrar, setPreferencias, usePreferencias } from '../lib/preferencias'
 import { setDiscreto, useDiscreto } from '../lib/discreto'
+import { empezarRecorrido } from '../lib/guia'
 import { descargar, exportarCSV, exportarExcel, exportarJSON, importarJSON } from '../lib/exportar'
 import { FormularioContrasena } from '../components/FormularioContrasena'
 import { CuentaCompartidaCard, conQuien } from '../components/CuentaCompartidaCard'
@@ -23,7 +24,7 @@ import { MESES, nombreMes, partes } from '../lib/fechas'
 import { Avatar, BotonGrande, COLOR, Fila, FilaCampo, FilaLibre, Grupo, Icono, IconoApp, Interruptor, claseCampoIos, type NombreIcono } from '../components/ios'
 import type { Config, Datos } from '../lib/tipos'
 
-type Id = 'perfil' | 'informe' | 'exportar' | 'copias' | 'partida' | 'conceptos' | 'compartida' | 'seguridad' | 'faceid' | 'discreto' | 'apariencia' | 'recordatorios' | 'atajos'
+type Id = 'perfil' | 'guia' | 'informe' | 'exportar' | 'copias' | 'partida' | 'conceptos' | 'compartida' | 'seguridad' | 'faceid' | 'discreto' | 'apariencia' | 'recordatorios' | 'atajos'
 
 interface Apartado {
   id: Id
@@ -33,6 +34,7 @@ interface Apartado {
 }
 
 const APARTADOS: Record<Exclude<Id, 'perfil'>, Apartado> = {
+  guia: { id: 'guia', titulo: 'Guía de uso', icono: 'libro', color: COLOR.turquesa },
   informe: { id: 'informe', titulo: 'Informe PDF', icono: 'documento', color: COLOR.naranja },
   exportar: { id: 'exportar', titulo: 'Exportar', icono: 'grafica', color: COLOR.verde },
   copias: { id: 'copias', titulo: 'Copias de seguridad', icono: 'archivo', color: COLOR.azul },
@@ -49,6 +51,7 @@ const APARTADOS: Record<Exclude<Id, 'perfil'>, Apartado> = {
 
 /** Palabras con las que se encuentra cada apartado en el buscador de Ajustes (además del título). */
 const CLAVES: Record<Exclude<Id, 'perfil'>, string> = {
+  guia: 'ayuda tutorial como funciona recorrido aprender empezar',
   informe: 'pdf patrimonio imprimir',
   exportar: 'excel xlsx csv numbers descargar tablas',
   copias: 'copia seguridad backup json restaurar icloud',
@@ -94,7 +97,7 @@ export function AjustesPage() {
   const nombre = compartida ? activa?.nombre ?? '' : (yo ? nombreMiembro(yo) : '') || leerNombreLocal()
 
   const disponibles: Id[] = [
-    'perfil', 'informe', 'exportar', 'copias', 'partida', 'conceptos',
+    'perfil', 'guia', 'informe', 'exportar', 'copias', 'partida', 'conceptos',
     ...(supabase ? (['compartida', 'seguridad'] as Id[]) : []),
     'faceid', 'discreto', 'apariencia', 'recordatorios', 'atajos',
   ]
@@ -181,6 +184,7 @@ export function AjustesPage() {
           )}
         </Link>
       </Grupo>
+      <Grupo>{fila('guia')}</Grupo>
       <Grupo>{fila('informe')}{fila('exportar')}{fila('copias')}</Grupo>
       <Grupo>{fila('partida')}{fila('conceptos')}{fila('compartida')}</Grupo>
       <Grupo>{fila('seguridad')}{fila('faceid')}{fila('discreto')}</Grupo>
@@ -196,6 +200,7 @@ export function AjustesPage() {
   const detalle = (
     <Detalle id={enPanel} titulo={titulo}>
       {enPanel === 'perfil' && <PerfilDetalle email={email} />}
+      {enPanel === 'guia' && <GuiaDetalle />}
       {enPanel === 'informe' && <InformeDetalle />}
       {enPanel === 'exportar' && <ExportarDetalle />}
       {enPanel === 'copias' && <CopiasDetalle />}
@@ -266,7 +271,7 @@ function Detalle({ id, titulo, children }: { id: Id; titulo: string; children: R
           </svg>
           Ajustes
         </Link>
-        <span className="max-w-[55%] truncate text-[17px] font-semibold text-slate-900 dark:text-white">{titulo}</span>
+        <h2 className="max-w-[55%] truncate text-[17px] font-semibold text-slate-900 dark:text-white">{titulo}</h2>
       </div>
       <h2 className="mb-5 mt-1 hidden px-1 text-[26px] font-bold tracking-tight text-slate-900 dark:text-white lg:block" id={`ajustes-${id}`}>
         {titulo}
@@ -344,6 +349,233 @@ function PerfilDetalle({ email }: { email: string }) {
         <Fila titulo="Cuenta" valor={activa ? `${activa.nombre}${activa.tipo === 'compartida' ? ' (compartida)' : ''}` : 'En este navegador'} />
         {email && <Fila titulo="Correo" valor={email} />}
       </Grupo>
+    </>
+  )
+}
+
+// ---------------- Guía de uso ----------------
+interface Ficha {
+  titulo: string
+  icono: NombreIcono
+  color: string
+  pasos: string[]
+  ir?: { texto: string; to: string }
+  /** Solo con cuenta en la nube (no en modo local). */
+  nube?: boolean
+}
+
+const FICHAS: { grupo: string; fichas: Ficha[] }[] = [
+  {
+    grupo: 'Lo del día a día',
+    fichas: [
+      {
+        titulo: 'Inicio',
+        icono: 'casa',
+        color: COLOR.azul,
+        pasos: [
+          'Arriba ves tu patrimonio: todo tu dinero sumado y cuánto ha cambiado desde el mes anterior. Toca la línea para ver el historial.',
+          'Debajo, el mes en curso (ingresos, gastos y lo que te queda) y dónde está tu dinero: disponible, cuenta remunerada e inversiones.',
+          'En la fila de Inversiones, el lápiz sirve para escribir lo que vale hoy tu cartera.',
+          'Si un mes ya terminado sigue abierto, aparece un aviso para que lo cierres.',
+        ],
+        ir: { texto: 'Ir a Inicio', to: '/' },
+      },
+      {
+        titulo: 'Apuntar un gasto',
+        icono: 'mas',
+        color: COLOR.verde,
+        pasos: [
+          'Toca el botón + de la barra de abajo (en el ordenador, «Apuntar gasto» en la barra lateral).',
+          'Elige el concepto (salen primero los que más usas), escribe el importe y, si quieres, una nota como «Mercadona».',
+          'Pulsa Apuntar: se suma a ese gasto del mes abierto. Si te equivocas, toca «Deshacer» en el aviso.',
+          'También puedes apuntar con Siri o desde un atajo del iPhone: mira «Siri y Atajos».',
+        ],
+      },
+      {
+        titulo: 'El mes',
+        icono: 'calendario',
+        color: COLOR.naranja,
+        pasos: [
+          'Es tu hoja del mes, como en el Excel. Todo se edita tocando la cifra o el texto, y se guarda solo.',
+          'Ingresos: lo que entra. Gastos: cada concepto con su importe. En la casilla «+ € nota» escribes un importe y pulsas Enter para sumarlo (cada suma queda apuntada y se puede deshacer).',
+          'En los tres puntos de un gasto puedes marcarlo como fijo (se copia al mes siguiente), ponerle un presupuesto o borrarlo. Arrastra ⋮⋮ para cambiar el orden.',
+          'Ahorro y traspasos: lo que mandas a inversiones o a la cuenta remunerada, o lo que traes de vuelta a la cuenta de gastos.',
+          '«Cuadrar con el banco» es opcional: si escribes el saldo real, la diferencia cuenta como ingreso extra o gasto no apuntado.',
+        ],
+        ir: { texto: 'Ir al mes actual', to: '/mes/actual' },
+      },
+      {
+        titulo: 'Crear y cerrar el mes',
+        icono: 'candado',
+        color: COLOR.grafito,
+        pasos: [
+          '«Crear mes nuevo» (en Inicio o en el último mes) crea el siguiente con los mismos conceptos y los gastos fijos ya puestos.',
+          'Al final de la hoja del mes, «Cerrar mes…» te enseña un repaso (presupuestos pasados, avisos, lo que te deben) y lo deja en solo lectura.',
+          'Si necesitas cambiar algo, puedes reabrirlo.',
+        ],
+      },
+    ],
+  },
+  {
+    grupo: 'Ver cómo vas',
+    fichas: [
+      {
+        titulo: 'Resumen e Historial',
+        icono: 'grafica',
+        color: COLOR.indigo,
+        pasos: [
+          'Resumen: el año mes a mes, con una gráfica de dónde está tu dinero. Cambia de año arriba.',
+          'Historial: todos los meses seguidos, con la evolución de tu dinero total y todas las columnas del Excel.',
+        ],
+        ir: { texto: 'Ir a Resumen', to: '/resumen' },
+      },
+      {
+        titulo: 'Tu año en cifras',
+        icono: 'estrella',
+        color: COLOR.rosa,
+        pasos: [
+          'Tu año resumido en unas pocas pantallas: cuánto creció tu patrimonio, tu mejor mes, en qué se te fue más dinero…',
+          'Se abre desde Resumen y, en diciembre y enero, desde Inicio. Toca a la derecha para avanzar y mantén pulsado para pararlo.',
+          'Al final puedes compartirlo.',
+        ],
+      },
+      {
+        titulo: 'Colchón y «¿Me lo puedo permitir?»',
+        icono: 'balanza',
+        color: COLOR.marron,
+        pasos: [
+          'El colchón de emergencia dice cuántos meses podrías vivir sin ingresos con lo que tienes disponible. Lo recomendable son 6.',
+          'En Más › «¿Me lo puedo permitir?» escribes lo que cuesta algo y si lo pagarías de una vez o a plazos, y te dice cómo quedaría tu colchón y cuántos meses de ahorro supone.',
+        ],
+        ir: { texto: 'Abrir «¿Me lo puedo permitir?»', to: '/permitir' },
+      },
+    ],
+  },
+  {
+    grupo: 'Más herramientas',
+    fichas: [
+      {
+        titulo: 'Te deben',
+        icono: 'billete',
+        color: COLOR.verde,
+        pasos: ['Apunta lo que adelantas a otras personas (una cena, unas entradas…). Cuando te lo devuelvan, márcalo como devuelto. No cuenta en tus gastos ni ingresos.'],
+        ir: { texto: 'Ir a Te deben', to: '/te-deben' },
+      },
+      {
+        titulo: 'Viajes',
+        icono: 'avion',
+        color: COLOR.azul,
+        pasos: ['Crea un viaje con su presupuesto y apunta los gastos en cualquier moneda: se pasan a euros con el cambio del día. Al acabar, puedes pasar el total a un gasto del mes.'],
+        ir: { texto: 'Ir a Viajes', to: '/viajes' },
+      },
+      {
+        titulo: 'Lista de la compra',
+        icono: 'carrito',
+        color: COLOR.naranja,
+        pasos: ['Añade cosas (separadas por comas para varias a la vez) y márcalas al meterlas en el carro. En una cuenta compartida la lista es común.'],
+        ir: { texto: 'Ir a la lista', to: '/compra' },
+      },
+      {
+        titulo: 'Buscar y Actividad',
+        icono: 'lupa',
+        color: COLOR.gris,
+        pasos: ['Buscar encuentra cualquier gasto, ingreso o nota en todos los meses (la lupa de arriba). Actividad muestra los últimos cambios, útil en una cuenta compartida.'],
+        ir: { texto: 'Ir a Buscar', to: '/buscar' },
+      },
+      {
+        titulo: 'Cuentas compartidas',
+        icono: 'casa',
+        color: COLOR.marron,
+        nube: true,
+        pasos: [
+          'Una cuenta para los gastos comunes que veis los dos, cada uno con su usuario. Tu cuenta personal sigue siendo privada.',
+          'Créala en Ajustes › Cuentas compartidas y cambia de cuenta con el selector de arriba. Puedes tener varias.',
+          'Si activas las aportaciones automáticas, cada uno aporta el mismo porcentaje de sus ingresos y se apunta solo.',
+        ],
+        ir: { texto: 'Ir a Cuentas compartidas', to: '/ajustes/compartida' },
+      },
+    ],
+  },
+  {
+    grupo: 'Tus datos y tu privacidad',
+    fichas: [
+      {
+        titulo: 'Informe PDF, Excel y copias',
+        icono: 'documento',
+        color: COLOR.naranja,
+        pasos: [
+          'Informe PDF: un documento con resumen, gráficas y el detalle de cada mes. Elige todo, un año o de un mes a otro.',
+          'Exportar: el libro completo en Excel o tablas sueltas en CSV.',
+          'Copias de seguridad: descarga de vez en cuando una copia completa (por ejemplo, a iCloud Drive). Con ella puedes restaurarlo todo.',
+        ],
+        ir: { texto: 'Ir al Informe PDF', to: '/ajustes/informe' },
+      },
+      {
+        titulo: 'Face ID y modo discreto',
+        icono: 'cara',
+        color: COLOR.verde,
+        pasos: [
+          'Face ID pide tu cara, tu huella o el código del móvil al abrir la app. Se activa en cada dispositivo.',
+          'El ojo de arriba oculta los importes en pantalla. En Ajustes › Modo discreto puedes hacer que empiece siempre oculto.',
+        ],
+        ir: { texto: 'Ir a Face ID', to: '/ajustes/faceid' },
+      },
+      {
+        titulo: 'Apariencia y recordatorios',
+        icono: 'paleta',
+        color: COLOR.azul,
+        pasos: [
+          'Apariencia: tema claro, oscuro o automático, el color de la app y si ver los céntimos.',
+          'Recordatorios: el aviso de Inicio cuando queda un mes pasado sin cerrar.',
+        ],
+        ir: { texto: 'Ir a Apariencia', to: '/ajustes/apariencia' },
+      },
+    ],
+  },
+]
+
+function GuiaDetalle() {
+  const [abierta, setAbierta] = useState<string | null>(null)
+  return (
+    <>
+      <Portada icono="libro" color={COLOR.turquesa} titulo="Cómo funciona la app" texto="Cada función explicada en pocas líneas. Toca una para verla." />
+      <BotonGrande onClick={empezarRecorrido}>Hacer el recorrido guiado</BotonGrande>
+      {FICHAS.map((g) => (
+        <Grupo key={g.grupo} titulo={g.grupo}>
+          {g.fichas.filter((f) => !f.nube || supabase).map((f) => {
+            const sel = abierta === f.titulo
+            return (
+              <div key={f.titulo} className="ios-fila">
+                <button
+                  type="button"
+                  aria-expanded={sel}
+                  onClick={() => setAbierta(sel ? null : f.titulo)}
+                  className="flex w-full items-stretch text-left active:bg-slate-200/70 dark:active:bg-white/10"
+                >
+                  <span className="py-[7px] pl-4"><IconoApp nombre={f.icono} color={f.color} /></span>
+                  <span className="ios-sep ml-3 flex min-h-11 flex-1 items-center gap-3 py-2.5 pr-4">
+                    <span className="flex-1 text-[17px]">{f.titulo}</span>
+                    <svg viewBox="0 0 24 24" className={cx('h-4 w-4 shrink-0 text-slate-300 transition-transform dark:text-slate-600', sel && 'rotate-90')} fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="m9 5 7 7-7 7" /></svg>
+                  </span>
+                </button>
+                {sel && (
+                  <div className="ml-[60px] pb-3 pr-4">
+                    <ul className="space-y-2 text-[15px] leading-snug text-slate-700 dark:text-slate-300">
+                      {f.pasos.map((p) => <li key={p}>{p}</li>)}
+                    </ul>
+                    {f.ir && (
+                      <Link to={f.ir.to} className="mt-2.5 inline-flex min-h-9 items-center gap-1 text-[15px] font-medium text-[#007AFF] dark:text-[#0A84FF]">
+                        {f.ir.texto}
+                        <Icono nombre="siguiente" className="h-4 w-4" grosor={2.4} />
+                      </Link>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </Grupo>
+      ))}
     </>
   )
 }

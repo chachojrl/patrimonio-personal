@@ -91,6 +91,7 @@ export function BotonDiscreto({ className }: { className?: string }) {
       aria-pressed={activo}
       aria-label={txt}
       title={txt}
+      data-guia="discreto"
       onClick={() => setDiscreto(!activo)}
       className={cx(
         'flex h-9 w-9 items-center justify-center rounded-full',
