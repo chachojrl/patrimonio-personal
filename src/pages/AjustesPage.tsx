@@ -12,7 +12,7 @@ import { ACENTOS, guardarFechaCopia, haceCuanto, leerFechaCopia, mesesSinCerrar,
 import { setDiscreto, useDiscreto } from '../lib/discreto'
 import { descargar, exportarCSV, exportarExcel, exportarJSON, importarJSON } from '../lib/exportar'
 import { FormularioContrasena } from '../components/FormularioContrasena'
-import { CuentaCompartidaCard } from '../components/CuentaCompartidaCard'
+import { CuentaCompartidaCard, conQuien } from '../components/CuentaCompartidaCard'
 import { AtajosCard } from '../components/AtajosCard'
 import { guardarNombreLocal, leerNombreLocal, useInformePdf } from '../components/InformePdfBoton'
 import { useBloqueo } from '../components/useBloqueo'
@@ -38,7 +38,7 @@ const APARTADOS: Record<Exclude<Id, 'perfil'>, Apartado> = {
   copias: { id: 'copias', titulo: 'Copias de seguridad', icono: 'archivo', color: COLOR.azul },
   partida: { id: 'partida', titulo: 'Punto de partida', icono: 'bandera', color: COLOR.amarillo },
   conceptos: { id: 'conceptos', titulo: 'Conceptos del primer mes', icono: 'lista', color: COLOR.morado },
-  compartida: { id: 'compartida', titulo: 'Cuenta compartida', icono: 'casa', color: COLOR.marron },
+  compartida: { id: 'compartida', titulo: 'Cuentas compartidas', icono: 'casa', color: COLOR.marron },
   seguridad: { id: 'seguridad', titulo: 'Contraseña y seguridad', icono: 'candado', color: COLOR.grafito },
   faceid: { id: 'faceid', titulo: 'Face ID', icono: 'cara', color: COLOR.verde },
   discreto: { id: 'discreto', titulo: 'Modo discreto', icono: 'ojoTachado', color: COLOR.indigo },
@@ -104,12 +104,12 @@ export function AjustesPage() {
   const enPanel: Id = actual ?? 'perfil'
 
   const { anio, mes } = partes(datos.config.mes_inicio)
-  const nombreCompartida = cuentas?.find((c) => c.tipo === 'compartida')?.nombre
+  const compartidas = cuentas?.filter((c) => c.tipo === 'compartida') ?? []
   const valores: Partial<Record<Id, string>> = {
     exportar: 'Excel, CSV',
     partida: `${MESES[mes - 1].toLowerCase()} ${anio}`,
     conceptos: String(datos.config.plantilla_ingresos.length + datos.config.plantilla_gastos.length),
-    compartida: nombreCompartida ?? 'No',
+    compartida: compartidas.length === 0 ? 'Ninguna' : compartidas.length === 1 ? compartidas[0].nombre : String(compartidas.length),
     faceid: bloqueo.activo ? 'Sí' : 'No',
     discreto: prefs.discretoAlAbrir ? 'Al abrir' : discreto ? 'Activado' : 'No',
     apariencia: NOMBRE_TEMA[tema],
@@ -117,6 +117,7 @@ export function AjustesPage() {
   }
   const fechaCopia = leerFechaCopia()
   const subs: Partial<Record<Id, string>> = {
+    compartida: compartidas.length ? compartidas.map((c) => `${c.nombre} (${conQuien(c, userId).con.replace(/^./, (l) => l.toLowerCase())})`).join(' · ') : undefined,
     copias: fechaCopia ? `Última descargada aquí: ${haceCuanto(fechaCopia)}` : 'Aún no has descargado ninguna en este dispositivo',
   }
 
