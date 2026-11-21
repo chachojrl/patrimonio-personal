@@ -1,8 +1,9 @@
-import { Link, NavLink, Outlet } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useStore } from '../data/store'
 import { BotonDiscreto, cx } from './ui'
 import { ultimoMes } from '../lib/operaciones'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { Icono, type NombreIcono } from './ios'
 import { CLAVE_AVISO, nombreMiembro, useCuentas } from '../data/cuentas'
 
 function EstadoGuardadoChip() {
@@ -21,7 +22,7 @@ function SelectorCuenta({ className, vertical }: { className?: string; vertical?
   const { cuentas, activa, cambiar } = useCuentas()
   if (!cuentas || cuentas.length < 2 || !activa) return null
   return (
-    <div role="group" aria-label="Cuenta" className={cx('flex gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-800', vertical && 'flex-col', className)}>
+    <div role="group" aria-label="Cuenta" className={cx('flex gap-0.5 rounded-[9px] bg-[#e3e3e8] p-0.5 dark:bg-[#1c1c1e]', vertical && 'flex-col', className)}>
       {cuentas.map((c) => (
         <button
           key={c.id}
@@ -31,7 +32,7 @@ function SelectorCuenta({ className, vertical }: { className?: string; vertical?
           className={cx(
             'flex min-w-0 flex-1 items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium',
             vertical ? 'justify-start px-3' : 'justify-center',
-            c.id === activa.id ? 'bg-white text-marino shadow-sm dark:bg-slate-900 dark:text-sky-300' : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200',
+            c.id === activa.id ? 'bg-white text-marino shadow-sm dark:bg-[#636366] dark:text-white' : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200',
           )}
         >
           <span aria-hidden>{c.tipo === 'personal' ? '👤' : '🏠'}</span>
@@ -55,52 +56,38 @@ function AvisoCompartida() {
   )
 }
 
-/** Menú «⋯» del móvil con las secciones que no caben en la cabecera. */
-function MenuMas({ enlaces }: { enlaces: { to: string; txt: string; icono: string }[] }) {
-  const [abierto, setAbierto] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+interface EnlaceNav {
+  to: string
+  txt: string
+  icono: NombreIcono
+  end?: boolean
+  activo?: string
+}
+
+/** Hoja «Más» del móvil: sube desde abajo con las secciones que no caben en la barra. */
+function HojaMas({ enlaces, onCerrar }: { enlaces: EnlaceNav[]; onCerrar: () => void }) {
   useEffect(() => {
-    if (!abierto) return
-    const fuera = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setAbierto(false)
-    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setAbierto(false)
-    document.addEventListener('mousedown', fuera)
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && onCerrar()
     document.addEventListener('keydown', esc)
-    return () => {
-      document.removeEventListener('mousedown', fuera)
-      document.removeEventListener('keydown', esc)
-    }
-  }, [abierto])
+    return () => document.removeEventListener('keydown', esc)
+  }, [onCerrar])
   return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        aria-label="Más secciones"
-        aria-expanded={abierto}
-        onClick={() => setAbierto((a) => !a)}
-        className="flex h-8 w-8 items-center justify-center rounded-lg text-lg font-bold leading-none text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-      >
-        ⋯
-      </button>
-      {abierto && (
-        <nav className="absolute right-0 top-10 z-40 w-52 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
+    <div className="fixed inset-0 z-40 md:hidden" role="dialog" aria-modal="true" aria-label="Más secciones">
+      <button type="button" aria-label="Cerrar" className="absolute inset-0 bg-black/30" onClick={onCerrar} />
+      <div className="absolute inset-x-0 bottom-0 rounded-t-[14px] bg-[#f2f2f7] px-4 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] pt-2 dark:bg-[#1c1c1e]">
+        <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-slate-300 dark:bg-slate-600" aria-hidden />
+        <nav className="overflow-hidden rounded-[10px] bg-white dark:bg-[#2c2c2e]">
           {enlaces.map((e) => (
-            <NavLink
-              key={e.to}
-              to={e.to}
-              onClick={() => setAbierto(false)}
-              className={({ isActive }) => cx('flex items-center gap-3 px-4 py-2.5 text-sm', isActive ? 'bg-slate-100 font-semibold dark:bg-slate-800' : 'hover:bg-slate-50 dark:hover:bg-slate-800')}
-            >
-              <span aria-hidden>{e.icono}</span>
-              {e.txt}
+            <NavLink key={e.to} to={e.to} onClick={onCerrar} className="ios-fila flex items-stretch active:bg-slate-200/70 dark:active:bg-white/10">
+              <span className="flex items-center py-2.5 pl-4 text-marino dark:text-sky-300"><Icono nombre={e.icono} className="h-6 w-6" /></span>
+              <span className="ios-sep ml-3 flex min-h-11 flex-1 items-center pr-4 text-[17px] text-slate-900 dark:text-slate-100">{e.txt}</span>
             </NavLink>
           ))}
         </nav>
-      )}
+      </div>
     </div>
   )
 }
-
-const ICONOS: Record<string, string> = { inicio: '☰', mes: '📅', historial: '📈', resumen: '📊', ajustes: '⚙️' }
 
 export function Layout() {
   const { datos, modo, toasts, cerrarToast, guardado, avisar } = useStore()
@@ -116,31 +103,35 @@ export function Layout() {
       /* sin almacenamiento */
     }
   }, [avisar])
+  const { pathname } = useLocation()
+  const [masAbierto, setMasAbierto] = useState(false)
+  const cerrarMas = useCallback(() => setMasAbierto(false), [])
   const u = ultimoMes(datos)
   const anio = u ? u.fecha.slice(0, 4) : String(new Date().getFullYear())
-  const enlaces = [
-    { to: '/', txt: 'Inicio', icono: ICONOS.inicio, end: true },
-    { to: u ? `/mes/${u.fecha.slice(0, 7)}` : '/', txt: 'Mes actual', icono: ICONOS.mes, end: false, activo: '/mes' },
-    { to: '/historial', txt: 'Historial', icono: ICONOS.historial, end: false },
-    { to: `/resumen/${anio}`, txt: 'Resumen', icono: ICONOS.resumen, end: false, activo: '/resumen' },
-    { to: '/ajustes', txt: 'Ajustes', icono: ICONOS.ajustes, end: false },
+  const inicio: EnlaceNav = { to: '/', txt: 'Inicio', icono: 'casa', end: true }
+  const mes: EnlaceNav = { to: u ? `/mes/${u.fecha.slice(0, 7)}` : '/', txt: 'Mes actual', icono: 'calendario', activo: '/mes' }
+  const historial: EnlaceNav = { to: '/historial', txt: 'Historial', icono: 'tendencia' }
+  const resumen: EnlaceNav = { to: `/resumen/${anio}`, txt: 'Resumen', icono: 'grafica', activo: '/resumen' }
+  const ajustes: EnlaceNav = { to: '/ajustes', txt: 'Ajustes', icono: 'engranaje' }
+  const enlaces = [inicio, mes, historial, resumen, ajustes]
+  const extras: EnlaceNav[] = [
+    { to: '/compra', txt: 'Lista de la compra', icono: 'carrito' },
+    { to: '/buscar', txt: 'Buscar', icono: 'lupa' },
+    { to: '/viajes', txt: 'Viajes', icono: 'avion' },
+    { to: '/te-deben', txt: 'Te deben', icono: 'billete' },
+    { to: '/actividad', txt: 'Actividad', icono: 'reloj' },
   ]
-  // Barra lateral en escritorio. En el móvil, los dos primeros van como iconos en la cabecera
-  // y el resto en el menú «⋯».
-  const extras = [
-    { to: '/compra', txt: 'Lista de la compra', icono: '🛒' },
-    { to: '/buscar', txt: 'Buscar', icono: '🔍' },
-    { to: '/viajes', txt: 'Viajes', icono: '✈️' },
-    { to: '/te-deben', txt: 'Te deben', icono: '🤝' },
-    { to: '/actividad', txt: 'Actividad', icono: '🕘' },
-  ]
+  // Móvil: Inicio, Mes, Apuntar, Resumen y «Más» (el resto, en una hoja que sube desde abajo)
+  const enMas = [historial, ajustes, ...extras]
+  const masActivo = enMas.some((e) => pathname.startsWith(e.to))
+  const claseTab = (activo: boolean) => cx('flex flex-col items-center gap-0.5 pt-1.5 text-[10px] font-medium', activo ? 'text-marino dark:text-sky-300' : 'text-slate-500 dark:text-slate-400')
   const claseEnlace = ({ isActive }: { isActive: boolean }) =>
     cx('flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium', isActive ? 'bg-marino text-white dark:bg-sky-800' : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800')
 
   return (
-    <div className="min-h-screen pb-20 md:pb-0 md:pl-56">
+    <div className="min-h-screen pb-[calc(env(safe-area-inset-bottom)+5rem)] md:pb-0 md:pl-56">
       {/* Barra lateral (escritorio) */}
-      <aside className="fixed inset-y-0 left-0 hidden w-56 flex-col border-r border-slate-200 bg-white px-3 py-5 dark:border-slate-800 dark:bg-slate-900 md:flex">
+      <aside className="fixed inset-y-0 left-0 hidden w-56 flex-col border-r border-slate-200 bg-white px-3 py-5 dark:border-slate-800 dark:bg-[#1c1c1e] md:flex">
         <div className="mb-6 flex items-center gap-2 px-2">
           <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" className="h-8 w-8" />
           <span className="font-semibold text-marino dark:text-sky-300">Presupuesto</span>
@@ -156,7 +147,7 @@ export function Layout() {
                 cx('flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium', isActive ? 'bg-marino text-white dark:bg-sky-800' : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800')
               }
             >
-              <span aria-hidden>{e.icono}</span>
+              <Icono nombre={e.icono} className="h-5 w-5" />
               {e.txt}
             </NavLink>
           ))}
@@ -165,7 +156,7 @@ export function Layout() {
         <nav className="flex flex-col gap-1">
           {extras.map((e) => (
             <NavLink key={e.to} to={e.to} className={claseEnlace}>
-              <span aria-hidden>{e.icono}</span>
+              <Icono nombre={e.icono} className="h-5 w-5" />
               {e.txt}
             </NavLink>
           ))}
@@ -177,24 +168,21 @@ export function Layout() {
       </aside>
 
       {/* Cabecera móvil */}
-      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-slate-200 bg-white/90 px-4 py-2.5 backdrop-blur dark:border-slate-800 dark:bg-slate-900/90 md:hidden">
+      <header className="sticky top-0 z-20 flex items-center justify-between bg-[#f2f2f7]/90 px-4 pb-1.5 pt-[calc(env(safe-area-inset-top)+0.5rem)] backdrop-blur dark:bg-black/85 md:hidden">
         <div className="flex items-center gap-2">
           <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" className="h-7 w-7" />
           <span className="font-semibold text-marino dark:text-sky-300">Presupuesto</span>
         </div>
         <div className="flex items-center gap-1">
           <EstadoGuardadoChip />
-          {extras.slice(0, 2).map((e) => (
-            <Link key={e.to} to={e.to} aria-label={e.txt} title={e.txt} className="flex h-8 w-8 items-center justify-center rounded-lg text-base hover:bg-slate-100 dark:hover:bg-slate-800">
-              <span aria-hidden>{e.icono}</span>
-            </Link>
-          ))}
-          <MenuMas enlaces={extras.slice(2)} />
+          <Link to="/buscar" aria-label="Buscar" title="Buscar" className="flex h-9 w-9 items-center justify-center rounded-full text-marino hover:bg-slate-200/70 dark:text-sky-300 dark:hover:bg-white/10">
+            <Icono nombre="lupa" className="h-[22px] w-[22px]" />
+          </Link>
           <BotonDiscreto />
         </div>
       </header>
 
-      <div className="border-b border-slate-200 bg-white px-4 py-2 dark:border-slate-800 dark:bg-slate-900 md:hidden [&:empty]:hidden">
+      <div className="px-4 pb-1 pt-1 md:hidden [&:empty]:hidden">
         <SelectorCuenta />
       </div>
       <AvisoCompartida />
@@ -213,18 +201,27 @@ export function Layout() {
       </main>
 
       {/* Navegación inferior (móvil) */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)] dark:border-slate-800 dark:bg-slate-900 md:hidden">
-        {enlaces.map((e) => (
-          <NavLink
-            key={e.txt}
-            to={e.to}
-            end={e.end}
-            className={({ isActive }) => cx('flex flex-col items-center gap-0.5 py-2 text-[11px]', isActive ? 'font-semibold text-marino dark:text-sky-300' : 'text-slate-500')}
-          >
-            <span aria-hidden className="text-lg leading-none">{e.icono}</span>
-            {e.txt}
+      {masAbierto && <HojaMas enlaces={enMas} onCerrar={cerrarMas} />}
+      <nav aria-label="Secciones" className="fixed inset-x-0 bottom-0 z-50 grid h-[calc(env(safe-area-inset-bottom)+3.5rem)] grid-cols-5 border-t border-black/10 bg-[#f9f9f9]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur dark:border-white/10 dark:bg-[#161617]/95 md:hidden">
+        {[inicio, mes].map((e) => (
+          <NavLink key={e.txt} to={e.to} end={e.end} onClick={cerrarMas} className={({ isActive }) => claseTab(isActive && !masAbierto)}>
+            <Icono nombre={e.icono} className="h-[26px] w-[26px]" />
+            {e.txt === 'Mes actual' ? 'Mes' : e.txt}
           </NavLink>
         ))}
+        <Link to="/apuntar" onClick={cerrarMas} aria-label="Apuntar un gasto" title="Apuntar un gasto" className="flex items-start justify-center">
+          <span className="-mt-2.5 flex h-12 w-12 items-center justify-center rounded-full bg-marino text-white shadow-md active:scale-95 dark:bg-sky-700">
+            <Icono nombre="mas" className="h-6 w-6" grosor={2.4} />
+          </span>
+        </Link>
+        <NavLink to={resumen.to} onClick={cerrarMas} className={() => claseTab(pathname.startsWith('/resumen') && !masAbierto)}>
+          <Icono nombre={resumen.icono} className="h-[26px] w-[26px]" />
+          {resumen.txt}
+        </NavLink>
+        <button type="button" aria-expanded={masAbierto} onClick={() => setMasAbierto((a) => !a)} className={claseTab(masAbierto || masActivo)}>
+          <Icono nombre="puntos" className="h-[26px] w-[26px]" />
+          Más
+        </button>
       </nav>
 
       {/* Avisos */}

@@ -1,9 +1,15 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore } from '../data/store'
-import { BadgeEstado, Card, Dinero, Kpi, cx } from '../components/ui'
+import { BadgeEstado, Card, Dinero, cx } from '../components/ui'
 import { CrearMesBoton } from '../components/CrearMes'
-import { InversionesKpi } from '../components/InversionesKpi'
+import { FilaInversiones } from '../components/InversionesKpi'
+import { Icono } from '../components/ios'
+import { usePreferencias, mesesSinCerrar } from '../lib/preferencias'
+import { OCULTO, useDiscreto } from '../lib/discreto'
+import { formatEUR, type Cents } from '../lib/money'
+import { MESES, MESES_CORTOS } from '../lib/fechas'
+import type { ReactNode } from 'react'
 import { useCuentas } from '../data/cuentas'
 import { UltimosCambios } from './ActividadPage'
 import { ColchonCard } from '../components/ColchonCard'
@@ -36,6 +42,7 @@ function leerAnioGuardado(): number | null {
 /** Índice de hojas (equivale a la macro ActualizarIndice, pero siempre al día). */
 export function InicioPage() {
   const { calc, datos, modo } = useStore()
+  const discreto = useDiscreto()
   const compartida = useCuentas().activa?.tipo === 'compartida'
   const anios = aniosConMeses(calc)
   const [anioElegido, setAnioElegido] = useState<number | null>(leerAnioGuardado)
@@ -69,40 +76,99 @@ export function InicioPage() {
   const k = calc.kpis
   const pendientes = datos.debts.filter((x) => !x.devuelto_en)
   const totalDeben = pendientes.reduce((a, x) => a + x.importe, 0)
-  const nPersonas = new Set(pendientes.map((x) => x.persona.trim().toLowerCase())).size
+  const personas = [...new Map(pendientes.map((x) => [x.persona.trim().toLowerCase(), x.persona.trim()])).values()]
+  const { recordarCierre } = usePreferencias()
+  const sinCerrar = recordarCierre ? mesesSinCerrar(datos.months) : []
+  const ultimo = calc.meses.at(-1)
+  const anterior = calc.meses.at(-2)
+  const variacion = ultimo && anterior ? ultimo.dineroTotal - anterior.dineroTotal : null
+  const serie = calc.meses.slice(-12)
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold text-marino dark:text-sky-300">Índice de hojas</h1>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <h1 className="text-[34px] font-bold leading-tight tracking-tight text-slate-900 dark:text-white">Inicio</h1>
         <CrearMesBoton />
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Kpi titulo="Dinero total actual" valor={k.dineroTotalActual} grande />
-        <Kpi titulo="Último mes registrado" valor={k.ultimoMes ?? '–'} grande />
-        {!compartida && (
-          <>
-            <InversionesKpi />
-            <Kpi titulo="Total en cuenta remunerada" valor={k.totalCuentaRem} />
-          </>
-        )}
-      </div>
-
-      {!compartida && <ColchonCard />}
-      {compartida && <UltimosCambios />}
-
-      {pendientes.length > 0 && (
+      {sinCerrar.length > 0 && (
         <Link
-          to="/te-deben"
-          className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm hover:bg-amber-100 dark:border-amber-900 dark:bg-amber-950/30 dark:hover:bg-amber-950/50"
+          to={`/mes/${sinCerrar[0].slice(0, 7)}`}
+          className="flex items-center gap-3 rounded-xl bg-white px-4 py-3 text-[15px] active:bg-slate-100 dark:bg-[#1c1c1e] dark:active:bg-white/10"
         >
-          <span>
-            🤝 Te deben <strong><Dinero c={totalDeben} dash={false} /></strong>{' '}
-            <span className="text-slate-500">({nPersonas === 1 ? '1 persona' : `${nPersonas} personas`})</span>
+          <span className="flex h-[29px] w-[29px] shrink-0 items-center justify-center rounded-[7px] bg-[#FF9500] text-white"><Icono nombre="campana" className="h-[18px] w-[18px]" /></span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-semibold">{sinCerrar.length === 1 ? `${nombreLargo(sinCerrar[0])} sigue abierto` : `${sinCerrar.length} meses pasados siguen abiertos`}</span>
+            <span className="block text-[13px] text-slate-500 dark:text-slate-400">Ciérralo cuando tengas todo apuntado. Puedes quitar este aviso en Ajustes.</span>
           </span>
-          <span className="text-sky-700 dark:text-sky-400">Ver →</span>
+          <Chevron />
         </Link>
       )}
+
+      <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+        <section className="rounded-xl bg-white p-4 dark:bg-[#1c1c1e]" aria-labelledby="titulo-patrimonio">
+          <h2 id="titulo-patrimonio" className="text-[15px] text-slate-500 dark:text-slate-400">{compartida ? 'Dinero de la cuenta' : 'Patrimonio'}</h2>
+          <CifraGrande c={k.dineroTotalActual} />
+          {variacion !== null && anterior && (
+            <p className={cx('mt-0.5 text-[15px] font-semibold', variacion >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400')}>
+              {variacion > 0 && !discreto && '+'}
+              <Dinero c={variacion} dash={false} /> respecto a {nombreLargo(anterior.mes.fecha).split(' ')[0].toLowerCase()}
+            </p>
+          )}
+          {serie.length >= 2 ? (
+            <>
+              <Evolucion valores={serie.map((m) => m.dineroTotal)} meses={serie.length} />
+              <div className="mt-1 flex justify-between text-xs text-slate-500 dark:text-slate-400">
+                <span>{nombreCorto(serie[0].mes.fecha)}</span>
+                <span>{nombreCorto(serie[serie.length - 1].mes.fecha)}</span>
+              </div>
+            </>
+          ) : (
+            <p className="mt-3 text-[13px] text-slate-500 dark:text-slate-400">{k.ultimoMes ? `Último mes: ${k.ultimoMes}. ` : ''}La gráfica de evolución aparece cuando tengas dos meses.</p>
+          )}
+        </section>
+
+        <div className="space-y-6">
+          {ultimo && (
+            <section aria-labelledby="titulo-mes">
+              <h2 id="titulo-mes" className="mb-1.5 px-4 text-[13px] text-slate-500 dark:text-slate-400">
+                {nombreLargo(ultimo.mes.fecha)} · {ultimo.mes.estado === 'Abierto' ? 'abierto' : 'cerrado'}
+              </h2>
+              <div className="overflow-hidden rounded-xl bg-white dark:bg-[#1c1c1e]">
+                <FilaCifra to={`/mes/${ultimo.mes.fecha.slice(0, 7)}`} titulo="Ingresos" c={ultimo.ingresosTotales} />
+                <FilaCifra to={`/mes/${ultimo.mes.fecha.slice(0, 7)}`} titulo="Gastos" c={ultimo.gastosTotales} />
+                <FilaCifra to={`/mes/${ultimo.mes.fecha.slice(0, 7)}`} titulo="Ingresos menos gastos" c={ultimo.neto} fuerte verde />
+              </div>
+            </section>
+          )}
+
+          {!compartida && ultimo && (
+            <section aria-labelledby="titulo-donde">
+              <h2 id="titulo-donde" className="mb-1.5 px-4 text-[13px] text-slate-500 dark:text-slate-400">Dónde está tu dinero</h2>
+              <div className="overflow-hidden rounded-xl bg-white dark:bg-[#1c1c1e]">
+                <Reparto partes={[ultimo.saldoDisponible, k.totalCuentaRem, k.totalInversiones]} />
+                <FilaCifra titulo="Disponible" c={ultimo.saldoDisponible} marca={<Marca n={0} />} />
+                <FilaCifra titulo="Cuenta remunerada" c={k.totalCuentaRem} marca={<Marca n={1} />} />
+                <FilaInversiones marca={<Marca n={2} />} />
+              </div>
+            </section>
+          )}
+        </div>
+      </div>
+
+      {(!compartida || pendientes.length > 0) && (
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {!compartida && <ColchonCard compacta />}
+          {pendientes.length > 0 && (
+            <Link to="/te-deben" className="rounded-xl bg-white p-3.5 active:bg-slate-100 dark:bg-[#1c1c1e] dark:active:bg-white/10 sm:p-4">
+              <div className="text-[13px] text-slate-500 dark:text-slate-400">Te deben</div>
+              <div className="mt-0.5 text-[22px] font-bold tracking-tight"><Dinero c={totalDeben} dash={false} /></div>
+              <div className="mt-1.5 truncate text-xs text-slate-500 dark:text-slate-400">{listaNombres(personas)}</div>
+            </Link>
+          )}
+        </div>
+      )}
+
+      {compartida && <UltimosCambios />}
 
       {filas.length === 0 ? (
         <Card>
@@ -115,10 +181,11 @@ export function InicioPage() {
           <CrearMesBoton />
         </Card>
       ) : (
-        <Card className="p-0 sm:p-0">
-          {anios.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-4 py-3 dark:border-slate-800" role="tablist" aria-label="Año">
-              <span className="mr-1 text-sm text-slate-500">Año:</span>
+        <section aria-labelledby="titulo-hojas">
+        <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2 px-4">
+          <h2 id="titulo-hojas" className="text-[13px] text-slate-500 dark:text-slate-400">Meses y resúmenes</h2>
+          {anios.length > 1 && (
+            <div className="flex flex-wrap gap-0.5 rounded-[9px] bg-[#e3e3e8] p-0.5 dark:bg-[#1c1c1e]" role="tablist" aria-label="Año">
               {anios.map((a) => (
                 <button
                   key={a}
@@ -127,10 +194,10 @@ export function InicioPage() {
                   aria-selected={a === anioVisible}
                   onClick={() => elegirAnio(a)}
                   className={cx(
-                    'rounded-full px-3 py-1 text-sm font-medium transition-colors',
+                    'rounded-[7px] px-3 py-1 text-[13px] font-medium transition-colors',
                     a === anioVisible
-                      ? 'bg-marino text-white dark:bg-sky-700'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700',
+                      ? 'bg-white text-slate-900 shadow-sm dark:bg-[#636366] dark:text-white'
+                      : 'text-slate-700 dark:text-slate-300',
                   )}
                 >
                   {a}
@@ -138,16 +205,18 @@ export function InicioPage() {
               ))}
             </div>
           )}
+        </div>
+        <Card className="overflow-hidden p-0 sm:p-0">
           {/* Escritorio: tabla */}
           <table className="hidden w-full text-sm md:table">
             <thead>
-              <tr className="bg-marino text-left text-white dark:bg-sky-900">
-                <th className="px-4 py-3 font-semibold">Hoja</th>
-                <th className="px-4 py-3 font-semibold">Tipo</th>
-                <th className="px-4 py-3 font-semibold">Estado</th>
-                <th className="px-4 py-3 text-right font-semibold">Ingresos</th>
-                <th className="px-4 py-3 text-right font-semibold">Gastos</th>
-                <th className="px-4 py-3 text-right font-semibold">Saldo disponible</th>
+              <tr className="border-b border-slate-200 text-left text-[13px] text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                <th className="px-4 py-2.5 font-medium">Hoja</th>
+                <th className="px-4 py-2.5 font-medium">Tipo</th>
+                <th className="px-4 py-2.5 font-medium">Estado</th>
+                <th className="px-4 py-2.5 text-right font-medium">Ingresos</th>
+                <th className="px-4 py-2.5 text-right font-medium">Gastos</th>
+                <th className="px-4 py-2.5 text-right font-medium">Saldo disponible</th>
               </tr>
             </thead>
             <tbody>
@@ -155,14 +224,13 @@ export function InicioPage() {
                 <tr
                   key={f.clave}
                   className={cx(
-                    'border-b border-slate-100 dark:border-slate-800',
-                    f.tipo === 'Resumen anual' && 'bg-emerald-50 font-semibold dark:bg-emerald-900/20',
-                    f.tipo === 'Historial' && 'bg-amber-50 font-semibold dark:bg-amber-900/20',
-                    f.tipo !== 'Mes' && i > 0 && 'border-t-8 border-t-white dark:border-t-slate-900',
+                    'border-b border-slate-100 last:border-0 dark:border-slate-800',
+                    f.tipo !== 'Mes' && 'font-semibold',
+                    f.tipo !== 'Mes' && i > 0 && 'border-t-8 border-t-[#f2f2f7] dark:border-t-black',
                   )}
                 >
                   <td className={cx('px-4 py-2.5', f.tipo === 'Mes' && 'pl-8')}>
-                    <Link to={f.to} className="text-sky-800 hover:underline dark:text-sky-300">{f.hoja}</Link>
+                    <Link to={f.to} className="text-marino hover:underline dark:text-sky-300">{f.hoja}</Link>
                   </td>
                   <td className="px-4 py-2.5 text-slate-600 dark:text-slate-300">{f.tipo}</td>
                   <td className="px-4 py-2.5">{f.estado && <BadgeEstado estado={f.estado} />}</td>
@@ -175,15 +243,14 @@ export function InicioPage() {
           </table>
 
           {/* Móvil: tarjetas */}
-          <ul className="divide-y divide-slate-100 dark:divide-slate-800 md:hidden">
+          <ul className="divide-y divide-slate-200/70 dark:divide-white/10 md:hidden">
             {filas.map((f) => (
               <li key={f.clave}>
                 <Link
                   to={f.to}
                   className={cx(
                     'flex items-center justify-between gap-3 px-4 py-3',
-                    f.tipo === 'Resumen anual' && 'bg-emerald-50 dark:bg-emerald-900/20',
-                    f.tipo === 'Historial' && 'bg-amber-50 dark:bg-amber-900/20',
+                    'active:bg-slate-100 dark:active:bg-white/10',
                   )}
                 >
                   <div className={cx(f.tipo === 'Mes' && 'pl-3')}>
@@ -206,8 +273,92 @@ export function InicioPage() {
             ))}
           </ul>
         </Card>
+        </section>
       )}
-      <p className="text-xs italic text-slate-500">El índice se actualiza solo con cada cambio.</p>
     </div>
+  )
+}
+
+const nombreLargo = (fecha: string) => {
+  const { anio, mes } = partes(fecha)
+  return `${MESES[mes - 1]} ${anio}`
+}
+const nombreCorto = (fecha: string) => {
+  const { anio, mes } = partes(fecha)
+  return `${MESES_CORTOS[mes - 1].toLowerCase()} ${anio}`
+}
+const listaNombres = (xs: string[]) =>
+  xs.length <= 2 ? xs.join(' y ') : `${xs.slice(0, 2).join(', ')} y ${xs.length - 2} más`
+
+const Chevron = () => (
+  <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-slate-300 dark:text-slate-600" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="m9 5 7 7-7 7" />
+  </svg>
+)
+
+/** La cifra principal: euros en grande y los céntimos más pequeños y suaves. */
+function CifraGrande({ c }: { c: Cents }) {
+  const discreto = useDiscreto()
+  const { redondear } = usePreferencias()
+  if (discreto) return <p className="num mt-0.5 text-[40px] font-bold leading-tight tracking-tight text-slate-400" aria-label="Importe oculto">{OCULTO}</p>
+  const texto = formatEUR(c, { dash: false, redondear })
+  const [euros, centimos] = texto.replace(' €', '').split(',')
+  return (
+    <p className={cx('num mt-0.5 flex items-baseline leading-tight', c < 0 && 'text-red-600 dark:text-red-400')}>
+      <span className="text-[40px] font-bold tracking-tight">{euros}</span>
+      <span className="ml-0.5 text-[22px] font-semibold text-slate-500 dark:text-slate-400">{centimos !== undefined ? `,${centimos} €` : ' €'}</span>
+    </p>
+  )
+}
+
+/** Línea con la evolución del patrimonio (sin ejes: el detalle está en Historial). */
+function Evolucion({ valores, meses }: { valores: number[]; meses: number }) {
+  const min = Math.min(...valores)
+  const max = Math.max(...valores)
+  const rango = max - min || 1
+  const W = 300
+  const H = 60
+  const pts = valores.map((v, i) => [(i / (valores.length - 1)) * W, 6 + (1 - (v - min) / rango) * (H - 12)] as const)
+  const sube = valores[valores.length - 1] >= valores[0]
+  return (
+    <Link to="/historial" className="mt-3 block" aria-label={`Evolución en los últimos ${meses} meses: ${sube ? 'al alza' : 'a la baja'}. Ver el historial.`}>
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-16 w-full overflow-visible text-marino dark:text-sky-300" aria-hidden>
+        <polyline points={pts.map((p) => p.join(',')).join(' ')} fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+      </svg>
+    </Link>
+  )
+}
+
+const TONOS = ['bg-marino dark:bg-sky-300', 'bg-marino/55 dark:bg-sky-300/60', 'bg-marino/25 dark:bg-sky-300/30']
+const Marca = ({ n }: { n: number }) => <span className={cx('h-2.5 w-2.5 rounded-[3px]', TONOS[n])} aria-hidden />
+
+/** Barra con el reparto entre disponible, cuenta remunerada e inversiones. */
+function Reparto({ partes: valores }: { partes: number[] }) {
+  const pos = valores.map((v) => Math.max(0, v))
+  const total = pos.reduce((a, b) => a + b, 0)
+  if (total <= 0) return null
+  return (
+    <div className="mx-4 mb-1.5 mt-3.5 flex h-2.5 gap-0.5 overflow-hidden rounded-full" aria-hidden>
+      {pos.map((v, i) => v > 0 && <div key={i} className={TONOS[i]} style={{ flexGrow: v }} />)}
+    </div>
+  )
+}
+
+/** Fila de lista con un importe a la derecha. */
+function FilaCifra({ titulo, c, to, marca, fuerte, verde }: { titulo: string; c: Cents; to?: string; marca?: ReactNode; fuerte?: boolean; verde?: boolean }) {
+  const contenido = (
+    <>
+      {marca && <span className="flex items-center pl-4">{marca}</span>}
+      <span className={cx('ios-sep flex min-h-11 flex-1 items-center gap-2 py-2 pr-4', marca ? 'ml-2.5' : 'ml-4')}>
+        <span className={cx('flex-1 text-[17px]', fuerte && 'font-semibold')}>{titulo}</span>
+        <Dinero c={c} dash={false} verde={verde} className={cx('text-[17px]', fuerte && 'font-semibold')} />
+        {to && <Chevron />}
+      </span>
+    </>
+  )
+  return to ? (
+    <Link to={to} className="ios-fila flex items-stretch active:bg-slate-100 dark:active:bg-white/10">{contenido}</Link>
+  ) : (
+    <div className="ios-fila flex items-stretch">{contenido}</div>
   )
 }
