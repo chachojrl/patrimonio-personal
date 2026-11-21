@@ -44,3 +44,31 @@ describe('¿Me lo puedo permitir?', () => {
     expect(simular(calculo(), 1440000, 12).veredicto).toBe('esperar') // 1.200 €/mes
   })
 })
+
+describe('¿Me lo puedo permitir?: TAE, entrada y plazos a medida', () => {
+  it('cuota con intereses (sistema francés): 10.000 € a 36 meses al 7 % TAE', async () => {
+    const { cuotaMensual } = await import('./permitir')
+    // Interés mensual equivalente (1,07)^(1/12) − 1 ≈ 0,5654 % → cuota ≈ 307,79 €
+    expect(cuotaMensual(1000000, 36, 7)).toBe(30779)
+    expect(cuotaMensual(1000000, 36, 0)).toBe(27778)
+    expect(cuotaMensual(0, 36, 7)).toBe(0)
+  })
+  it('la entrada baja el colchón; lo financiado va en cuotas y se suman los intereses', () => {
+    const s = simular(calculo(), 2000000, 48, { tae: 6, entrada: 400000 })
+    expect(s.entrada).toBe(400000)
+    expect(s.financiado).toBe(1600000)
+    expect(s.cuota).toBeGreaterThan(1600000 / 48)
+    expect(s.totalPagado).toBe(400000 + s.cuota * 48)
+    expect(s.intereses).toBe(s.totalPagado - 2000000)
+    expect(s.colchonDespues).toBeCloseTo((2400000 - 400000) / 200000)
+  })
+  it('una entrada mayor que lo disponible: mejor esperar', () => {
+    expect(simular(calculo(), 3000000, 60, { entrada: 2500000 }).veredicto).toBe('esperar')
+  })
+  it('plazos largos a medida (por ejemplo, 60 meses) abaratan la cuota', () => {
+    const corto = simular(calculo(), 2400000, 24, { tae: 5 })
+    const largo = simular(calculo(), 2400000, 60, { tae: 5 })
+    expect(largo.cuota).toBeLessThan(corto.cuota)
+    expect(largo.intereses).toBeGreaterThan(corto.intereses)
+  })
+})

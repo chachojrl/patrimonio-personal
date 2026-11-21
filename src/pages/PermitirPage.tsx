@@ -8,7 +8,9 @@ import { useEur } from '../lib/discreto'
 import { Fila, Grupo, Icono, type NombreIcono } from '../components/ios'
 import { cx } from '../components/ui'
 
-const PLAZOS = [1, 3, 6, 12, 24]
+// Opciones rápidas; «Otro» deja escribir cualquier número de meses (hasta 40 años)
+const PLAZOS: (number | 'otro')[] = [1, 6, 12, 24, 'otro']
+const MAX_MESES = 480
 
 const ASPECTO: Record<Veredicto, { titulo: string; icono: NombreIcono; color: string }> = {
   si: { titulo: 'Sí, te lo puedes permitir', icono: 'check', color: 'bg-[#34C759]' },
@@ -24,10 +26,24 @@ export function PermitirPage() {
   const eur = useEur()
   const [texto, setTexto] = useState('')
   const [que, setQue] = useState('')
-  const [plazos, setPlazos] = useState(1)
+  const [opcion, setOpcion] = useState<number | 'otro'>(1)
+  const [mesesOtro, setMesesOtro] = useState('36')
+  const [entradaTxt, setEntradaTxt] = useState('')
+  const [taeTxt, setTaeTxt] = useState('')
   const importe = parseImporte(texto)
-  const valido = importe !== null && importe > 0
-  const s = valido ? simular(calc, importe, plazos) : null
+  const nOtro = Math.round(Number(mesesOtro.replace(',', '.')))
+  const plazos = opcion === 'otro' ? (Number.isFinite(nOtro) ? Math.min(MAX_MESES, Math.max(1, nOtro)) : 1) : opcion
+  const entrada = parseImporte(entradaTxt) ?? 0
+  const taeNum = Number(taeTxt.replace(',', '.').replace('%', '').trim() || '0')
+  const tae = Number.isFinite(taeNum) ? Math.min(100, Math.max(0, taeNum)) : 0
+  const errorPago =
+    opcion === 'otro' && (!Number.isFinite(nOtro) || nOtro < 2 || nOtro > MAX_MESES) ? `Escribe entre 2 y ${MAX_MESES} meses.`
+      : taeTxt.trim() && !Number.isFinite(taeNum) ? 'La TAE tiene que ser un número, por ejemplo 7,5.'
+        : importe !== null && plazos > 1 && entrada > importe ? 'La entrada no puede ser mayor que el precio.'
+          : null
+  const valido = importe !== null && importe > 0 && !errorPago
+  const s = valido ? simular(calc, importe, plazos, { tae, entrada }) : null
+  const campoDerecha = 'num min-w-0 flex-1 bg-transparent text-right text-[17px] text-slate-600 outline-none placeholder:text-slate-300 dark:text-slate-300 dark:placeholder:text-slate-600'
   const sinDatos = calc.meses.length === 0
 
   return (
@@ -74,17 +90,45 @@ export function PermitirPage() {
                   key={p}
                   type="button"
                   role="radio"
-                  aria-checked={plazos === p}
-                  onClick={() => setPlazos(p)}
-                  className={cx('rounded-[7px] py-1.5 text-[13px] font-medium text-slate-900 dark:text-white', plazos === p && 'bg-white shadow-sm dark:bg-[#636366]')}
+                  aria-checked={opcion === p}
+                  onClick={() => setOpcion(p)}
+                  className={cx('rounded-[7px] py-1.5 text-[13px] font-medium text-slate-900 dark:text-white', opcion === p && 'bg-white shadow-sm dark:bg-[#636366]')}
                 >
-                  {p === 1 ? '1 pago' : `${p} meses`}
+                  {p === 1 ? '1 pago' : p === 'otro' ? 'Otro' : `${p} meses`}
                 </button>
               ))}
             </div>
           </div>
         </div>
+        {opcion === 'otro' && (
+          <label className="ios-fila block">
+            <span className="ios-sep ml-4 flex min-h-11 items-center gap-3 pr-4">
+              <span className="shrink-0 text-[17px]">Meses</span>
+              <input inputMode="numeric" value={mesesOtro} onChange={(e) => setMesesOtro(e.target.value.replace(/[^\d]/g, ''))} aria-label="Número de meses" placeholder="36" className={campoDerecha} />
+              {plazos >= 24 && <span className="shrink-0 text-[15px] text-slate-500 dark:text-slate-400">≈ {(plazos / 12).toLocaleString('es-ES', { maximumFractionDigits: 1 })} años</span>}
+            </span>
+          </label>
+        )}
       </Grupo>
+
+      {plazos > 1 && (
+        <Grupo titulo="Financiación" pie={errorPago ?? 'La TAE viene en la oferta del banco o la tienda. Déjala vacía si es sin intereses. La entrada se paga al principio.'}>
+          <label className="ios-fila block">
+            <span className="ios-sep ml-4 flex min-h-11 items-center gap-3 pr-4">
+              <span className="shrink-0 text-[17px]">Entrada</span>
+              <input inputMode="decimal" value={entradaTxt} onChange={(e) => setEntradaTxt(e.target.value)} aria-label="Entrada" placeholder="0 €" className={campoDerecha} />
+            </span>
+          </label>
+          <label className="ios-fila block">
+            <span className="ios-sep ml-4 flex min-h-11 items-center gap-3 pr-4">
+              <span className="shrink-0 text-[17px]">TAE</span>
+              <input inputMode="decimal" value={taeTxt} onChange={(e) => setTaeTxt(e.target.value)} aria-label="TAE en porcentaje" placeholder="0 %" className={campoDerecha} />
+              {taeTxt.trim() && !taeTxt.includes('%') && <span className="shrink-0 text-[17px] text-slate-500">%</span>}
+            </span>
+          </label>
+        </Grupo>
+      )}
+      {plazos <= 1 && errorPago && <p className="-mt-6 mb-8 px-4 text-[13px] text-red-600 dark:text-red-400">{errorPago}</p>}
 
       {sinDatos ? (
         <p className="px-4 text-[15px] text-slate-500 dark:text-slate-400">Cuando tengas algún mes apuntado podré calcularlo con tus datos.</p>
@@ -100,7 +144,7 @@ export function PermitirPage() {
               <div>
                 <h2 className="text-[20px] font-bold leading-tight">{ASPECTO[s.veredicto].titulo}</h2>
                 <p className="mt-1 text-[15px] text-slate-600 dark:text-slate-300">
-                  {que.trim() ? <>{que.trim()}, {eur(s.importe)}{s.plazos > 1 ? ` en ${s.plazos} cuotas de ${eur(s.cuota)}` : ''}. </> : null}
+                  {que.trim() ? <>{que.trim()}, {eur(s.importe)}{s.plazos > 1 ? `${s.entrada > 0 ? `: ${eur(s.entrada)} de entrada y` : ' en'} ${s.plazos} cuotas de ${eur(s.cuota)}` : ''}. </> : null}
                   {s.motivo}
                 </p>
               </div>
@@ -108,12 +152,19 @@ export function PermitirPage() {
           </section>
 
           <Grupo titulo="Los números">
-            {s.plazos > 1 && <Fila titulo="Cuota al mes" valor={eur(s.cuota)} />}
+            {s.plazos > 1 && (
+              <>
+                <Fila titulo="Cuota al mes" sub={`${s.plazos} meses${s.tae > 0 ? ` al ${s.tae.toLocaleString('es-ES')} % TAE` : ', sin intereses'}`} valor={eur(s.cuota)} />
+                {s.entrada > 0 && <Fila titulo="Entrada" valor={eur(s.entrada)} />}
+                {s.intereses > 0 && <Fila titulo="Intereses" sub="Lo que pagas de más por financiarlo" valor={eur(s.intereses)} />}
+                <Fila titulo="Total que pagarás" valor={eur(s.totalPagado)} />
+              </>
+            )}
             {s.colchonAntes !== null && s.colchonDespues !== null && (
               <Fila
                 titulo="Colchón de emergencia"
-                sub={s.plazos > 1 ? 'A plazos no baja de golpe' : `Ahora tienes ${meses(s.colchonAntes)}`}
-                valor={s.plazos > 1 ? meses(s.colchonAntes) : `${meses(s.colchonDespues)}`}
+                sub={s.plazos > 1 && s.entrada === 0 ? 'A plazos sin entrada no baja' : `Ahora tienes ${meses(s.colchonAntes)}`}
+                valor={meses(s.colchonDespues)}
               />
             )}
             <Fila
@@ -121,7 +172,7 @@ export function PermitirPage() {
               sub={`Media de los últimos ${s.mesesUsados} ${s.mesesUsados === 1 ? 'mes' : 'meses'}`}
               valor={eur(s.ahorroMedio, { dash: false })}
             />
-            {s.mesesDeAhorro !== null && <Fila titulo="Meses de ahorro que supone" valor={meses(s.mesesDeAhorro)} />}
+            {s.mesesDeAhorro !== null && <Fila titulo="Meses de ahorro" sub="Lo que pagarás en total, en meses de tu ahorro" valor={meses(s.mesesDeAhorro)} />}
             {s.pctPatrimonio !== null && (
               <Fila titulo="De tu patrimonio" valor={`${(s.pctPatrimonio * 100).toLocaleString('es-ES', { maximumFractionDigits: 1 })} %`} />
             )}

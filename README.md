@@ -165,8 +165,11 @@ Debe responder `OK` en todas las tablas: sin sesión no se lee nada y el registr
 - **Colchón de emergencia** (Inicio e Historial): cuántos meses podrías vivir sin ingresos con tu saldo
   y tu cuenta remunerada, según lo que gastas de media (las inversiones no cuentan).
 - **¿Me lo puedo permitir?** (en *Más*): escribe lo que cuesta algo y si lo pagarías de una vez o a
-  plazos. Te dice si te lo puedes permitir, cómo quedaría tu colchón, cuántos meses de ahorro supone
-  y qué parte de tu patrimonio es. Usa tus medias de los últimos 6 meses; es orientativo.
+  plazos (6, 12, 24 meses u «Otro», hasta 480). A plazos puedes poner la **entrada** y la **TAE**: la
+  cuota se calcula como un préstamo normal (sistema francés) y te dice los intereses y el total que
+  pagarás. Te dice si te lo puedes permitir, cómo quedaría tu colchón (la entrada sí lo baja), cuántos
+  meses de ahorro supone y qué parte de tu patrimonio es. Usa tus medias de los últimos 6 meses; es
+  orientativo.
 
 ### Más herramientas
 
