@@ -23,6 +23,8 @@ export function useTema(): [Tema, (t: Tema) => void] {
     }
     const oscuro = tema === 'oscuro' || (tema === 'sistema' && window.matchMedia('(prefers-color-scheme: dark)').matches)
     document.documentElement.classList.toggle('dark', oscuro)
+    // La barra del navegador / de estado, del mismo color que el fondo de la app
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', oscuro ? '#000000' : '#f2f2f7')
   }, [tema])
   return [tema, setTema]
 }

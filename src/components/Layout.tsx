@@ -4,6 +4,7 @@ import { BotonDiscreto, cx } from './ui'
 import { ultimoMes } from '../lib/operaciones'
 import { useCallback, useEffect, useState } from 'react'
 import { Icono, type NombreIcono } from './ios'
+import { PanelApuntar } from './PanelApuntar'
 import { CLAVE_AVISO, nombreMiembro, useCuentas } from '../data/cuentas'
 
 function EstadoGuardadoChip() {
@@ -73,8 +74,8 @@ function HojaMas({ enlaces, onCerrar }: { enlaces: EnlaceNav[]; onCerrar: () => 
   }, [onCerrar])
   return (
     <div className="fixed inset-0 z-40 md:hidden" role="dialog" aria-modal="true" aria-label="Más secciones">
-      <button type="button" aria-label="Cerrar" className="absolute inset-0 bg-black/30" onClick={onCerrar} />
-      <div className="absolute inset-x-0 bottom-0 rounded-t-[14px] bg-[#f2f2f7] px-4 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] pt-2 dark:bg-[#1c1c1e]">
+      <button type="button" aria-label="Cerrar" className="anim-fondo absolute inset-0 bg-black/30" onClick={onCerrar} />
+      <div className="anim-subir absolute inset-x-0 bottom-0 rounded-t-[14px] bg-[#f2f2f7] px-4 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] pt-2 dark:bg-[#1c1c1e]">
         <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-slate-300 dark:bg-slate-600" aria-hidden />
         <nav className="overflow-hidden rounded-[10px] bg-white dark:bg-[#2c2c2e]">
           {enlaces.map((e) => (
@@ -105,6 +106,7 @@ export function Layout() {
   }, [avisar])
   const { pathname } = useLocation()
   const [masAbierto, setMasAbierto] = useState(false)
+  const [apuntando, setApuntando] = useState(false)
   const cerrarMas = useCallback(() => setMasAbierto(false), [])
   const u = ultimoMes(datos)
   const anio = u ? u.fecha.slice(0, 4) : String(new Date().getFullYear())
@@ -137,6 +139,14 @@ export function Layout() {
           <span className="font-semibold text-marino dark:text-sky-300">Presupuesto</span>
         </div>
         <SelectorCuenta className="mb-4" vertical />
+        <button
+          type="button"
+          onClick={() => setApuntando(true)}
+          className="mb-4 flex items-center justify-center gap-1.5 rounded-lg bg-marino px-3 py-2 text-sm font-semibold text-white hover:bg-marino-claro dark:bg-sky-700 dark:hover:bg-sky-600"
+        >
+          <Icono nombre="mas" className="h-4 w-4" grosor={2.4} />
+          Apuntar gasto
+        </button>
         <nav className="flex flex-col gap-1">
           {enlaces.map((e) => (
             <NavLink
@@ -209,11 +219,11 @@ export function Layout() {
             {e.txt === 'Mes actual' ? 'Mes' : e.txt}
           </NavLink>
         ))}
-        <Link to="/apuntar" onClick={cerrarMas} aria-label="Apuntar un gasto" title="Apuntar un gasto" className="flex items-start justify-center">
+        <button type="button" onClick={() => { cerrarMas(); setApuntando(true) }} aria-label="Apuntar un gasto" title="Apuntar un gasto" className="flex items-start justify-center">
           <span className="-mt-2.5 flex h-12 w-12 items-center justify-center rounded-full bg-marino text-white shadow-md active:scale-95 dark:bg-sky-700">
             <Icono nombre="mas" className="h-6 w-6" grosor={2.4} />
           </span>
-        </Link>
+        </button>
         <NavLink to={resumen.to} onClick={cerrarMas} className={() => claseTab(pathname.startsWith('/resumen') && !masAbierto)}>
           <Icono nombre={resumen.icono} className="h-[26px] w-[26px]" />
           {resumen.txt}
@@ -223,6 +233,8 @@ export function Layout() {
           Más
         </button>
       </nav>
+
+      {apuntando && <PanelApuntar onCerrar={() => setApuntando(false)} />}
 
       {/* Avisos */}
       <div className="fixed inset-x-0 bottom-20 z-50 flex flex-col items-center gap-2 px-4 md:bottom-6">
