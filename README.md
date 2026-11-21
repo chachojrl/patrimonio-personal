@@ -8,6 +8,8 @@ yo puedo ver los datos.
 - **Datos y login:** Supabase (Postgres + Auth + Row Level Security), plan gratuito.
 - **Hosting:** GitHub Pages, desplegado con GitHub Actions.
 - **Cálculos:** módulo puro `src/lib/calculos.ts`, en céntimos enteros, con tests (`npm test`).
+- **Pruebas en el navegador:** Playwright recorre los flujos principales en móvil y escritorio en cada
+  pull request (`npm run e2e`).
 
 > **¿Es privado si GitHub Pages es público?** Sí. En GitHub Pages solo se publica el *código* de la
 > app (HTML/JS), que no contiene ningún dato ni secreto. Los datos están en Supabase y solo se
@@ -67,10 +69,12 @@ yo puedo ver los datos.
 
 ### 4. Primer uso
 
-1. Abre la app, inicia sesión y ve a **Ajustes → Cargar datos iniciales (Oct–Nov 2026)**.
-2. Comprueba que el Inicio muestra *Dinero total actual 30.800,07 €*.
-3. En el móvil, ábrela en el navegador y elige **Añadir a pantalla de inicio**: se instala como app.
-4. (Opcional, recomendado) **Ajustes → Contraseña y seguridad → Activar verificación en dos pasos**. Después, para que la
+1. Abre la app e inicia sesión. La primera vez, Inicio te ofrece un **recorrido guiado** de un minuto
+   (también en *Ajustes → Guía de uso*).
+2. En *Ajustes → Punto de partida* elige el mes de inicio y lo que había en tus cuentas antes de él.
+3. En Inicio, pulsa **Crear mes nuevo**.
+4. En el móvil, ábrela en el navegador y elige **Añadir a pantalla de inicio**: se instala como app.
+5. (Opcional, recomendado) **Ajustes → Contraseña y seguridad → Activar verificación en dos pasos**. Después, para que la
    base de datos lo exija también:
    ```sql
    update public.app_owner set requiere_mfa = true;
@@ -88,75 +92,125 @@ Debe responder `OK` en todas las tablas: sin sesión no se lee nada y el registr
 
 ## Uso diario
 
+> Dentro de la app, *Ajustes → Guía de uso* explica cada función en pocas líneas y permite repetir el
+> recorrido guiado. Esta sección es la referencia completa.
+
+### Moverse por la app
+
+- **Móvil:** barra inferior con **Inicio**, **Mes**, el botón **+** (apuntar un gasto), **Resumen** y
+  **Más** (Historial, Lista de la compra, Buscar, Viajes, Te deben, «¿Me lo puedo permitir?»,
+  Actividad y Ajustes). Arriba, la lupa abre Buscar y el ojo, el modo discreto.
+- **Ordenador y tablet:** barra lateral con todas las secciones y el botón **Apuntar gasto**.
+- **Inicio:** patrimonio con su evolución, el mes en curso, dónde está tu dinero (disponible, cuenta
+  remunerada e inversiones), colchón de emergencia, «Te deben» y los meses y resúmenes de cada año.
+
+### Del Excel a la app
+
 | En el Excel | En la app |
 |---|---|
-| Escribir en la columna **Añadir gasto** (macro `SumarGasto`) | Igual: en la tabla de gastos escribe el importe en «+ €» y pulsa **Enter** o ✓. Se suma, la casilla se vacía y puedes **Deshacer**. Cada suma queda como apunte con fecha y hora (enlace «N apuntes»). |
-| Macro `AnadirGastos` (plan B) | Botón **Aplicar todos (N)** cuando hay varias casillas pendientes |
+| Escribir en la columna **Añadir gasto** (macro `SumarGasto`) | Igual: en la tabla de gastos escribe el importe en «+ € nota» y pulsa **Enter** o el botón ✓. Se suma, la casilla se vacía y puedes **Deshacer**. Cada suma queda como apunte con fecha y hora (enlace «N apuntes»). O usa el botón **+** desde cualquier pantalla. |
+| Macro `AnadirGastos` (plan B) | Botón **Sumar todos (N)** cuando hay varias casillas pendientes |
 | `MarcarUltimoCambio` | «Último cambio» se actualiza solo (triggers de la base de datos) |
 | `CrearMesNuevo` | Botón **Crear mes nuevo**: crea el mes siguiente, copia los conceptos con importe 0 y cierra el anterior (opcional). En enero aparece el *Resumen* del año nuevo. |
 | `SincronizarHistorial`, `ActualizarIndice`, `IndiceDesactualizado` | No hacen falta: Historial e Índice se calculan siempre al momento y no tienen límite de años |
 | `Workbook_Open`, `ReactivarEventos`, `DiagnosticoEventos` | No aplican: no hay eventos de Excel que se desactiven |
 
-- **Gastos fijos:** en ⋯ de cada gasto, marca «Gasto fijo». Al crear el mes siguiente se copia con
+### Apuntar y el mes
+
+- **Apuntar un gasto (botón +):** elige el concepto (salen primero los que más usas), escribe el
+  importe con el teclado numérico y, si quieres, una nota. Se suma al gasto del último mes abierto y
+  el aviso permite **Deshacer**. Si el concepto tiene presupuesto, te dice cuánto te queda. En el
+  ordenador también se puede escribir con el teclado.
+- **Notas en los apuntes:** en «+ € nota» escribe el importe y, detrás, una nota: `12,50 Mercadona`. Se ve
+  (y se edita) en «N apuntes» y el buscador la encuentra.
+- **Gastos fijos:** en los tres puntos de cada gasto, marca «Gasto fijo». Al crear el mes siguiente se copia con
   el mismo importe y el vencimiento un mes después.
-- **Presupuesto por concepto:** en ⋯ pon un límite. Debajo del concepto aparece una barra (verde,
+- **Presupuesto por concepto:** en los tres puntos pon un límite. Debajo del concepto aparece una barra (verde,
   ámbar desde el 90 %, roja si te pasas) y un resumen arriba de la tabla. Se mantiene en los meses siguientes.
 - **Reordenar filas:** arrastra el asa ⋮⋮ (con el ratón o con el dedo). Con el teclado: enfoca el asa
   y usa ↑ / ↓.
-- **Contraseña:** se cambia en *Ajustes → Contraseña y seguridad*. Si la olvidas, pulsa «¿Has olvidado tu
-  contraseña?» en el login (ver *Emails* más abajo).
-- **Mes cerrado:** todo pasa a solo lectura, también en la base de datos. Usa **Reabrir mes**.
-- **Saldo real en cuenta:** si lo rellenas, la diferencia con el saldo calculado se apunta sola
-  como ingreso extra o como gasto no registrado.
+- **Cuadrar con el banco** (opcional, en cada mes): si rellenas el saldo real en cuenta, la diferencia con el
+  saldo calculado se apunta sola como ingreso extra o como gasto no registrado. Ahí también puedes
+  escribir el **valor real de las inversiones** (el total de la cartera, no la ganancia); en Inicio,
+  el lápiz de la fila «Inversiones» hace lo mismo con el último mes.
 - **Ahorro y traspasos:** cada fila mueve dinero **Desde** una cuenta **Hacia** otra: cuenta de
-  gastos, cuenta remunerada o inversiones. «＋ Añadir ahorro» crea una fila de la cuenta de gastos a
-  inversiones y «⇄ Traspaso», una de la cuenta remunerada a la cuenta de gastos; luego puedes cambiar
+  gastos, cuenta remunerada o inversiones. «Ahorro» crea una fila de la cuenta de gastos a
+  inversiones y «Traspaso», una de la cuenta remunerada a la cuenta de gastos; luego puedes cambiar
   las cuentas. Un traspaso no es un ingreso ni un gasto: si llega a la cuenta de gastos, suma al saldo
   disponible y resta del ahorro del mes; el dinero total no cambia. Necesita la migración `0011_traspasos.sql`.
-- **Valor real de inversiones:** pulsa ✎ en la tarjeta «Total en inversiones» (Inicio o Historial)
-  o rellénalo en la página de cada mes. Pon el valor total de la cartera, no la ganancia.
-- **Buscar** (🔍): escribe un concepto («super», «regalos») o una persona y verás cuánto llevas
-  gastado o ingresado, mes a mes, en el año elegido o en todos. No distingue mayúsculas ni tildes.
-- **Te deben** (🤝): apunta quién te debe dinero y márcalo como devuelto cuando te pague. No se
-  suma al dinero total ni a los gastos del mes. Si hay algo pendiente, aparece un aviso en Inicio.
-- **Modo discreto** (👁): oculta todas las cifras en pantalla (•••• €). Se recuerda en cada
-  dispositivo y no afecta a las exportaciones.
-- **Tiempo real:** lo que se apunta en un dispositivo aparece solo en los demás que tengan la app
-  abierta (por ejemplo, un gasto que apunta tu pareja en la cuenta compartida), sin recargar. Si
-  estás escribiendo en una fila, no se te pisa. Necesita la migración `0008_tiempo_real.sql`.
-- **Notas en los apuntes:** en «+ €» escribe el importe y, detrás, una nota: `12,50 Mercadona`. Se ve
-  (y se edita) en «N apuntes» y el buscador la encuentra.
-- **Lista de la compra** (🛒): una por cuenta; la de la compartida la veis los dos en tiempo real. Al
-  terminar, escribe el total del ticket y se suma como apunte al gasto que elijas (por defecto
-  Supermercado), con lo comprado en la nota.
-- **Actividad** (🕘, en el menú ⋯ del móvil): quién cambió qué y cuándo. Lo apunta la base de datos
-  sola (nadie puede editarlo ni borrarlo) y se guarda un año. En la cuenta compartida, Inicio muestra
-  los últimos cambios.
-- **Viajes** (✈️): presupuesto de un viaje con gastos en cualquier moneda. El cambio se toma de los
-  tipos del Banco Central Europeo (servicio público Frankfurter: solo se le envía el código de la
-  moneda) y se puede escribir a mano; cada gasto guarda el del día. Al volver, «Cerrar y pasar al
-  mes» lo apunta en tu presupuesto (fila nueva o sumado a un gasto).
-- **Bloqueo con Face ID / huella:** *Ajustes → Face ID*. Pide Face ID, huella o el código del móvil
-  al abrir la app y al volver a ella tras más de un minuto. Es por dispositivo; la app no ve ni guarda
-  tu cara ni tu huella. Si algún día falla, en la pantalla de bloqueo puedes cerrar sesión y entrar
-  con tu contraseña (eso quita el bloqueo en ese dispositivo).
-- **Colchón de emergencia** (Inicio e Historial): cuántos meses podrías vivir sin ingresos con tu saldo
-  y tu cuenta remunerada, según lo que gastas de media (las inversiones no cuentan).
+- **Cerrar mes guiado:** «Cerrar mes…», al final de la hoja del mes, repasa el saldo real del banco,
+  el valor de las inversiones, lo pendiente (presupuestos, avisos, lo que te deben) y el resumen frente
+  al mes anterior. Después todo pasa a solo lectura, también en la base de datos; usa **Reabrir mes**
+  si hace falta.
+- **Recordatorio de cierre:** si un mes ya terminado sigue abierto, Inicio lo avisa. Se quita en
+  *Ajustes → Recordatorios*.
 - **¿En qué se va?** (cada mes): necesidades, caprichos y ahorro frente a la regla 50/30/20. Clasifica
   cada concepto una vez con un toque; se recuerda para los meses siguientes. La aportación a la cuenta
   compartida cuenta como necesidad.
-- **Avisos** («🔎 Revisa», arriba del mes): un concepto que va más de 2,5 veces por encima de su media
+- **Avisos** («Revisa», arriba del mes): un concepto que va más de 2,5 veces por encima de su media
   (con al menos 3 meses de historia y 30 € o más) o dos apuntes iguales casi seguidos.
-- **Cerrar mes guiado:** «✓ Cerrar mes…» repasa el saldo real del banco, el valor de las inversiones,
-  lo pendiente (presupuestos, avisos, lo que te deben) y el resumen frente al mes anterior.
 - **Apuntar con Siri o Atajos:** *Ajustes → Siri y Atajos* genera un enlace
   (`#/apuntar?gasto=Supermercado&importe=…`) y explica cómo crear el atajo. El enlace abre la app con
   el gasto puesto y siempre pide un toque para confirmar.
-- **Reparto por concepto** (cuenta compartida): en ⋯ de cada gasto, «proporcional» (lo cubren las
+
+### Ver cómo vas
+
+- **Resumen:** el año mes a mes, con la gráfica de dónde está el dinero cada mes (saldo disponible,
+  cuenta remunerada e inversiones, con los mismos colores que en Inicio).
+- **Historial:** todos los meses seguidos, con la evolución del dinero total y todas las columnas del Excel.
+- **Tu año en cifras:** el resumen del año como historias: cuánto creció el patrimonio, lo que entró
+  y salió, el mejor mes, dónde más se fue el dinero, los apuntes y los viajes. Toca a la derecha para
+  avanzar, a la izquierda para volver y mantén pulsado para pararlo; al final se puede compartir como
+  texto. Se abre desde *Resumen* y, en diciembre y enero, desde Inicio.
+- **Colchón de emergencia** (Inicio e Historial): cuántos meses podrías vivir sin ingresos con tu saldo
+  y tu cuenta remunerada, según lo que gastas de media (las inversiones no cuentan).
+- **¿Me lo puedo permitir?** (en *Más*): escribe lo que cuesta algo y si lo pagarías de una vez o a
+  plazos. Te dice si te lo puedes permitir, cómo quedaría tu colchón, cuántos meses de ahorro supone
+  y qué parte de tu patrimonio es. Usa tus medias de los últimos 6 meses; es orientativo.
+
+### Más herramientas
+
+- **Buscar** (la lupa): escribe un concepto («super», «regalos») o una persona y verás cuánto llevas
+  gastado o ingresado, mes a mes, en el año elegido o en todos. No distingue mayúsculas ni tildes.
+- **Te deben:** apunta quién te debe dinero y márcalo como devuelto cuando te pague. No se
+  suma al dinero total ni a los gastos del mes. Si hay algo pendiente, aparece en Inicio.
+- **Lista de la compra:** una por cuenta; la de la compartida la veis los dos en tiempo real. Al
+  terminar, escribe el total del ticket y se suma como apunte al gasto que elijas (por defecto
+  Supermercado), con lo comprado en la nota.
+- **Viajes:** presupuesto de un viaje con gastos en cualquier moneda. El cambio se toma de los
+  tipos del Banco Central Europeo (servicio público Frankfurter: solo se le envía el código de la
+  moneda) y se puede escribir a mano; cada gasto guarda el del día. Al volver, «Cerrar y pasar al
+  mes» lo apunta en tu presupuesto (fila nueva o sumado a un gasto).
+- **Actividad:** quién cambió qué y cuándo. Lo apunta la base de datos sola (nadie puede editarlo ni
+  borrarlo) y se guarda un año. En la cuenta compartida, Inicio muestra los últimos cambios.
+- **Tiempo real:** lo que se apunta en un dispositivo aparece solo en los demás que tengan la app
+  abierta (por ejemplo, un gasto que apunta tu pareja en la cuenta compartida), sin recargar. Si
+  estás escribiendo en una fila, no se te pisa. Necesita la migración `0008_tiempo_real.sql`.
+
+### Ajustes
+
+Organizados como los Ajustes del iPhone (en pantallas anchas, en dos paneles como en el Mac), con un
+**buscador** arriba. Al final de la lista, **Cerrar sesión** (con la opción de cerrarla en todos los
+dispositivos).
+
+- **Guía de uso:** cada función explicada, con enlace para ir allí, y el recorrido guiado.
+- **Contraseña y seguridad:** cambiar la contraseña y la verificación en dos pasos. Si olvidas la
+  contraseña, pulsa «¿Has olvidado tu contraseña?» en el login (ver *Emails* más abajo).
+- **Face ID:** pide Face ID, huella o el código del móvil al abrir la app y al volver a ella tras más
+  de un minuto. Es por dispositivo; la app no ve ni guarda tu cara ni tu huella. Si algún día falla,
+  en la pantalla de bloqueo puedes cerrar sesión y entrar con tu contraseña.
+- **Modo discreto:** oculta las cifras en pantalla (•••• €), también con el ojo de arriba. Puede
+  empezar siempre oculto al abrir la app. No afecta al PDF ni a las exportaciones.
+- **Apariencia:** tema claro, oscuro o automático; el color de la app (marino, verde, grafito,
+  ciruela o teja); céntimos visibles o redondeados; saldos positivos en verde y negativos en rojo.
+- **Recordatorios:** el aviso de Inicio cuando queda un mes pasado sin cerrar.
+- **Copias de seguridad:** indica cuándo descargaste la última copia en ese dispositivo.
+- **Exportar:** Excel (.xlsx, una hoja por mes + Índice + Historial + Resumen) o tablas sueltas en CSV.
+- **Reparto por concepto** (cuenta compartida): en los tres puntos de cada gasto, «proporcional» (lo cubren las
   aportaciones), «a medias» o «lo paga entero» uno. La tarjeta «Reparto del mes» dice cuánto pone cada
   uno además de su aportación.
-- **Exportar:** en Ajustes puedes descargar Excel (.xlsx, una hoja por mes + Índice + Historial +
-  Resumen), una copia completa en JSON o CSV.
+
+Las preferencias de modo discreto, apariencia y recordatorios son de cada dispositivo y no cambian los datos.
 
 ## Actualizaciones de la base de datos
 
@@ -192,8 +246,12 @@ con su usuario. Mientras nadie la cree, la app funciona exactamente igual que an
    ```
    Después, en *Authentication → Users → Add user → Create new user*, con su email y una
    contraseña (marca **Auto Confirm User**). Podrá cambiarla luego en *Ajustes*.
-3. En la app, desde tu cuenta: *Ajustes → Cuenta compartida → Crear cuenta compartida*, con su
-   email. Cuando tu pareja entre, la verá en el selector de cuenta (👤 Mi cuenta / 🏠 Casa).
+3. En la app: *Ajustes → Cuentas compartidas → Crear cuenta compartida*, con su email. Cuando tu
+   pareja entre, la verá en el selector de cuenta (Mi cuenta / Casa).
+
+Puedes tener **varias** cuentas compartidas (por ejemplo, una con tu pareja y otra con tu familia).
+*Ajustes → Cuentas compartidas* las lista todas, con quién las compartes y quién no ha entrado aún;
+toca una para abrirla. Debajo están los ajustes de la que tienes abierta y la opción de crear otra.
 
 **Aportaciones automáticas (interruptor, apagado por defecto):** en *Ajustes* dentro de la cuenta
 compartida, activa «Aportaciones automáticas proporcionales» y elige el porcentaje. Cada mes, cada
@@ -204,7 +262,7 @@ uno aporta ese porcentaje de **todos** sus ingresos del mes:
 - se recalcula al cambiar los ingresos, el porcentaje o el nombre, y aparece cuando cada uno tiene
   creado ese mes en su cuenta personal;
 - los meses **cerrados** no se tocan, así que cambiar el porcentaje no altera el pasado;
-- esas filas no se pueden editar a mano (llevan la marca 🏠 Automático).
+- esas filas no se pueden editar a mano (llevan la marca «Automático»).
 - si se borra un mes de la cuenta compartida, desaparece la aportación de **ese mes** en la cuenta
   personal de cada uno (salvo que su mes personal esté cerrado).
 
@@ -230,13 +288,23 @@ solo dejan ver cada fila a los miembros de su cuenta.
 
 ## Informe PDF
 
-*Ajustes → Informe PDF* genera un PDF de la cuenta activa con todo lo apuntado hasta hoy: portada
-con tu nombre y las cifras principales, gráficas (dinero total, dónde está tu dinero, ingresos y
-gastos, % de ahorro), en qué se va el dinero por concepto, de dónde vienen los ingresos, resumen por
-año, historial mensual, «Te deben», viajes y el detalle de cada mes. Se genera en el propio
-dispositivo; no se envía nada a ningún sitio. El nombre de la portada se pone en tu perfil, arriba del todo en
-*Ajustes* (se guarda en tu perfil y se ve en todos tus dispositivos). En la cuenta
-compartida, la portada muestra el nombre de la cuenta y de quienes la compartís.
+*Ajustes → Informe PDF* genera un PDF de la cuenta activa: portada con tu nombre y las cifras
+principales, gráficas (dinero total, dónde está tu dinero, ingresos y gastos, % de ahorro), en qué se
+va el dinero por concepto, de dónde vienen los ingresos, resumen por año, historial mensual, «Te
+deben», viajes y el detalle de cada mes.
+
+En **Periodo** eliges qué meses entran:
+
+- **Todo:** desde el primer mes hasta hoy.
+- **Un año:** por ejemplo, 2026.
+- **De mes a mes:** cualquier franja, aunque abarque varios años (por ejemplo, de noviembre de 2025 a
+  diciembre de 2026).
+
+Con un periodo, las cifras de la portada (dinero total, inversiones, cuenta remunerada) son las del
+final del periodo, y el nombre del archivo lo indica (`informe-…-2026-….pdf`). Se genera en el propio
+dispositivo; no se envía nada a ningún sitio. El nombre de la portada se pone en tu perfil, arriba del
+todo en *Ajustes* (se guarda en tu perfil y se ve en todos tus dispositivos). En la cuenta compartida,
+la portada muestra el nombre de la cuenta y de quienes la compartís.
 
 ## Copias de seguridad
 
@@ -266,6 +334,25 @@ Sin el archivo `.env.local`, la app arranca en **modo local**: los datos se guar
 navegador y no hay login. Para conectarla a Supabase, copia `.env.example` a `.env.local` y
 rellénalo.
 
+Las pantallas secundarias (y con ellas las gráficas), el PDF y el Excel se descargan la primera vez
+que se usan, para que la app arranque antes en el móvil.
+
+### Pruebas en el navegador
+
+`e2e/` abre la app compilada en modo local, con un año de datos de ejemplo, en un móvil y en un
+ordenador (Chromium), y recorre los flujos principales: que todas las pantallas abren sin errores,
+apuntar con el botón + y deshacer, sumar en el mes, cerrar un mes, el buscador y la apariencia de
+Ajustes, el PDF de un año, el Excel, «¿Me lo puedo permitir?», «Tu año en cifras» y el recorrido
+guiado. GitHub las ejecuta en cada pull request (*Actions → Pruebas → navegador*). En local:
+
+```bash
+npx playwright install chromium
+```
+
+```bash
+npm run build && npm run e2e
+```
+
 ### Pruebas de la base de datos
 
 `supabase/tests/` prueba las migraciones en un PostgreSQL desechable que simula lo mínimo de
@@ -286,9 +373,16 @@ Si añades una migración, añade también sus comprobaciones en un archivo nuev
 src/lib/calculos.ts        Fórmulas del Excel (puras, en céntimos)
 src/lib/calculos.test.ts   Tests de aceptación (los números de Oct/Nov 2026) y casos límite
 src/lib/operaciones.ts     Crear mes, añadir gasto, deshacer, borrar mes, datos iniciales
+src/lib/informe*.ts        Datos (con periodo) y dibujo del informe PDF
+src/lib/apuntar.ts         Panel de Apuntar: conceptos más usados y teclado numérico
+src/lib/permitir.ts        «¿Me lo puedo permitir?»
+src/lib/anioEnCifras.ts    «Tu año en cifras»
+src/lib/preferencias.ts    Preferencias del dispositivo (color, céntimos, recordatorios…)
 src/lib/exportar.ts        Excel / JSON / CSV
 src/data/                  Guardado: Supabase o modo local, cola con debounce de 500 ms y reintentos
-src/pages/                 Inicio (Índice), Mes, Historial, Resumen anual, Ajustes
+src/components/            Navegación, panel de Apuntar, recorrido guiado, piezas estilo iOS
+src/pages/                 Inicio, Mes, Historial, Resumen, Ajustes y el resto de pantallas
+e2e/                       Pruebas en el navegador (Playwright)
 supabase/migrations/       Tablas, RLS, triggers (mes cerrado, último cambio) y función insertar_mes
-.github/workflows/         Despliegue en Pages y copia semanal cifrada
+.github/workflows/         Pruebas, despliegue en Pages y copia semanal cifrada
 ```

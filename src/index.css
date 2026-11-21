@@ -107,3 +107,12 @@ body.fondo-ios { background-color: #f2f2f7; }
 /* Filas que se deslizan de lado sin barra visible (conceptos del panel de Apuntar) */
 .sin-barra { scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 .sin-barra::-webkit-scrollbar { display: none; }
+
+/* Tu año en cifras: barra de progreso de cada historia y entrada suave del contenido */
+@keyframes progreso { from { width: 0%; } to { width: 100%; } }
+.progreso-historia { animation: progreso linear forwards; }
+@keyframes historia { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.anim-historia { animation: historia 0.35s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .anim-historia { animation: none; }
+}

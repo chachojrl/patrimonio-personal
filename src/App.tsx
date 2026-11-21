@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { lazy, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { supabase, urlDeLaApp, vieneDeRecuperacion } from './data/supabase'
@@ -14,16 +14,20 @@ import { Bloqueo } from './components/Bloqueo'
 import { FormularioContrasena } from './components/FormularioContrasena'
 import { InicioPage } from './pages/InicioPage'
 import { MesPage } from './pages/MesPage'
-import { HistorialPage } from './pages/HistorialPage'
-import { ResumenPage } from './pages/ResumenPage'
-import { AjustesPage } from './pages/AjustesPage'
-import { BuscarPage } from './pages/BuscarPage'
-import { TeDebenPage } from './pages/TeDebenPage'
-import { ActividadPage } from './pages/ActividadPage'
-import { CompraPage } from './pages/CompraPage'
-import { ViajesPage } from './pages/ViajesPage'
-import { ViajePage } from './pages/ViajePage'
-import { ApuntarPage } from './pages/ApuntarPage'
+// Inicio y Mes van en el paquete principal (son lo que más se abre). El resto, y con ellas las
+// gráficas, se descarga la primera vez que se visitan: así la app arranca antes en el móvil.
+const HistorialPage = lazy(() => import('./pages/HistorialPage').then((m) => ({ default: m.HistorialPage })))
+const ResumenPage = lazy(() => import('./pages/ResumenPage').then((m) => ({ default: m.ResumenPage })))
+const AjustesPage = lazy(() => import('./pages/AjustesPage').then((m) => ({ default: m.AjustesPage })))
+const BuscarPage = lazy(() => import('./pages/BuscarPage').then((m) => ({ default: m.BuscarPage })))
+const TeDebenPage = lazy(() => import('./pages/TeDebenPage').then((m) => ({ default: m.TeDebenPage })))
+const ActividadPage = lazy(() => import('./pages/ActividadPage').then((m) => ({ default: m.ActividadPage })))
+const CompraPage = lazy(() => import('./pages/CompraPage').then((m) => ({ default: m.CompraPage })))
+const ViajesPage = lazy(() => import('./pages/ViajesPage').then((m) => ({ default: m.ViajesPage })))
+const ViajePage = lazy(() => import('./pages/ViajePage').then((m) => ({ default: m.ViajePage })))
+const PermitirPage = lazy(() => import('./pages/PermitirPage').then((m) => ({ default: m.PermitirPage })))
+const AnioEnCifrasPage = lazy(() => import('./pages/AnioEnCifrasPage').then((m) => ({ default: m.AnioEnCifrasPage })))
+const ApuntarPage = lazy(() => import('./pages/ApuntarPage').then((m) => ({ default: m.ApuntarPage })))
 
 export default function App() {
   return supabase ? <ConLogin /> : <ConLocal />
@@ -51,6 +55,8 @@ function Rutas() {
           <Route path="viajes" element={<ViajesPage />} />
           <Route path="viajes/:id" element={<ViajePage />} />
           <Route path="apuntar" element={<ApuntarPage />} />
+          <Route path="permitir" element={<PermitirPage />} />
+          <Route path="anio/:anio" element={<AnioEnCifrasPage />} />
           <Route path="ajustes" element={<AjustesPage />} />
           <Route path="ajustes/:seccion" element={<AjustesPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />

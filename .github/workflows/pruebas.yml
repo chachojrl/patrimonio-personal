@@ -2,6 +2,8 @@ name: Pruebas
 
 # En cada pull request y en cada cambio en main:
 #   - app: tipos, tests de cálculo y compilación;
+#   - navegador: abre la app (modo local, datos de ejemplo) en móvil y escritorio y recorre
+#     los flujos principales: apuntar, el mes, cerrar, Ajustes, PDF, Excel, guía…;
 #   - base de datos: aplica las migraciones en un PostgreSQL desechable y comprueba
 #     privacidad entre cuentas, cuenta compartida, aportaciones y borrados.
 # No usa ningún secreto ni toca la base de datos de Supabase.
@@ -31,6 +33,29 @@ jobs:
         run: npm test
       - name: Compilar
         run: npm run build
+
+  navegador:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Instalar Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Compilar
+        run: npm run build
+      - name: Pruebas en el navegador
+        run: npm run e2e
+      - name: Guardar el informe si algo falla
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pruebas-navegador
+          path: test-results/
+          retention-days: 7
 
   base-de-datos:
     runs-on: ubuntu-latest

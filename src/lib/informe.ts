@@ -21,7 +21,36 @@ export interface Destacado {
   texto: string
 }
 
+/** Meses que entran en el informe: un año, una franja de mes a mes o todo (null). Fechas «AAAA-MM-01». */
+export interface Periodo {
+  desde: string
+  hasta: string
+}
+
+/** Periodo de un año entero. */
+export const periodoAnio = (anio: number): Periodo => ({ desde: `${anio}-01-01`, hasta: `${anio}-12-01` })
+
+/** Texto del periodo para la portada y el nombre del archivo. */
+export function nombrePeriodo(p: Periodo | null): string {
+  if (!p) return 'Todo'
+  const [a1, m1] = p.desde.split('-').map(Number)
+  const [a2, m2] = p.hasta.split('-').map(Number)
+  if (a1 === a2 && m1 === 1 && m2 === 12) return `Año ${a1}`
+  const MES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+  return `${MES[m1 - 1]} ${a1} – ${MES[m2 - 1]} ${a2}`
+}
+
+/** Solo los meses calculados dentro del periodo (y sus derivados), para reutilizar los cálculos de siempre. */
+export function recortar(c: Calculo, p: Periodo | null): Calculo {
+  if (!p) return c
+  const dentro = (fecha: string) => fecha.slice(0, 10) >= p.desde && fecha.slice(0, 10) <= p.hasta
+  const meses = c.meses.filter((m) => dentro(m.mes.fecha))
+  return { ...c, meses, porId: new Map(meses.map((m) => [m.mes.id, m])), historial: c.historial.filter((h) => dentro(h.fecha)) }
+}
+
 export interface DatosInforme {
+  /** Texto del periodo: «Todo», «Año 2026», «noviembre 2025 – diciembre 2026». */
+  periodo: string
   cuenta: string
   compartida: boolean
   /** Nombre de la persona que aparece en el informe (vacío = no se muestra). */
@@ -75,17 +104,36 @@ function porConcepto(filas: { month_id: string; concepto: string; importe: Cents
 export function datosInforme(
   d: Datos,
   c: Calculo,
-  opts: { cuenta: string; compartida: boolean; titular?: string; miembros?: string[]; generado?: Date },
+  opts: { cuenta: string; compartida: boolean; titular?: string; miembros?: string[]; generado?: Date; periodo?: Periodo | null },
 ): DatosInforme {
+  const periodo = opts.periodo ?? null
+  const completo = c
+  c = recortar(c, periodo)
   const meses = c.meses
-  const k = c.kpis
+  const ids = new Set(meses.map((m) => m.mes.id))
   const ultimo = meses.at(-1)
+  // Cifras al final del periodo (con «todo», las de siempre)
+  const idxUltimo = ultimo ? completo.meses.indexOf(ultimo) : -1
+  const antes = meses[0] ? completo.meses[completo.meses.indexOf(meses[0]) - 1] : undefined
+  const totalInvertido = periodo
+    ? d.config.aportado_inicial_inversiones + suma(completo.meses.slice(0, idxUltimo + 1).map((m) => m.invMes))
+    : completo.kpis.totalInvertido
+  const k = periodo
+    ? {
+        dineroTotalActual: ultimo?.dineroTotal ?? 0,
+        saldoInicialTotal: antes ? antes.dineroTotal : completo.kpis.saldoInicialTotal,
+        totalInversiones: ultimo?.inversionesAcum ?? 0,
+        totalInvertido,
+        gananciaInversiones: (ultimo?.inversionesAcum ?? 0) - totalInvertido,
+        totalCuentaRem: ultimo?.cuentaRemAcum ?? 0,
+      }
+    : completo.kpis
   const ingresos = suma(meses.map((m) => m.ingresosTotales))
   const gastos = suma(meses.map((m) => m.gastosTotales))
   const ahorroDesdeIngresos = suma(meses.map((m) => m.ahorroDesdeIngresos))
 
-  const gastosPorConcepto = porConcepto(d.expenses)
-  const ingresosPorConcepto = porConcepto(d.incomes)
+  const gastosPorConcepto = porConcepto(d.expenses.filter((x) => ids.has(x.month_id)))
+  const ingresosPorConcepto = porConcepto(d.incomes.filter((x) => ids.has(x.month_id)))
   // El ajuste del saldo real también es gasto / ingreso: se muestra como una línea aparte
   const noApuntado = suma(meses.map((m) => m.gastosTotales - m.sumGastos))
   if (noApuntado > 0) {
@@ -110,7 +158,9 @@ export function datosInforme(
   if (gastosPorConcepto[0] && gastos > 0) destacados.push({ titulo: 'Mayor gasto', texto: gastosPorConcepto[0].concepto })
   if (!opts.compartida && col.meses !== null) destacados.push({ titulo: 'Colchón', texto: `${col.meses.toFixed(1).replace('.', ',')} meses` })
 
+  const enPeriodo = (fecha: string | null) => !periodo || (!!fecha && fecha.slice(0, 7) >= periodo.desde.slice(0, 7) && fecha.slice(0, 7) <= periodo.hasta.slice(0, 7))
   return {
+    periodo: nombrePeriodo(periodo),
     cuenta: opts.cuenta,
     compartida: opts.compartida,
     titular: (opts.titular ?? '').trim(),
@@ -138,8 +188,9 @@ export function datosInforme(
     ingresosPorConcepto,
     colchon: col,
     destacados,
-    deudasPendientes: d.debts.filter((x) => !x.devuelto_en).sort((a, b) => a.fecha.localeCompare(b.fecha)),
+    deudasPendientes: d.debts.filter((x) => !x.devuelto_en && enPeriodo(x.fecha)).sort((a, b) => a.fecha.localeCompare(b.fecha)),
     viajes: [...d.viajes]
+      .filter((v) => enPeriodo(v.fecha_inicio))
       .sort((a, b) => (a.fecha_inicio ?? '').localeCompare(b.fecha_inicio ?? ''))
       .map((v) => ({ viaje: v, resumen: resumenViaje(v, d.viaje_gastos) })),
   }

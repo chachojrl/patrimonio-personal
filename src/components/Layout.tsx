@@ -2,9 +2,11 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useStore } from '../data/store'
 import { BotonDiscreto, cx } from './ui'
 import { ultimoMes } from '../lib/operaciones'
-import { useCallback, useEffect, useState } from 'react'
+import { Suspense, useCallback, useEffect, useState } from 'react'
 import { Icono, type NombreIcono } from './ios'
 import { PanelApuntar } from './PanelApuntar'
+import { Recorrido } from './Recorrido'
+import { useRecorrido } from '../lib/guia'
 import { CLAVE_AVISO, nombreMiembro, useCuentas } from '../data/cuentas'
 
 function EstadoGuardadoChip() {
@@ -57,12 +59,23 @@ function AvisoCompartida() {
   )
 }
 
+/** Mientras se descarga una pantalla por primera vez (suele ser un instante). */
+function CargandoPantalla() {
+  return (
+    <div className="flex min-h-[40vh] items-center justify-center" role="status" aria-label="Cargando">
+      <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-marino motion-reduce:animate-none dark:border-slate-600 dark:border-t-sky-300" />
+    </div>
+  )
+}
+
 interface EnlaceNav {
   to: string
   txt: string
   icono: NombreIcono
   end?: boolean
   activo?: string
+  /** Para el recorrido guiado. */
+  guia?: string
 }
 
 /** Hoja «Más» del móvil: sube desde abajo con las secciones que no caben en la barra. */
@@ -107,13 +120,14 @@ export function Layout() {
   const { pathname } = useLocation()
   const [masAbierto, setMasAbierto] = useState(false)
   const [apuntando, setApuntando] = useState(false)
+  const recorrido = useRecorrido()
   const cerrarMas = useCallback(() => setMasAbierto(false), [])
   const u = ultimoMes(datos)
   const anio = u ? u.fecha.slice(0, 4) : String(new Date().getFullYear())
   const inicio: EnlaceNav = { to: '/', txt: 'Inicio', icono: 'casa', end: true }
-  const mes: EnlaceNav = { to: u ? `/mes/${u.fecha.slice(0, 7)}` : '/', txt: 'Mes actual', icono: 'calendario', activo: '/mes' }
+  const mes: EnlaceNav = { to: u ? `/mes/${u.fecha.slice(0, 7)}` : '/', txt: 'Mes actual', icono: 'calendario', activo: '/mes', guia: 'nav-mes' }
   const historial: EnlaceNav = { to: '/historial', txt: 'Historial', icono: 'tendencia' }
-  const resumen: EnlaceNav = { to: `/resumen/${anio}`, txt: 'Resumen', icono: 'grafica', activo: '/resumen' }
+  const resumen: EnlaceNav = { to: `/resumen/${anio}`, txt: 'Resumen', icono: 'grafica', activo: '/resumen', guia: 'nav-resumen' }
   const ajustes: EnlaceNav = { to: '/ajustes', txt: 'Ajustes', icono: 'engranaje' }
   const enlaces = [inicio, mes, historial, resumen, ajustes]
   const extras: EnlaceNav[] = [
@@ -121,6 +135,7 @@ export function Layout() {
     { to: '/buscar', txt: 'Buscar', icono: 'lupa' },
     { to: '/viajes', txt: 'Viajes', icono: 'avion' },
     { to: '/te-deben', txt: 'Te deben', icono: 'billete' },
+    { to: '/permitir', txt: '¿Me lo puedo permitir?', icono: 'balanza' },
     { to: '/actividad', txt: 'Actividad', icono: 'reloj' },
   ]
   // Móvil: Inicio, Mes, Apuntar, Resumen y «Más» (el resto, en una hoja que sube desde abajo)
@@ -141,6 +156,7 @@ export function Layout() {
         <SelectorCuenta className="mb-4" vertical />
         <button
           type="button"
+          data-guia="apuntar"
           onClick={() => setApuntando(true)}
           className="mb-4 flex items-center justify-center gap-1.5 rounded-lg bg-marino px-3 py-2 text-sm font-semibold text-white hover:bg-marino-claro dark:bg-sky-700 dark:hover:bg-sky-600"
         >
@@ -153,6 +169,7 @@ export function Layout() {
               key={e.txt}
               to={e.to}
               end={e.end}
+              data-guia={e.guia}
               className={({ isActive }) =>
                 cx('flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium', isActive ? 'bg-marino text-white dark:bg-sky-800' : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800')
               }
@@ -163,7 +180,7 @@ export function Layout() {
           ))}
         </nav>
         <div className="my-3 border-t border-slate-200 dark:border-slate-800" />
-        <nav className="flex flex-col gap-1">
+        <nav className="flex flex-col gap-1" data-guia="nav-mas">
           {extras.map((e) => (
             <NavLink key={e.to} to={e.to} className={claseEnlace}>
               <Icono nombre={e.icono} className="h-5 w-5" />
@@ -207,34 +224,37 @@ export function Layout() {
       )}
 
       <main className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6">
-        <Outlet />
+        <Suspense fallback={<CargandoPantalla />}>
+          <Outlet />
+        </Suspense>
       </main>
 
       {/* Navegación inferior (móvil) */}
       {masAbierto && <HojaMas enlaces={enMas} onCerrar={cerrarMas} />}
       <nav aria-label="Secciones" className="fixed inset-x-0 bottom-0 z-50 grid h-[calc(env(safe-area-inset-bottom)+3.5rem)] grid-cols-5 border-t border-black/10 bg-[#f9f9f9]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur dark:border-white/10 dark:bg-[#161617]/95 md:hidden">
         {[inicio, mes].map((e) => (
-          <NavLink key={e.txt} to={e.to} end={e.end} onClick={cerrarMas} className={({ isActive }) => claseTab(isActive && !masAbierto)}>
+          <NavLink key={e.txt} to={e.to} end={e.end} onClick={cerrarMas} data-guia={e.guia} className={({ isActive }) => claseTab(isActive && !masAbierto)}>
             <Icono nombre={e.icono} className="h-[26px] w-[26px]" />
             {e.txt === 'Mes actual' ? 'Mes' : e.txt}
           </NavLink>
         ))}
-        <button type="button" onClick={() => { cerrarMas(); setApuntando(true) }} aria-label="Apuntar un gasto" title="Apuntar un gasto" className="flex items-start justify-center">
+        <button type="button" data-guia="apuntar" onClick={() => { cerrarMas(); setApuntando(true) }} aria-label="Apuntar un gasto" title="Apuntar un gasto" className="flex items-start justify-center">
           <span className="-mt-2.5 flex h-12 w-12 items-center justify-center rounded-full bg-marino text-white shadow-md active:scale-95 dark:bg-sky-700">
             <Icono nombre="mas" className="h-6 w-6" grosor={2.4} />
           </span>
         </button>
-        <NavLink to={resumen.to} onClick={cerrarMas} className={() => claseTab(pathname.startsWith('/resumen') && !masAbierto)}>
+        <NavLink to={resumen.to} onClick={cerrarMas} data-guia="nav-resumen" className={() => claseTab(pathname.startsWith('/resumen') && !masAbierto)}>
           <Icono nombre={resumen.icono} className="h-[26px] w-[26px]" />
           {resumen.txt}
         </NavLink>
-        <button type="button" aria-expanded={masAbierto} onClick={() => setMasAbierto((a) => !a)} className={claseTab(masAbierto || masActivo)}>
+        <button type="button" aria-expanded={masAbierto} data-guia="nav-mas" onClick={() => setMasAbierto((a) => !a)} className={claseTab(masAbierto || masActivo)}>
           <Icono nombre="puntos" className="h-[26px] w-[26px]" />
           Más
         </button>
       </nav>
 
       {apuntando && <PanelApuntar onCerrar={() => setApuntando(false)} />}
+      {recorrido && <Recorrido />}
 
       {/* Avisos */}
       <div className="fixed inset-x-0 bottom-20 z-50 flex flex-col items-center gap-2 px-4 md:bottom-6">

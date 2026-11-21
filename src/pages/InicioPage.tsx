@@ -6,6 +6,8 @@ import { CrearMesBoton } from '../components/CrearMes'
 import { FilaInversiones } from '../components/InversionesKpi'
 import { Icono } from '../components/ios'
 import { usePreferencias, mesesSinCerrar } from '../lib/preferencias'
+import { anioParaAviso } from '../lib/anioEnCifras'
+import { empezarRecorrido, guiaVista, marcarGuiaVista } from '../lib/guia'
 import { OCULTO, useDiscreto } from '../lib/discreto'
 import { formatEUR, type Cents } from '../lib/money'
 import { MESES, MESES_CORTOS } from '../lib/fechas'
@@ -83,12 +85,30 @@ export function InicioPage() {
   const anterior = calc.meses.at(-2)
   const variacion = ultimo && anterior ? ultimo.dineroTotal - anterior.dineroTotal : null
   const serie = calc.meses.slice(-12)
+  const anioAviso = anioParaAviso()
+  const [ofrecerGuia, setOfrecerGuia] = useState(() => !guiaVista())
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <h1 className="text-[34px] font-bold leading-tight tracking-tight text-slate-900 dark:text-white">Inicio</h1>
         <CrearMesBoton />
       </div>
+
+      {ofrecerGuia && (
+        <section className="rounded-xl bg-white p-4 dark:bg-[#1c1c1e]" aria-labelledby="titulo-guia">
+          <div className="flex items-start gap-3">
+            <span className="flex h-[29px] w-[29px] shrink-0 items-center justify-center rounded-[7px] bg-[#30B0C7] text-white"><Icono nombre="libro" className="h-[18px] w-[18px]" /></span>
+            <div className="min-w-0 flex-1">
+              <h2 id="titulo-guia" className="text-[15px] font-semibold">¿Es tu primera vez?</h2>
+              <p className="text-[13px] text-slate-500 dark:text-slate-400">Te enseño en un minuto dónde está cada cosa. Luego lo tienes en Ajustes › Guía de uso.</p>
+              <div className="mt-2.5 flex gap-2">
+                <button type="button" onClick={() => { setOfrecerGuia(false); empezarRecorrido() }} className="min-h-9 rounded-full bg-marino px-4 text-[15px] font-semibold text-white dark:bg-sky-700">Enséñame</button>
+                <button type="button" onClick={() => { marcarGuiaVista(); setOfrecerGuia(false) }} className="min-h-9 rounded-full px-3 text-[15px] text-slate-500 dark:text-slate-400">Ahora no</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {sinCerrar.length > 0 && (
         <Link
@@ -104,8 +124,19 @@ export function InicioPage() {
         </Link>
       )}
 
+      {anioAviso !== null && anios.includes(anioAviso) && (
+        <Link to={`/anio/${anioAviso}`} className="flex items-center gap-3 rounded-xl bg-marino px-4 py-3 text-white active:opacity-90 dark:bg-sky-800">
+          <span className="flex h-[29px] w-[29px] shrink-0 items-center justify-center rounded-[7px] bg-white/15"><Icono nombre="estrella" className="h-[18px] w-[18px]" /></span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-semibold">Ya está tu {anioAviso} en cifras</span>
+            <span className="block text-[13px] opacity-80">Tu año resumido en unas pocas pantallas</span>
+          </span>
+          <Icono nombre="siguiente" className="h-5 w-5 shrink-0 opacity-80" grosor={2.2} />
+        </Link>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
-        <section className="rounded-xl bg-white p-4 dark:bg-[#1c1c1e]" aria-labelledby="titulo-patrimonio">
+        <section className="rounded-xl bg-white p-4 dark:bg-[#1c1c1e]" aria-labelledby="titulo-patrimonio" data-guia="patrimonio">
           <h2 id="titulo-patrimonio" className="text-[15px] text-slate-500 dark:text-slate-400">{compartida ? 'Dinero de la cuenta' : 'Patrimonio'}</h2>
           <CifraGrande c={k.dineroTotalActual} />
           {variacion !== null && anterior && (
