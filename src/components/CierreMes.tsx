@@ -8,6 +8,7 @@ import { formatPct } from '../lib/money'
 import { useEur } from '../lib/discreto'
 import { nombreMes } from '../lib/fechas'
 import type { Mes } from '../lib/tipos'
+import { Icono } from './ios'
 
 /** Repaso antes de cerrar un mes: saldo real, inversiones, pendientes y resumen. */
 export function CierreMes({
@@ -15,7 +16,7 @@ export function CierreMes({
   abierto,
   onCerrar,
   onConfirmar,
-  textoConfirmar = '🔒 Cerrar el mes',
+  textoConfirmar = 'Cerrar el mes',
   textoCancelar = 'Ahora no',
   ocupado = false,
 }: {
@@ -91,16 +92,16 @@ export function CierreMes({
 
         <Paso n={compartida ? 2 : 3} hecho={pasados.length === 0 && avisos.length === 0 && pendientesDeuda.length === 0} titulo="Pendientes">
           <ul className="space-y-1 text-sm">
-            {pasados.length === 0 && avisos.length === 0 && pendientesDeuda.length === 0 && <li className="text-slate-500">Nada pendiente. 👌</li>}
+            {pasados.length === 0 && avisos.length === 0 && pendientesDeuda.length === 0 && <li className="text-slate-500">Nada pendiente.</li>}
             {pasados.map(({ g, e }) => (
-              <li key={g.id}>🎯 Te has pasado del presupuesto de <strong>{g.concepto}</strong> en {eur(e!.exceso, { dash: false })}.</li>
+              <li key={g.id}>Te has pasado del presupuesto de <strong>{g.concepto}</strong> en {eur(e!.exceso, { dash: false })}.</li>
             ))}
             {avisos.map((a) => (
-              <li key={`${a.tipo}${a.concepto}${a.importe}`}>🔎 {a.tipo === 'duplicado' ? `¿Apunte duplicado en ${a.concepto}?` : `${a.concepto} va muy por encima de tu media.`}</li>
+              <li key={`${a.tipo}${a.concepto}${a.importe}`}>{a.tipo === 'duplicado' ? `¿Apunte duplicado en ${a.concepto}?` : `${a.concepto} va muy por encima de tu media.`}</li>
             ))}
             {pendientesDeuda.length > 0 && (
               <li>
-                🤝 Te deben {eur(pendientesDeuda.reduce((s, x) => s + x.importe, 0), { dash: false })}.{' '}
+                Te deben {eur(pendientesDeuda.reduce((s, x) => s + x.importe, 0), { dash: false })}.{' '}
                 <Link to="/te-deben" onClick={onCerrar} className="text-sky-700 underline dark:text-sky-400">Revisar</Link>
               </li>
             )}
@@ -135,7 +136,7 @@ function Paso({ n, titulo, hecho, children }: { n: number; titulo: string; hecho
   return (
     <section className="rounded-lg border border-slate-200 p-3 dark:border-slate-700">
       <h4 className="mb-1 flex items-center gap-2 text-sm font-semibold">
-        <span className={cx('flex h-5 w-5 items-center justify-center rounded-full text-[11px]', hecho ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200')}>{hecho ? '✓' : n}</span>
+        <span className={cx('flex h-5 w-5 items-center justify-center rounded-full text-[11px]', hecho ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200')}>{hecho ? <Icono nombre="check" className="h-3 w-3" grosor={3} /> : n}</span>
         {titulo}
       </h4>
       {children}

@@ -35,7 +35,7 @@ function SelectorCuenta({ className, vertical }: { className?: string; vertical?
             c.id === activa.id ? 'bg-white text-marino shadow-sm dark:bg-[#636366] dark:text-white' : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200',
           )}
         >
-          <span aria-hidden>{c.tipo === 'personal' ? '👤' : '🏠'}</span>
+          <Icono nombre={c.tipo === 'personal' ? 'persona' : 'casa'} className="h-4 w-4 shrink-0" />
           <span className="truncate">{c.tipo === 'personal' ? 'Mi cuenta' : c.nombre}</span>
         </button>
       ))}
@@ -50,7 +50,7 @@ function AvisoCompartida() {
   const pendiente = otros.some((m) => !m.user_id)
   return (
     <div className="bg-sky-50 px-4 py-2 text-center text-xs text-sky-900 dark:bg-sky-950/50 dark:text-sky-200">
-      🏠 Cuenta compartida{otros.length ? ` con ${otros.map(nombreMiembro).join(', ')}` : ''}: lo que hay aquí lo veis {otros.length > 1 ? 'todos' : 'los dos'}.
+      Cuenta compartida{otros.length ? ` con ${otros.map(nombreMiembro).join(', ')}` : ''}: lo que hay aquí lo veis {otros.length > 1 ? 'todos' : 'los dos'}.
       {pendiente && ' (Aún no ha entrado en la app.)'}
     </div>
   )
@@ -248,7 +248,7 @@ export function Layout() {
                   {t.accion.texto}
                 </button>
               )}
-              <button aria-label="Cerrar" onClick={() => cerrarToast(t.id)} className="opacity-70 hover:opacity-100">✕</button>
+              <button aria-label="Cerrar" onClick={() => cerrarToast(t.id)} className="opacity-70 hover:opacity-100"><Icono nombre="cerrar" className="h-4 w-4" grosor={2} /></button>
             </span>
           </div>
         ))}

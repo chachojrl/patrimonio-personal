@@ -329,7 +329,8 @@ function Evolucion({ valores, meses }: { valores: number[]; meses: number }) {
   )
 }
 
-const TONOS = ['bg-marino dark:bg-sky-300', 'bg-marino/55 dark:bg-sky-300/60', 'bg-marino/25 dark:bg-sky-300/30']
+// Mismos colores que en las gráficas de Resumen (variables en index.css)
+const TONOS = ['bg-[var(--serie-disponible)]', 'bg-[var(--serie-remunerada)]', 'bg-[var(--serie-inversiones)]']
 const Marca = ({ n }: { n: number }) => <span className={cx('h-2.5 w-2.5 rounded-[3px]', TONOS[n])} aria-hidden />
 
 /** Barra con el reparto entre disponible, cuenta remunerada e inversiones. */

@@ -21,7 +21,7 @@ export function RepartoCompartidaCard({ monthId }: { monthId: string }) {
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-left text-[11px] uppercase tracking-wide text-slate-500">
+            <tr className="text-left text-[13px] text-slate-500 dark:text-slate-400">
               <th className="py-1 font-semibold" />
               <th className="py-1 text-right font-semibold">Aportación</th>
               <th className="py-1 text-right font-semibold">A medias</th>

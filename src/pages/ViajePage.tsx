@@ -8,6 +8,9 @@ import { useEur, useDiscreto, OCULTO } from '../lib/discreto'
 import { formatFecha, hoyISO, nombreMes } from '../lib/fechas'
 import { anadirGasto, mesesOrdenados, uid } from '../lib/operaciones'
 import type { CategoriaViaje, Gasto, GastoViaje, Viaje } from '../lib/tipos'
+import { Icono, type NombreIcono } from '../components/ios'
+
+const ICONO_CATEGORIA: Record<CategoriaViaje, NombreIcono> = { alojamiento: 'cama', transporte: 'avion', comida: 'comida', ocio: 'ticket', compras: 'carrito', otros: 'archivo' }
 
 export function ViajePage() {
   const { id } = useParams()
@@ -65,14 +68,14 @@ function DetalleViaje({ v }: { v: Viaje }) {
         <Link to="/viajes" className="text-sm text-sky-700 hover:underline dark:text-sky-400">← Viajes</Link>
         <input
           aria-label="Nombre del viaje"
-          className="celda -ml-2 mt-1 text-2xl font-bold text-marino dark:text-sky-300 sm:text-3xl"
+          className="celda -ml-2 mt-1 text-[28px] font-bold leading-tight tracking-tight text-slate-900 dark:text-white sm:text-[34px]"
           value={v.nombre}
           disabled={v.cerrado}
           onChange={(e) => actualizar('viajes', v.id, { nombre: e.target.value })}
         />
         <div className="flex flex-wrap items-center gap-2 text-sm text-slate-500">
           {v.fecha_inicio && <span>{formatFecha(v.fecha_inicio)}{v.fecha_fin && ` – ${formatFecha(v.fecha_fin)}`}</span>}
-          {v.cerrado && <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-700 dark:bg-slate-700 dark:text-slate-200">✓ Cerrado</span>}
+          {v.cerrado && <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-700 dark:bg-slate-700 dark:text-slate-200">Cerrado</span>}
         </div>
       </div>
 
@@ -81,7 +84,7 @@ function DetalleViaje({ v }: { v: Viaje }) {
         <Kpi titulo={r.queda !== null && r.queda < 0 ? 'Te has pasado' : 'Queda'} valor={r.queda === null ? '–' : Math.abs(r.queda)} />
         <Kpi titulo="Media por día" valor={r.mediaDiaria} sub={r.dias ? `${r.dias} día${r.dias > 1 ? 's' : ''}` : undefined} />
         <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900 sm:p-4">
-          <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Presupuesto (€)</div>
+          <div className="text-[13px] text-slate-500 dark:text-slate-400">Presupuesto (€)</div>
           <CeldaImporte
             ariaLabel="Presupuesto del viaje"
             valor={v.presupuesto}
@@ -123,7 +126,7 @@ function DetalleViaje({ v }: { v: Viaje }) {
                   const cat = CATEGORIAS.find((x) => x.id === c.id)!
                   return (
                     <li key={c.id}>
-                      <div className="flex justify-between text-sm"><span>{cat.icono} {cat.txt}</span><Dinero c={c.total} dash={false} /></div>
+                      <div className="flex justify-between text-sm"><span className="inline-flex items-center gap-1.5"><Icono nombre={ICONO_CATEGORIA[cat.id]} className="h-4 w-4 text-slate-500" />{cat.txt}</span><Dinero c={c.total} dash={false} /></div>
                       <div className="mt-0.5 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800" aria-hidden>
                         <div className="h-full rounded-full bg-[var(--series-1)]" style={{ width: `${r.total ? (c.total / r.total) * 100 : 0}%` }} />
                       </div>
@@ -193,7 +196,7 @@ function FilaGasto({ g, cerrado, onBorrar }: { g: GastoViaje; cerrado: boolean; 
   const cat = CATEGORIAS.find((x) => x.id === g.categoria) ?? CATEGORIAS[5]
   return (
     <li className="flex items-center gap-3 py-2">
-      <span aria-hidden className="text-lg">{cat.icono}</span>
+      <Icono nombre={ICONO_CATEGORIA[cat.id]} className="h-5 w-5 text-marino dark:text-sky-300" />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-medium">{g.concepto || cat.txt}</span>
         <span className="text-xs text-slate-500">{formatFecha(g.fecha)} · {cat.txt}</span>
@@ -203,7 +206,7 @@ function FilaGasto({ g, cerrado, onBorrar }: { g: GastoViaje; cerrado: boolean; 
         {g.moneda !== 'EUR' && <span className="num text-xs text-slate-500">{discreto ? OCULTO : formatMoneda(g.importe, g.moneda)}</span>}
       </span>
       {!cerrado && (
-        <button type="button" aria-label={`Borrar ${g.concepto || cat.txt}`} title="Borrar" onClick={onBorrar} className="flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40">✕</button>
+        <button type="button" aria-label={`Borrar ${g.concepto || cat.txt}`} title="Borrar" onClick={onBorrar} className="flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40"><Icono nombre="cerrar" className="h-4 w-4" grosor={2} /></button>
       )}
     </li>
   )
@@ -232,7 +235,7 @@ function NuevoGasto({ v }: { v: Viaje }) {
           {CATEGORIAS.map((c) => (
             <button key={c.id} type="button" aria-pressed={f.categoria === c.id} onClick={() => setF({ ...f, categoria: c.id })}
               className={cx('rounded-full border px-3 py-1 text-sm', f.categoria === c.id ? 'border-marino bg-marino text-white dark:border-sky-700 dark:bg-sky-800' : 'border-slate-300 bg-white dark:border-slate-600 dark:bg-slate-800')}>
-              {c.icono} {c.txt}
+              {c.txt}
             </button>
           ))}
         </div>
@@ -248,7 +251,7 @@ function NuevoGasto({ v }: { v: Viaje }) {
           <span className="text-xs text-slate-500">
             {importe !== null && importe > 0 && f.moneda !== 'EUR' ? `≈ ${eur(Math.round(importe * cambio), { dash: false })} (${textoCambio(f.moneda, cambio)})` : ''}
           </span>
-          <Boton type="submit" variante="primario">＋ Apuntar</Boton>
+          <Boton type="submit" variante="primario"><Icono nombre="mas" className="h-4 w-4" grosor={2.4} />Apuntar</Boton>
         </div>
         {error && <p className="text-sm text-red-600" role="alert">{error}</p>}
       </form>
@@ -310,7 +313,7 @@ function CerrarViaje({ v, total, abierto, onCerrar }: { v: Viaje; total: number;
           <label className="block">
             Cómo apuntarlo
             <select className="campo mt-1" value={destino} onChange={(e) => setDestino(e.target.value)}>
-              <option value={NUEVA_FILA}>➕ Fila nueva «Viaje: {v.nombre}»</option>
+              <option value={NUEVA_FILA}>+ Fila nueva «Viaje: {v.nombre}»</option>
               {gastos.map((g) => <option key={g.id} value={g.id}>Sumarlo a «{g.concepto}»</option>)}
             </select>
           </label>

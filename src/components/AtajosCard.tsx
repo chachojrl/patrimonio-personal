@@ -43,7 +43,7 @@ export function AtajosCard() {
             <Boton onClick={copiar}>Copiar</Boton>
           </div>
           <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-slate-600 dark:text-slate-300">
-            <li>Abre la app <strong>Atajos</strong> → <strong>＋</strong> (nuevo atajo).</li>
+            <li>Abre la app <strong>Atajos</strong> → <strong>+</strong> (nuevo atajo).</li>
             <li>Añade la acción <strong>Pedir entrada</strong>: tipo <em>Número</em>, pregunta «¿Cuánto?».</li>
             <li>Añade <strong>Abrir URL</strong>: pega el enlace y, justo al final, inserta la variable <em>Entrada proporcionada</em>.</li>
             <li>Ponle un nombre fácil, por ejemplo «Apunta súper». Lo puedes lanzar desde la pantalla de inicio o diciéndoselo a Siri.</li>

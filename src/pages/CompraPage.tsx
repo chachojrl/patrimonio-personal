@@ -8,6 +8,7 @@ import { parseImporte } from '../lib/money'
 import { useEur } from '../lib/discreto'
 import { nombreMes } from '../lib/fechas'
 import type { ArticuloCompra } from '../lib/tipos'
+import { Icono } from '../components/ios'
 
 /** Lista de la compra: en la cuenta compartida la veis los dos y se actualiza al momento. */
 export function CompraPage() {
@@ -39,7 +40,7 @@ export function CompraPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-marino dark:text-sky-300">Lista de la compra</h1>
+        <h1 className="text-[34px] font-bold leading-tight tracking-tight text-slate-900 dark:text-white">Lista de la compra</h1>
         <p className="text-sm text-slate-500">
           {compartida ? 'La veis los dos y se actualiza al momento en los dos móviles.' : 'Solo la ves tú. En la cuenta compartida tenéis una lista común.'}
         </p>
@@ -57,14 +58,14 @@ export function CompraPage() {
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
           />
-          <Boton type="submit" variante="primario" disabled={!texto.trim()}>＋ Añadir</Boton>
+          <Boton type="submit" variante="primario" disabled={!texto.trim()}><Icono nombre="mas" className="h-4 w-4" grosor={2.4} />Añadir</Boton>
         </form>
         <p className="mt-2 text-xs text-slate-500">Puedes añadir varias cosas a la vez separándolas por comas.</p>
       </Card>
 
       <Card titulo={`Por comprar (${pendientes.length})`}>
         {pendientes.length === 0 ? (
-          <p className="text-sm text-slate-500">{enCarro.length ? '¡Todo en el carro! 🛒' : 'La lista está vacía.'}</p>
+          <p className="text-sm text-slate-500">{enCarro.length ? '¡Todo en el carro!' : 'La lista está vacía.'}</p>
         ) : (
           <ul className="divide-y divide-slate-100 dark:divide-slate-800">
             {pendientes.map((x) => <Articulo key={x.id} a={x} onMarcar={(v) => actualizar('lista_compra', x.id, { hecho: v })} onTexto={(v) => actualizar('lista_compra', x.id, { texto: v })} onBorrar={() => borrar('lista_compra', x.id)} />)}
@@ -91,7 +92,7 @@ function Articulo({ a, onMarcar, onTexto, onBorrar }: { a: ArticuloCompra; onMar
     <li className="flex items-center gap-2 py-1">
       <input type="checkbox" className="h-5 w-5 shrink-0 accent-[var(--series-1)]" checked={a.hecho} aria-label={`${a.hecho ? 'Desmarcar' : 'Marcar'} ${a.texto}`} onChange={(e) => onMarcar(e.target.checked)} />
       <CeldaTexto ariaLabel="Artículo" valor={a.texto} onCambio={onTexto} className={cx('flex-1', a.hecho && 'text-slate-400 line-through')} />
-      <button type="button" aria-label={`Quitar ${a.texto}`} title="Quitar" onClick={onBorrar} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40">✕</button>
+      <button type="button" aria-label={`Quitar ${a.texto}`} title="Quitar" onClick={onBorrar} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40"><Icono nombre="cerrar" className="h-4 w-4" grosor={2} /></button>
     </li>
   )
 }

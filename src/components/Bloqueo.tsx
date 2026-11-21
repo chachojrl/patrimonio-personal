@@ -69,11 +69,11 @@ export function Bloqueo({ children }: { children: ReactNode }) {
       <div className="w-full max-w-xs space-y-4 text-center">
         <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" className="mx-auto h-14 w-14" />
         <div>
-          <h1 className="text-xl font-bold text-marino dark:text-sky-300">Presupuesto bloqueado</h1>
+          <h1 className="text-[22px] font-bold text-slate-900 dark:text-white">Presupuesto bloqueado</h1>
           <p className="mt-1 text-sm text-slate-500">Desbloquea con Face ID, tu huella o el código de tu móvil.</p>
         </div>
         <Boton variante="primario" className="w-full py-3 text-base" onClick={() => desbloquear()} disabled={comprobando}>
-          🔓 {comprobando ? 'Comprobando…' : 'Desbloquear'}
+          {comprobando ? 'Comprobando…' : 'Desbloquear'}
         </Boton>
         {error && <p className="text-sm text-red-600" role="alert">{error}</p>}
         {supabase && (

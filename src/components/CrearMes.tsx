@@ -5,6 +5,7 @@ import { fechaMesNuevo, ultimoMes } from '../lib/operaciones'
 import { nombreMes } from '../lib/fechas'
 import { Boton, Modal } from './ui'
 import { CierreMes } from './CierreMes'
+import { Icono } from './ios'
 
 /**
  * Botón + diálogo "Crear mes nuevo" (equivale a la macro CrearMesNuevo).
@@ -49,7 +50,7 @@ export function CrearMesBoton({ className }: { className?: string }) {
   return (
     <>
       <Boton variante="primario" className={className} onClick={abrir}>
-        ＋ Crear mes nuevo
+        <Icono nombre="mas" className="h-4 w-4" grosor={2.4} />Crear mes nuevo
       </Boton>
       <Modal
         abierto={paso === 'pregunta'}
@@ -106,7 +107,7 @@ export function CrearMesBoton({ className }: { className?: string }) {
           onCerrar={() => setPaso('pregunta')}
           onConfirmar={() => crear(true)}
           textoCancelar="Volver"
-          textoConfirmar={ocupado ? 'Creando…' : `🔒 Cerrar y crear ${nombre}`}
+          textoConfirmar={ocupado ? 'Creando…' : `Cerrar y crear ${nombre}`}
           ocupado={ocupado}
         />
       )}

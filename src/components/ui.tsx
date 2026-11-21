@@ -47,7 +47,11 @@ export function BadgeEstado({ estado }: { estado: EstadoMes }) {
         estado === 'Abierto' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300' : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200',
       )}
     >
-      {estado === 'Abierto' ? '● Abierto' : '🔒 Cerrado'}
+      {estado === 'Abierto' ? (
+        <><span className="mr-1 h-1.5 w-1.5 rounded-full bg-current" aria-hidden />Abierto</>
+      ) : (
+        <><svg viewBox="0 0 24 24" className="mr-0.5 h-3 w-3" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" /></svg>Cerrado</>
+      )}
     </span>
   )
 }

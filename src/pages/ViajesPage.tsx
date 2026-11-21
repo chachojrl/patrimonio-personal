@@ -8,6 +8,7 @@ import { parseImporte } from '../lib/money'
 import { formatFecha } from '../lib/fechas'
 import { uid } from '../lib/operaciones'
 import type { Viaje } from '../lib/tipos'
+import { Icono } from '../components/ios'
 
 export function ViajesPage() {
   const { datos } = useStore()
@@ -16,7 +17,7 @@ export function ViajesPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-marino dark:text-sky-300">Viajes</h1>
+        <h1 className="text-[34px] font-bold leading-tight tracking-tight text-slate-900 dark:text-white">Viajes</h1>
         <p className="text-sm text-slate-500">
           Presupuesto de un viaje, con gastos en cualquier moneda pasados a euros.{compartida && ' Los viajes de esta cuenta los veis los dos.'}
         </p>
@@ -40,11 +41,11 @@ function TarjetaViaje({ v }: { v: Viaje }) {
     <Link to={`/viajes/${v.id}`} className={cx('block rounded-2xl border bg-white p-4 shadow-sm hover:border-marino/40 dark:bg-slate-900', v.cerrado ? 'border-slate-200 opacity-75 dark:border-slate-800' : 'border-slate-200 dark:border-slate-800')}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="truncate font-semibold">✈️ {v.nombre}</div>
+          <div className="flex items-center gap-2 truncate font-semibold"><Icono nombre="avion" className="h-5 w-5 shrink-0 text-marino dark:text-sky-300" />{v.nombre}</div>
           <div className="text-xs text-slate-500">
             {v.fecha_inicio ? `${formatFecha(v.fecha_inicio)}${v.fecha_fin ? ` – ${formatFecha(v.fecha_fin)}` : ''} · ` : ''}
             {v.moneda}
-            {v.cerrado && ' · ✓ Cerrado'}
+            {v.cerrado && ' · Cerrado'}
           </div>
         </div>
         <div className="text-right">
@@ -94,7 +95,7 @@ function NuevoViaje() {
     navigate(`/viajes/${v.id}`)
   }
 
-  if (!abierto) return <Boton variante="primario" onClick={() => setAbierto(true)}>＋ Nuevo viaje</Boton>
+  if (!abierto) return <Boton variante="primario" onClick={() => setAbierto(true)}><Icono nombre="mas" className="h-4 w-4" grosor={2.4} />Nuevo viaje</Boton>
   return (
     <Card titulo="Nuevo viaje">
       <form onSubmit={crear} className="grid gap-3 sm:grid-cols-2">

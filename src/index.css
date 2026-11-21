@@ -12,16 +12,20 @@
   color-scheme: light;
   --surface: #ffffff;
   --text-secondary: #52514e;
-  --grid: #e5e7eb;
+  --grid: #e5e5ea;
+  /* Disponible, cuenta remunerada e inversiones: siempre el mismo color en Inicio y en las gráficas */
+  --serie-disponible: var(--series-1);
+  --serie-remunerada: var(--series-2);
+  --serie-inversiones: var(--series-3);
   --series-1: #2a78d6; /* azul */
   --series-2: #eb6834; /* naranja */
   --series-3: #1baf7a; /* aqua */
 }
 .dark {
   color-scheme: dark;
-  --surface: #111827;
+  --surface: #1c1c1e;
   --text-secondary: #c3c2b7;
-  --grid: #374151;
+  --grid: #38383a;
   --series-1: #3987e5;
   --series-2: #d95926;
   --series-3: #199e70;
