@@ -45,6 +45,7 @@ export function planMesNuevo(d: Datos, cerrarAnterior: boolean): PlanMesNuevo {
     saldo_real_cuenta: null,
     valor_real_inversiones: null,
     intereses_cuenta_rem: null,
+    saldo_real_remunerada: null,
   }
   let conceptosIng: string[]
   let gastosBase: Pick<Gasto, 'concepto' | 'fijo' | 'presupuesto' | 'importe' | 'fecha_vencimiento' | 'reparto'>[]
@@ -201,8 +202,8 @@ export function huecosEntre(d: Datos): number {
 
 export function datosIniciales(): Datos {
   const ahora = new Date().toISOString()
-  const oct: Mes = { id: uid(), fecha: '2026-10-01', titulo: 'Plantilla de presupuesto mensual', estado: 'Cerrado', ultimo_cambio: ahora, saldo_real_cuenta: null, valor_real_inversiones: null, intereses_cuenta_rem: null }
-  const nov: Mes = { id: uid(), fecha: '2026-11-01', titulo: 'Presupuesto personal', estado: 'Abierto', ultimo_cambio: ahora, saldo_real_cuenta: null, valor_real_inversiones: 1760200, intereses_cuenta_rem: null }
+  const oct: Mes = { id: uid(), fecha: '2026-10-01', titulo: 'Plantilla de presupuesto mensual', estado: 'Cerrado', ultimo_cambio: ahora, saldo_real_cuenta: null, valor_real_inversiones: null, intereses_cuenta_rem: null, saldo_real_remunerada: null }
+  const nov: Mes = { id: uid(), fecha: '2026-11-01', titulo: 'Presupuesto personal', estado: 'Abierto', ultimo_cambio: ahora, saldo_real_cuenta: null, valor_real_inversiones: 1760200, intereses_cuenta_rem: null, saldo_real_remunerada: null }
 
   const ing = (m: Mes, valores: Record<string, Cents>): Ingreso[] =>
     PLANTILLA_INGRESOS.map((concepto, i) => ({ id: uid(), month_id: m.id, concepto, importe: valores[concepto] ?? 0, orden: i }))

@@ -7,13 +7,13 @@ import { centsToDecimal, toCents, toCentsOrNull } from '../lib/money'
 
 // Campos que son importes (céntimos en la app, NUMERIC(12,2) en la BD)
 const CAMPOS_DINERO = new Set([
-  'importe', 'presupuesto', 'saldo_real_cuenta', 'valor_real_inversiones', 'intereses_cuenta_rem', 'objetivo', 'aportacion_mensual',
+  'importe', 'presupuesto', 'saldo_real_cuenta', 'valor_real_inversiones', 'intereses_cuenta_rem', 'saldo_real_remunerada', 'objetivo', 'aportacion_mensual',
   'ajuste_cuenta_gastos_inicial', 'inversiones_iniciales', 'aportado_inicial_inversiones', 'cuenta_remunerada_inicial',
 ])
 // Columnas que la app escribe en cada tabla (lo demás no se envía).
 // aportacion_de / aportacion_cuenta no están: las gestiona el servidor.
 const COLUMNAS: Record<Tabla, string[]> = {
-  months: ['id', 'fecha', 'titulo', 'estado', 'ultimo_cambio', 'saldo_real_cuenta', 'valor_real_inversiones', 'intereses_cuenta_rem'],
+  months: ['id', 'fecha', 'titulo', 'estado', 'ultimo_cambio', 'saldo_real_cuenta', 'valor_real_inversiones', 'intereses_cuenta_rem', 'saldo_real_remunerada'],
   incomes: ['id', 'month_id', 'concepto', 'importe', 'orden'],
   expenses: ['id', 'month_id', 'concepto', 'fecha_vencimiento', 'importe', 'orden', 'fijo', 'presupuesto', 'reparto'],
   expense_entries: ['id', 'expense_id', 'importe', 'creado_en', 'nota'],
@@ -153,6 +153,7 @@ export const MAPEOS: { [T in Tabla]: (x: Fila) => Datos[T][number] } = {
     saldo_real_cuenta: toCentsOrNull(m.saldo_real_cuenta as string),
     valor_real_inversiones: toCentsOrNull(m.valor_real_inversiones as string),
     intereses_cuenta_rem: toCentsOrNull(m.intereses_cuenta_rem as string),
+    saldo_real_remunerada: toCentsOrNull(m.saldo_real_remunerada as string),
   }),
   incomes: (x): Ingreso => ({
     id: x.id as string, month_id: x.month_id as string, concepto: x.concepto as string, importe: toCents(x.importe as string), orden: Number(x.orden),
@@ -273,6 +274,7 @@ export function crearSupabaseRepo(sb: SupabaseClient, cuentaId: string | null): 
         const fila = aBD(tabla, f as Fila)
         // Columnas de migraciones nuevas: vacías no se envían (así funciona aunque falte la migración)
         if (tabla === 'months' && fila.intereses_cuenta_rem == null) delete fila.intereses_cuenta_rem
+        if (tabla === 'months' && fila.saldo_real_remunerada == null) delete fila.saldo_real_remunerada
         return conC ? conCuenta(fila) : fila
       }
       const { error } = await sb.from(tabla).insert(filas.map(preparar))

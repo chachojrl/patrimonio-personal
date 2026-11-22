@@ -134,11 +134,6 @@ function VistaMes({ mes, c }: { mes: Mes; c: NonNullable<ReturnType<ReturnType<t
                   />
                 </FilaCampo>
                 <Fila titulo="Inversiones acumuladas" sub={mes.valor_real_inversiones === null ? 'Estimado' : 'Valor real'} derecha={<Dinero c={c.inversionesAcum} dash={false} className="text-[17px]" />} />
-                <Fila
-                  titulo="Cuenta remunerada"
-                  sub={textoInteresesMes(c, alMesSiguiente, eur)}
-                  derecha={<Dinero c={c.cuentaRemAcum} dash={false} className="text-[17px]" />}
-                />
                 <FilaCampo etiqueta="Intereses cobrados">
                   <CeldaImporte
                     ariaLabel="Intereses cuenta remunerada"
@@ -149,12 +144,29 @@ function VistaMes({ mes, c }: { mes: Mes; c: NonNullable<ReturnType<ReturnType<t
                     onCambio={(v) => actualizar('months', mes.id, { intereses_cuenta_rem: v })}
                   />
                 </FilaCampo>
+                <FilaCampo etiqueta="Saldo real remunerada">
+                  <CeldaImporte
+                    ariaLabel="Saldo real de la cuenta remunerada"
+                    valor={mes.saldo_real_remunerada}
+                    permitirVacio
+                    placeholder="Vacío"
+                    className="w-36 text-right"
+                    onCambio={(v) => actualizar('months', mes.id, { saldo_real_remunerada: v })}
+                  />
+                </FilaCampo>
+                <Fila
+                  titulo="Cuenta remunerada"
+                  sub={c.ajusteCtaRem !== 0
+                    ? `Ajustada ${eur(c.ajusteCtaRem, { dash: false })} con el banco`
+                    : mes.saldo_real_remunerada !== null ? 'Cuadra con el banco' : textoInteresesMes(c, alMesSiguiente, eur)}
+                  derecha={<Dinero c={c.cuentaRemAcum} dash={false} className="text-[17px]" />}
+                />
               </>
             )}
           </div>
           <p className="mt-1.5 px-4 text-[13px] leading-snug text-slate-500 dark:text-slate-400">
             Si escribes el saldo real, la diferencia con el calculado cuenta como ingreso extra o como gasto no apuntado.
-            {!compartida && ' El valor real de las inversiones sustituye a la estimación en este mes y los siguientes. Los intereses que escribas sustituyen a los estimados con la TAE.'}
+            {!compartida && ' El valor real de las inversiones sustituye a la estimación en este mes y los siguientes. Los intereses que escribas sustituyen a los estimados con la TAE. Si escribes el saldo real de la cuenta remunerada, la diferencia se ajusta sola y los meses siguientes parten de esa cifra.'}
           </p>
         </section>
       </div>
