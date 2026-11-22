@@ -66,7 +66,7 @@ migrar 0001_esquema.sql 0002_usuarios_nuevos_en_blanco.sql 0003_fijos_presupuest
 cargar_datos_previos
 # shellcheck disable=SC2046
 migrar $(posteriores)
-migrar 0008_tiempo_real.sql 0009_historial_compra_viajes.sql 0010_clasificacion_reparto.sql 0011_traspasos.sql # otra vez: se pueden repetir
+migrar 0008_tiempo_real.sql 0009_historial_compra_viajes.sql 0010_clasificacion_reparto.sql 0011_traspasos.sql 0012_historial_tres_meses.sql # otra vez: se pueden repetir
 ow_psql -f "$T/ayudas.sql" >/dev/null
 ejecutar 01_cuentas_compartidas.sql
 ejecutar 02_borrar_cuenta.sql
