@@ -139,11 +139,14 @@ Debe responder `OK` en todas las tablas: sin sesión no se lee nada y el registr
   las cuentas. Un traspaso no es un ingreso ni un gasto: si llega a la cuenta de gastos, suma al saldo
   disponible y resta del ahorro del mes; el dinero total no cambia. Necesita la migración `0011_traspasos.sql`.
 - **Intereses de la cuenta remunerada:** en *Ajustes → Cuenta remunerada* pon la TAE (y desde qué mes
-  vale cada una, si el banco la cambia) y la retención de Hacienda (19 % por defecto). Cada mes se suman
-  solos los intereses netos: saldo de la cuenta remunerada al empezar el mes × ((1 + TAE)^(1/12) − 1) ×
-  (1 − retención). Si el banco paga otra cifra, escríbela en el mes («Intereses cuenta remunerada») o al
-  cerrarlo y sustituye a la estimación. Se ven en el mes, en Inicio, como columna en Historial y en el
-  Excel. Necesita la migración `0013_intereses_cuenta_remunerada.sql`.
+  vale cada una, si el banco la cambia; se elige en una lista), la retención de Hacienda (19 % por defecto) y
+  **cuándo te paga el banco**: el día 1 del mes siguiente (por defecto) o el último día del mismo mes. Cada mes
+  genera los intereses netos sobre el saldo de la cuenta remunerada al empezar el mes: saldo × ((1 + TAE)^(1/12)
+  − 1) × (1 − retención). Con el pago el día 1, lo que genera noviembre se suma en la hoja de diciembre (en
+  noviembre se ve «unos X € el 1 de diciembre»). Los intereses suben la cuenta remunerada y el dinero total,
+  pero no son ingresos de la cuenta de gastos. Si el banco paga otra cifra, escríbela en el mes en que la cobras
+  («Intereses cobrados») o al cerrarlo y sustituye a la estimación. Se ven en el mes, en Inicio, como columna en
+  Historial y en el Excel. Necesita las migraciones `0013_intereses_cuenta_remunerada.sql` y `0017_pago_intereses.sql`.
 - **Cerrar mes guiado:** «Cerrar mes…», al final de la hoja del mes, repasa el saldo real del banco,
   el valor de las inversiones, lo pendiente (presupuestos, avisos, lo que te deben) y el resumen frente
   al mes anterior. Después todo pasa a solo lectura, también en la base de datos; usa **Reabrir mes**
@@ -275,6 +278,7 @@ vez** en *Supabase → SQL Editor*, en orden. Se pueden repetir sin problema.
 | `0014_huchas.sql` | Huchas (objetivos de ahorro) y lo que se mete o se saca de cada una |
 | `0015_futuro.sql` | Ajustes de la proyección y la libertad financiera (rentabilidad, inflación, % de retirada y gastos que no tendrías) |
 | `0016_suscripciones.sql` | Gastos marcados como «no es una suscripción» |
+| `0017_pago_intereses.sql` | Cuándo paga el banco los intereses (el día 1 del mes siguiente o a final de mes) |
 
 ## Cuenta compartida (opcional)
 

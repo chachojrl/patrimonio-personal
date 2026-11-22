@@ -20,7 +20,7 @@ import { useBloqueo } from '../components/useBloqueo'
 import { bloquearAhora } from '../components/Bloqueo'
 import { MINUTOS_EN_SEGUNDO_PLANO } from '../lib/bloqueo'
 import { NOMBRE_TEMA, useTema, type Tema } from '../lib/tema'
-import { MESES, mesActual, nombreMes, partes } from '../lib/fechas'
+import { MESES, MESES_CORTOS, fechaDesdeIndice, indiceMes, mesActual, mesLargo, nombreMes, partes } from '../lib/fechas'
 import { Avatar, BotonGrande, COLOR, Fila, FilaCampo, FilaLibre, Grupo, Icono, IconoApp, Interruptor, claseCampoIos, type NombreIcono } from '../components/ios'
 import type { Config, Datos, TramoTae } from '../lib/tipos'
 import { GUIA, textoFicha } from '../components/guiaUso'
@@ -678,7 +678,7 @@ function CampoPct({ valor, onCambio, ariaLabel, max = 100 }: { valor: number; on
         type="text"
         inputMode="decimal"
         aria-label={ariaLabel}
-        className={cx(claseCampoIos, 'w-20')}
+        className={cx(claseCampoIos, 'w-16! shrink-0')}
         value={texto}
         onChange={(e) => setTexto(e.target.value)}
         onBlur={guardar}
@@ -702,13 +702,21 @@ function InteresesDetalle() {
   }
   const anadir = () => {
     const ultimoMes = calc.meses[calc.meses.length - 1]?.mes.fecha
-    const desde = tramos.length === 0 ? (calc.meses[0]?.mes.fecha ?? cfg.mes_inicio) : (ultimoMes && ultimoMes > tramos[0].desde ? ultimoMes : mesActual())
+    // La primera TAE empieza este mes (los meses anteriores ya tienen sus saldos reales)
+    const desde = tramos.length === 0 ? mesActual() : (ultimoMes && ultimoMes > tramos[0].desde ? ultimoMes : mesActual())
     guardar([...tramos.filter((x) => x.desde !== desde), { desde, tae: tramos[0]?.tae ?? 2 }])
   }
 
   const tae = taeActual(cfg)
   const saldo = calc.kpis.totalCuentaRem
   const alMes = interesesEstimados(saldo, tae, cfg.retencion_intereses)
+  const pago = cfg.pago_intereses ?? 'mes-siguiente'
+  const ultimo = calc.meses[calc.meses.length - 1]
+  const proximoCobro = ultimo ? fechaDesdeIndice(indiceMes(ultimo.mes.fecha) + 1) : null
+  // Meses para elegir «desde»: desde el primero de la app (o la TAE más antigua) hasta dos años después de hoy
+  const primero = [cfg.mes_inicio, calc.meses[0]?.mes.fecha, ...tramos.map((t) => t.desde)].filter(Boolean).sort()[0] as string
+  const opcionesMes: string[] = []
+  for (let i = indiceMes(primero); i <= indiceMes(mesActual()) + 24; i++) opcionesMes.push(fechaDesdeIndice(i))
 
   return (
     <>
@@ -716,26 +724,26 @@ function InteresesDetalle() {
         icono="billete"
         color={COLOR.verde}
         titulo="Intereses de la cuenta remunerada"
-        texto="Pon la TAE de tu cuenta y cada mes se suman solos los intereses a la cuenta remunerada y a tu dinero total. Si el banco te paga otra cifra, escríbela en el mes y manda esa."
+        texto="Pon la TAE de tu cuenta y los intereses se suman solos a la cuenta remunerada y a tu dinero total el mes en que te los paga el banco. Si te paga otra cifra, escríbela en el mes y manda esa."
       />
       <Grupo
         titulo="TAE"
         pie={tramos.length > 1
-          ? 'Cada mes usa la TAE que vale desde ese mes. Los meses anteriores a la primera no generan intereses.'
-          : 'Si tu banco cambia la TAE, añade otra desde el mes en que cambia: los meses anteriores siguen con la de antes.'}
+          ? 'Cada mes genera intereses con la TAE que vale desde ese mes. Los meses anteriores a la primera no generan intereses.'
+          : '«Desde» es el primer mes que genera intereses con esta TAE. Si tu banco la cambia, añade otra desde el mes en que cambia: los meses anteriores siguen con la de antes.'}
       >
         {tramos.map((t, i) => (
           <div key={t.desde} className="ios-fila">
             <div className="ios-sep ml-4 flex min-h-11 items-center gap-3 py-1.5 pr-4">
               <span className="text-[17px] text-slate-900 dark:text-slate-100">Desde</span>
-              <input
-                type="month"
+              <select
                 aria-label="Desde el mes"
-                className={cx(claseCampoIos, 'w-44! shrink-0 text-left!')}
-                value={t.desde.slice(0, 7)}
-                onChange={(e) => e.target.value && cambiar(i, { desde: `${e.target.value}-01` })}
-              />
-              <span className="flex-1" />
+                className={cx(claseCampoIos, 'min-w-0 flex-1 cursor-pointer appearance-none text-left! text-[#007AFF]! dark:text-[#0A84FF]!')}
+                value={t.desde}
+                onChange={(e) => cambiar(i, { desde: e.target.value })}
+              >
+                {opcionesMes.map((m) => <option key={m} value={m}>{MESES_CORTOS[partes(m).mes - 1]} {partes(m).anio}</option>)}
+              </select>
               <CampoPct ariaLabel={`TAE desde ${nombreMes(t.desde)}`} valor={t.tae} max={50} onCambio={(v) => cambiar(i, { tae: v })} />
               <button
                 type="button"
@@ -749,6 +757,25 @@ function InteresesDetalle() {
           </div>
         ))}
         <Fila titulo={tramos.length === 0 ? 'Poner la TAE' : 'Cambió la TAE…'} accion="azul" onClick={anadir} />
+      </Grupo>
+      <Grupo
+        titulo="Cuándo te paga el banco"
+        pie={pago === 'mes-siguiente'
+          ? 'Los intereses que genera un mes se suman en la hoja del mes siguiente, que es cuando te llegan. Por ejemplo, los de noviembre aparecen en diciembre.'
+          : 'Los intereses de cada mes se suman en ese mismo mes.'}
+      >
+        <Fila
+          titulo="El día 1 del mes siguiente"
+          sub="Lo de noviembre te llega el 1 de diciembre"
+          seleccionada={pago === 'mes-siguiente'}
+          onClick={() => pago !== 'mes-siguiente' && actualizarConfig({ pago_intereses: 'mes-siguiente' })}
+        />
+        <Fila
+          titulo="El último día del mismo mes"
+          sub="Lo de noviembre te llega el 30 de noviembre"
+          seleccionada={pago === 'mismo-mes'}
+          onClick={() => pago !== 'mismo-mes' && actualizarConfig({ pago_intereses: 'mismo-mes' })}
+        />
       </Grupo>
       <Grupo
         titulo="Hacienda"
@@ -765,6 +792,13 @@ function InteresesDetalle() {
             <strong className="text-emerald-700 dark:text-emerald-400">{eur(alMes)} al mes</strong> netos
             {' '}(unos {eur(interesesAnuales(saldo, tae, cfg.retencion_intereses))} en un año, si no mueves el dinero).
           </FilaLibre>
+          {pago === 'mes-siguiente' && calc.kpis.interesesPendientes > 0 && proximoCobro && (
+            <Fila
+              titulo="Próximo cobro"
+              sub={`1 de ${mesLargo(proximoCobro)} · lo de ${MESES[partes(ultimo!.mes.fecha).mes - 1].toLowerCase()}`}
+              derecha={<Dinero c={calc.kpis.interesesPendientes} dash={false} className="text-[17px] text-emerald-700 dark:text-emerald-400" />}
+            />
+          )}
           {calc.kpis.interesesTotales > 0 && <Fila titulo="Intereses hasta ahora" derecha={<Dinero c={calc.kpis.interesesTotales} dash={false} className="text-[17px] text-slate-500" />} />}
         </Grupo>
       )}

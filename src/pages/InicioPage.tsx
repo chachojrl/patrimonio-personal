@@ -185,7 +185,13 @@ export function InicioPage() {
                 <FilaCifra titulo="Disponible" c={ultimo.saldoDisponible} marca={<Marca n={0} />} />
                 <FilaCifra
                   titulo="Cuenta remunerada"
-                  sub={ultimo.interesesCtaRem > 0 ? `+${eur(ultimo.interesesCtaRem, { dash: false })} de intereses este mes${ultimo.interesesReales ? '' : ` (${formatTae(ultimo.tae)} TAE)`}` : undefined}
+                  sub={
+                    ultimo.interesesCtaRem > 0
+                      ? `+${eur(ultimo.interesesCtaRem, { dash: false })} de intereses cobrados este mes${ultimo.interesesReales ? '' : ` (${formatTae(ultimo.tae)} TAE)`}`
+                      : k.interesesPendientes > 0
+                        ? `Unos ${eur(k.interesesPendientes, { dash: false })} de intereses el 1 de ${MESES[partes(ultimo.mes.fecha).mes % 12].toLowerCase()}`
+                        : undefined
+                  }
                   c={k.totalCuentaRem}
                   marca={<Marca n={1} />}
                 />

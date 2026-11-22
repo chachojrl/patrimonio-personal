@@ -322,34 +322,46 @@ export const GUIA: GrupoGuia[] = [
         titulo: 'Intereses de la cuenta remunerada',
         icono: 'billete',
         color: COLOR.verde,
-        resumen: 'Pon la TAE y los intereses se suman solos cada mes.',
+        resumen: 'Pon la TAE y los intereses se suman solos el mes en que te los paga el banco.',
         secciones: [
           {
             titulo: 'Ponerla',
             pasos: [
               'En Ajustes → Cuenta remunerada toca «Poner la TAE» y escribe la de tu cuenta (por ejemplo, 2,5 %).',
+              '«Desde» es el primer mes que genera intereses con esa TAE (por defecto, el mes en curso). Elígelo en la lista.',
               'Si el banco la cambia, toca «Cambió la TAE…» y pon la nueva desde el mes en que cambia: los meses anteriores siguen con la de antes.',
               'La retención de Hacienda viene al 19 % (lo habitual en España); puedes cambiarla.',
             ],
           },
           {
+            titulo: 'Cuándo te paga el banco',
+            pasos: [
+              '«El día 1 del mes siguiente» (por defecto): lo que genera noviembre te llega el 1 de diciembre, así que se suma en la hoja de diciembre. En noviembre la cuenta remunerada se queda con lo que tienes de verdad y ves «unos X € el 1 de diciembre».',
+              '«El último día del mismo mes»: lo de noviembre se suma en noviembre.',
+              'Elige la que use tu banco para que la app cuadre con lo que tienes en cada momento.',
+            ],
+          },
+          {
             titulo: 'Cómo se calcula',
             pasos: [
-              'Cada mes se suma el interés neto sobre lo que había en la cuenta remunerada al empezar el mes: saldo × ((1 + TAE)^(1/12) − 1) × (1 − retención).',
-              'Los intereses suben la cuenta remunerada y tu dinero total, pero no cuentan como ahorro ni tocan tu saldo disponible.',
-              'En Ajustes ves cuánto generas al mes y al año con tu saldo actual, y lo que llevas generado.',
+              'Cada mes genera el interés neto sobre lo que había en la cuenta remunerada al empezar el mes: saldo × ((1 + TAE)^(1/12) − 1) × (1 − retención). Lo que metes durante el mes empieza a generar al mes siguiente.',
+              'Los intereses suben la cuenta remunerada y tu dinero total, pero no son un ingreso de tu cuenta de gastos: no salen en Ingresos ni tocan tu saldo disponible.',
+              'En Ajustes ves cuánto generas al mes y al año con tu saldo actual, el próximo cobro y lo que llevas cobrado.',
             ],
           },
           {
             titulo: 'Lo que pagó el banco',
             pasos: [
-              'Si el banco te pagó otra cifra, escríbela en la hoja del mes («Intereses del mes») o al cerrarlo. Manda la tuya en lugar de la estimación.',
+              'Si el banco te pagó otra cifra, escríbela en la hoja del mes en que la cobraste («Intereses cobrados») o al cerrarlo. Manda la tuya en lugar de la estimación.',
               'Se puede escribir aunque el mes esté cerrado.',
             ],
           },
           {
             titulo: 'Dónde se ven',
-            pasos: ['En la hoja del mes, en Inicio («+X € de intereses este mes»), como columna en el Historial y en el Excel.'],
+            pasos: [
+              'En la hoja del mes, en «Cuadrar con el banco»: debajo de «Cuenta remunerada» pone lo cobrado ese mes o lo que llegará el día 1.',
+              'En Inicio, bajo la cuenta remunerada; como columna en el Historial y en el Excel.',
+            ],
           },
         ],
         ir: { texto: 'Poner la TAE', to: '/ajustes/intereses' },
@@ -413,7 +425,7 @@ export const GUIA: GrupoGuia[] = [
             pasos: [
               'Al final de la hoja del mes, «Cerrar mes…» abre un repaso por pasos:',
               'El saldo real del banco y el valor de tus inversiones (opcionales).',
-              'Los intereses de la cuenta remunerada, si tienes TAE.',
+              'Los intereses que te ha pagado el banco ese mes, si tienes TAE.',
               'Las aportaciones a tus huchas: te propone la aportación mensual de cada una, marcada con su importe. Cámbiala o desmárcala; se aparta al cerrar.',
               'Lo pendiente: presupuestos que te has pasado, avisos y lo que te deben.',
               'El resumen del mes comparado con el anterior.',

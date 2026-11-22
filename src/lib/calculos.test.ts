@@ -415,9 +415,9 @@ describe('Copias antiguas', () => {
 
 describe('Intereses de la cuenta remunerada (TAE)', () => {
   // Octubre deja la cuenta remunerada en 12.488,75 € y noviembre no la mueve
-  const conTae = (tae: Datos['config']['tae_cuenta_rem'], retencion = 19) => {
+  const conTae = (tae: Datos['config']['tae_cuenta_rem'], retencion = 19, pago: Datos['config']['pago_intereses'] = 'mismo-mes') => {
     const d = datosIniciales()
-    d.config = { ...d.config, tae_cuenta_rem: tae, retencion_intereses: retencion }
+    d.config = { ...d.config, tae_cuenta_rem: tae, retencion_intereses: retencion, pago_intereses: pago }
     return d
   }
 
@@ -481,14 +481,51 @@ describe('Intereses de la cuenta remunerada (TAE)', () => {
     expect(m.cuentaRemAcum).toBe(oct.cuentaRemAcum + 2000)
   })
 
+  it('pago el día 1 del mes siguiente: lo de noviembre se suma en diciembre', () => {
+    let d = conTae([{ desde: '2026-11-01', tae: 2.5 }], 19, 'mes-siguiente')
+    const sinTae = calcular(datosIniciales()).meses[1]
+    let c = calcular(d)
+    const nov = c.meses[1]
+    // Noviembre no cobra nada (octubre no tenía TAE), pero genera lo que se cobrará el 1 de diciembre
+    expect(nov.interesesCtaRem).toBe(0)
+    expect(nov.cuentaRemAcum).toBe(sinTae.cuentaRemAcum)
+    expect(nov.interesesGenerados).toBe(interesesEstimados(sinTae.cuentaRemAcum, 2.5, 19))
+    expect(c.kpis.interesesPendientes).toBe(nov.interesesGenerados)
+    // Al crear diciembre, se cobra lo generado en noviembre
+    d = aplicarPlan(d, planMesNuevo(d, true))
+    c = calcular(d)
+    const dic = c.meses[2]
+    expect(dic.interesesCtaRem).toBe(nov.interesesGenerados)
+    expect(dic.tae).toBe(2.5)
+    expect(dic.cuentaRemAcum).toBe(nov.cuentaRemAcum + nov.interesesGenerados)
+    // Diciembre genera sobre el saldo ya con lo cobrado el día 1
+    expect(dic.interesesGenerados).toBe(interesesEstimados(nov.cuentaRemAcum + nov.interesesGenerados, 2.5, 19))
+  })
+
+  it('pago el día 1: lo que escribes como cobrado sustituye a la estimación de ese mes', () => {
+    let d = conTae([{ desde: '2026-10-01', tae: 2.5 }], 19, 'mes-siguiente')
+    d = aplicarPlan(d, planMesNuevo(d, true))
+    d.months.find((m) => m.fecha === '2026-12-01')!.intereses_cuenta_rem = 2500
+    const c = calcular(d)
+    expect(c.meses[2].interesesCtaRem).toBe(2500)
+    expect(c.meses[2].interesesReales).toBe(true)
+    expect(c.meses[1].interesesCtaRem).toBe(c.meses[0].interesesGenerados) // noviembre cobra lo de octubre
+  })
+
+  it('por defecto el banco paga el día 1 del mes siguiente', () => {
+    expect(datosIniciales().config.pago_intereses).toBe('mes-siguiente')
+  })
+
   it('datos antiguos sin TAE se normalizan', () => {
     const d = datosIniciales() as unknown as { config: Record<string, unknown>; months: Record<string, unknown>[] }
     delete d.config.tae_cuenta_rem
     delete d.config.retencion_intereses
+    delete d.config.pago_intereses
     d.months.forEach((m) => delete m.intereses_cuenta_rem)
     const n = normalizarDatos(d as unknown as Datos)
     expect(n.config.tae_cuenta_rem).toEqual([])
     expect(n.config.retencion_intereses).toBe(19)
+    expect(n.config.pago_intereses).toBe('mes-siguiente')
     expect(n.months.every((m) => m.intereses_cuenta_rem === null)).toBe(true)
   })
 })

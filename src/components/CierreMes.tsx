@@ -109,7 +109,10 @@ export function CierreMes({
 
         {!compartida && c.tae > 0 && (
           <Paso n={3} hecho={mes.intereses_cuenta_rem !== null} titulo="Intereses de la cuenta remunerada">
-            <p className="text-xs text-slate-500">Lo que te ha pagado el banco este mes (ya sin la retención). En blanco se usa la estimación con el {formatTae(c.tae)} TAE{c.interesesReales ? '' : ` (${eur(c.interesesCtaRem, { dash: false })})`}.</p>
+            <p className="text-xs text-slate-500">
+              Lo que te ha pagado el banco este mes{(datos.config.pago_intereses ?? 'mes-siguiente') === 'mes-siguiente' ? ' (los intereses del mes anterior, cobrados el día 1)' : ''}, ya sin la retención.
+              En blanco se usa la estimación con el {formatTae(c.tae)} TAE{c.interesesReales ? '' : ` (${eur(c.interesesCtaRem, { dash: false })})`}.
+            </p>
             <CeldaImporte
               ariaLabel="Intereses cuenta remunerada"
               valor={mes.intereses_cuenta_rem}
