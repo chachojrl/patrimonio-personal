@@ -10,6 +10,8 @@ import { formatTae } from '../lib/money'
 import { MESES_CORTOS, mesActual, mesLargo, partes } from '../lib/fechas'
 import { base, conceptosRecientes, cuandoLlega, escenarios, libertadFinanciera } from '../lib/futuro'
 import { estadosHuchas } from '../lib/huchas'
+import { iconoHucha } from '../components/HuchaTarjeta'
+import { Icono, type NombreIcono } from '../components/ios'
 
 const PLAZOS = [5, 10, 20, 30] as const
 const HITOS = [1000000, 2500000, 5000000, 10000000, 25000000, 50000000, 100000000] // 10k € … 1M €
@@ -62,16 +64,16 @@ export function FuturoPage() {
   const ganancia = fin.total - largo.normal[0].total - fin.aportado
 
   // Hitos: patrimonio redondo, huchas y libertad financiera
-  const hitos: { fecha: string; texto: string; icono: string }[] = []
+  const hitos: { fecha: string; texto: string; icono: NombreIcono }[] = []
   const siguiente = HITOS.find((h) => h > largo.normal[0].total)
   if (siguiente) {
     const p = cuandoLlega(largo.normal, siguiente)
-    if (p) hitos.push({ fecha: p.fecha, texto: `Llegas a ${eur(siguiente, { dash: false }).replace(',00', '')}`, icono: '🎯' })
+    if (p) hitos.push({ fecha: p.fecha, texto: `Llegas a ${eur(siguiente, { dash: false }).replace(',00', '')}`, icono: 'diana' })
   }
   for (const e of estadosHuchas(datos, mesActual())) {
-    if (!e.hucha.conseguida_en && e.mesEstimado) hitos.push({ fecha: e.mesEstimado, texto: `Llenas «${e.hucha.nombre}»`, icono: e.hucha.emoji })
+    if (!e.hucha.conseguida_en && e.mesEstimado) hitos.push({ fecha: e.mesEstimado, texto: `Llenas «${e.hucha.nombre}»`, icono: iconoHucha(e.hucha.emoji) })
   }
-  if (libertad?.fecha && !compartida && libertad.progreso < 1) hitos.push({ fecha: libertad.fecha, texto: 'Libertad financiera', icono: '🏝️' })
+  if (libertad?.fecha && !compartida && libertad.progreso < 1) hitos.push({ fecha: libertad.fecha, texto: 'Libertad financiera', icono: 'sol' })
   hitos.sort((a, b2) => a.fecha.localeCompare(b2.fecha))
 
   return (
@@ -152,7 +154,9 @@ export function FuturoPage() {
           <ul className="divide-y divide-slate-100 dark:divide-white/10">
             {hitos.slice(0, 6).map((h) => (
               <li key={h.texto} className="flex items-center gap-3 py-2">
-                <span className="text-xl" aria-hidden>{h.icono}</span>
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-marino/10 text-marino dark:bg-sky-400/15 dark:text-sky-300" aria-hidden>
+                  <Icono nombre={h.icono} className="h-5 w-5" />
+                </span>
                 <span className="flex-1 text-sm">{h.texto}</span>
                 <span className="text-sm text-slate-500">{mesLargo(h.fecha)}</span>
               </li>

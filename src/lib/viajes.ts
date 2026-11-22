@@ -2,13 +2,13 @@
 import type { Cents } from './money'
 import type { CategoriaViaje, GastoViaje, Viaje } from './tipos'
 
-export const CATEGORIAS: { id: CategoriaViaje; txt: string; icono: string }[] = [
-  { id: 'alojamiento', txt: 'Alojamiento', icono: '🏨' },
-  { id: 'transporte', txt: 'Transporte', icono: '✈️' },
-  { id: 'comida', txt: 'Comida', icono: '🍽️' },
-  { id: 'ocio', txt: 'Ocio', icono: '🎟️' },
-  { id: 'compras', txt: 'Compras', icono: '🛍️' },
-  { id: 'otros', txt: 'Otros', icono: '📦' },
+export const CATEGORIAS: { id: CategoriaViaje; txt: string }[] = [
+  { id: 'alojamiento', txt: 'Alojamiento' },
+  { id: 'transporte', txt: 'Transporte' },
+  { id: 'comida', txt: 'Comida' },
+  { id: 'ocio', txt: 'Ocio' },
+  { id: 'compras', txt: 'Compras' },
+  { id: 'otros', txt: 'Otros' },
 ]
 
 export const MONEDAS: { id: string; txt: string }[] = [

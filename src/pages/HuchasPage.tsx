@@ -5,7 +5,7 @@ import { useStore } from '../data/store'
 import { useCuentas } from '../data/cuentas'
 import { Boton, Card, Dinero, Kpi, Modal, cx } from '../components/ui'
 import { Confeti } from '../components/Confeti'
-import { BarraHucha, TarjetaHucha, textoEstado } from '../components/HuchaTarjeta'
+import { BarraHucha, ICONOS_HUCHA, IconoHucha, TarjetaHucha, iconoHucha, textoEstado } from '../components/HuchaTarjeta'
 import { Icono } from '../components/ios'
 import { useEur } from '../lib/discreto'
 import { formatEUR, parseImporte, type Cents } from '../lib/money'
@@ -14,7 +14,6 @@ import { uid } from '../lib/operaciones'
 import { NOMBRE_CUENTA, dineroLibre, estadoHucha, estadosHuchas, problemaAlMeter, type EstadoHucha } from '../lib/huchas'
 import type { CuentaDinero, Hucha, MovimientoHucha } from '../lib/tipos'
 
-const EMOJIS = ['🐷', '✈️', '🏖️', '🏠', '🚗', '💍', '🎓', '🎁', '💻', '📱', '🛟', '👶', '🐶', '🎸', '⛷️', '🏍️']
 
 export function HuchasPage() {
   const { datos, calc } = useStore()
@@ -111,7 +110,7 @@ export function HuchaPage() {
     const llena = h!.objetivo > 0 && e.saldo + importe >= h!.objetivo
     if (!antes && llena) {
       setFiesta(true)
-      avisar({ texto: `¡Has llenado «${h!.nombre}»! ${h!.emoji}` })
+      avisar({ texto: `¡Has llenado «${h!.nombre}»!` })
     } else {
       avisar({ texto: importe > 0 ? `Metidos ${eur(importe, { dash: false })} en «${h!.nombre}».` : `Sacados ${eur(-importe, { dash: false })} de «${h!.nombre}».` })
     }
@@ -125,7 +124,7 @@ export function HuchaPage() {
       </Link>
 
       <section className="rounded-xl bg-white p-5 text-center dark:bg-[#1c1c1e]">
-        <div className="text-5xl" aria-hidden>{h.emoji}</div>
+        <div className="flex justify-center"><IconoHucha valor={h.emoji} tam="l" llena={e.llena} /></div>
         <h1 className="mt-2 text-[26px] font-bold tracking-tight text-slate-900 dark:text-white">{h.nombre}</h1>
         <p className="mt-1 text-[34px] font-bold leading-tight tracking-tight"><Dinero c={e.saldo} dash={false} /></p>
         <p className="text-sm text-slate-500">de <Dinero c={h.objetivo} dash={false} />{e.pct !== null && ` · ${Math.round(e.pct * 100)} %`}</p>
@@ -290,7 +289,7 @@ function FormHucha({ abierto, onCerrar, hucha }: { abierto: boolean; onCerrar: (
   const aTexto = (c: Cents | null | undefined) => (c ? formatEUR(c, { dash: false }).replace(/[^\d,]/g, '') : '')
   const inicial = () => ({
     nombre: hucha?.nombre ?? '',
-    emoji: hucha?.emoji ?? '🐷',
+    emoji: iconoHucha(hucha?.emoji) as string,
     objetivo: aTexto(hucha?.objetivo),
     fecha: hucha?.fecha_objetivo ?? '',
     mensual: aTexto(hucha?.aportacion_mensual),
@@ -319,7 +318,7 @@ function FormHucha({ abierto, onCerrar, hucha }: { abierto: boolean; onCerrar: (
     const ya = f.ya.trim() ? parseImporte(f.ya) : null
     if (f.ya.trim() && (ya === null || ya <= 0)) return setError('Lo que metes ahora tiene que ser mayor que 0.')
     const datosHucha = {
-      nombre, emoji: f.emoji.trim() || '🐷', objetivo, fecha_objetivo: f.fecha || null,
+      nombre, emoji: iconoHucha(f.emoji), objetivo, fecha_objetivo: f.fecha || null,
       aportacion_mensual: mensual || null, cuenta: compartida ? null : f.cuenta || null,
     }
     if (hucha) {
@@ -359,16 +358,20 @@ function FormHucha({ abierto, onCerrar, hucha }: { abierto: boolean; onCerrar: (
         <fieldset>
           <legend>Icono</legend>
           <div className="mt-1 flex flex-wrap gap-1.5">
-            {EMOJIS.map((em) => (
+            {ICONOS_HUCHA.map((ic) => (
               <button
-                key={em}
+                key={ic.nombre}
                 type="button"
-                aria-label={`Icono ${em}`}
-                aria-pressed={f.emoji === em}
-                className={cx('flex h-9 w-9 items-center justify-center rounded-lg text-xl', f.emoji === em ? 'bg-marino/15 ring-2 ring-marino dark:bg-sky-400/20 dark:ring-sky-400' : 'bg-slate-100 dark:bg-white/10')}
-                onClick={() => setF({ ...f, emoji: em })}
+                aria-label={`Icono ${ic.txt}`}
+                title={ic.txt}
+                aria-pressed={f.emoji === ic.nombre}
+                className={cx(
+                  'flex h-10 w-10 items-center justify-center rounded-xl',
+                  f.emoji === ic.nombre ? 'bg-marino text-white dark:bg-sky-500' : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300',
+                )}
+                onClick={() => setF({ ...f, emoji: ic.nombre })}
               >
-                {em}
+                <Icono nombre={ic.nombre} className="h-5 w-5" />
               </button>
             ))}
           </div>

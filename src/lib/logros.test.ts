@@ -70,7 +70,7 @@ describe('Logros', () => {
 
   it('hucha conseguida', () => {
     const d = conMeses(1, () => 0)
-    d.huchas = [{ id: 'h', nombre: 'X', emoji: '🐷', objetivo: 10000, fecha_objetivo: null, aportacion_mensual: null, cuenta: null, orden: 0, conseguida_en: null }]
+    d.huchas = [{ id: 'h', nombre: 'X', emoji: 'hucha', objetivo: 10000, fecha_objetivo: null, aportacion_mensual: null, cuenta: null, orden: 0, conseguida_en: null }]
     d.hucha_movimientos = [{ id: 'm', hucha_id: 'h', fecha: '2026-11-01', importe: 5000, nota: null, mes: null }]
     expect(logros(calcular(d), d).find((x) => x.id === 'hucha')!.progreso).toBeCloseTo(0.5)
     d.huchas[0].conseguida_en = '2026-11-20'

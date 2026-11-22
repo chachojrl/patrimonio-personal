@@ -5,6 +5,57 @@ import { useEur } from '../lib/discreto'
 import type { Cents } from '../lib/money'
 import { formatFecha, mesLargo } from '../lib/fechas'
 import type { EstadoHucha } from '../lib/huchas'
+import { Icono, type NombreIcono } from './ios'
+
+/** Iconos para elegir al crear una hucha (se guarda el nombre en el campo «emoji»). */
+export const ICONOS_HUCHA: { nombre: NombreIcono; txt: string }[] = [
+  { nombre: 'hucha', txt: 'Ahorro' },
+  { nombre: 'avion', txt: 'Viaje' },
+  { nombre: 'sol', txt: 'Vacaciones' },
+  { nombre: 'globo', txt: 'Vuelta al mundo' },
+  { nombre: 'casa', txt: 'Casa' },
+  { nombre: 'llave', txt: 'Entrada de un piso' },
+  { nombre: 'herramienta', txt: 'Reformas' },
+  { nombre: 'coche', txt: 'Coche' },
+  { nombre: 'corazon', txt: 'Boda o pareja' },
+  { nombre: 'birrete', txt: 'Estudios' },
+  { nombre: 'regalo', txt: 'Regalos' },
+  { nombre: 'ordenador', txt: 'Ordenador' },
+  { nombre: 'movil', txt: 'Móvil' },
+  { nombre: 'musica', txt: 'Ocio' },
+  { nombre: 'escudo', txt: 'Imprevistos' },
+  { nombre: 'estrella', txt: 'Capricho' },
+]
+
+/** Huchas creadas con emoji (versión anterior): su icono equivalente. */
+const DE_EMOJI: Record<string, NombreIcono> = {
+  '🐷': 'hucha', '✈️': 'avion', '🏖️': 'sol', '🏠': 'casa', '🚗': 'coche', '💍': 'corazon', '🎓': 'birrete', '🎁': 'regalo',
+  '💻': 'ordenador', '📱': 'movil', '🛟': 'escudo', '👶': 'corazon', '🐶': 'corazon', '🎸': 'musica', '⛷️': 'sol', '🏍️': 'coche',
+}
+
+/** Icono de una hucha a partir de lo guardado (nombre de icono o emoji antiguo). */
+export function iconoHucha(valor: string | null | undefined): NombreIcono {
+  if (valor && ICONOS_HUCHA.some((x) => x.nombre === valor)) return valor as NombreIcono
+  return (valor && DE_EMOJI[valor]) || 'hucha'
+}
+
+/** El icono de la hucha en su recuadro de color. */
+export function IconoHucha({ valor, tam = 'm', llena }: { valor: string; tam?: 's' | 'm' | 'l'; llena?: boolean }) {
+  const caja = { s: 'h-7 w-7 rounded-lg', m: 'h-11 w-11 rounded-xl', l: 'h-16 w-16 rounded-2xl' }[tam]
+  const icono = { s: 'h-4 w-4', m: 'h-6 w-6', l: 'h-9 w-9' }[tam]
+  return (
+    <span
+      className={cx(
+        'flex shrink-0 items-center justify-center',
+        caja,
+        llena ? 'bg-emerald-500/12 text-emerald-700 dark:bg-emerald-400/15 dark:text-emerald-300' : 'bg-marino/10 text-marino dark:bg-sky-400/15 dark:text-sky-300',
+      )}
+      aria-hidden
+    >
+      <Icono nombre={iconoHucha(valor)} className={icono} />
+    </span>
+  )
+}
 
 /** Frase corta con cómo va la hucha. */
 export function textoEstado(e: EstadoHucha, eur: (c: Cents, o?: { dash?: boolean }) => string): string {
@@ -45,7 +96,7 @@ export function TarjetaHucha({ e, compacta }: { e: EstadoHucha; compacta?: boole
       className={cx('block rounded-xl bg-white p-4 active:bg-slate-100 dark:bg-[#1c1c1e] dark:active:bg-white/10', h.conseguida_en && 'opacity-75', compacta && 'p-3.5')}
     >
       <div className="flex items-start gap-3">
-        <span className={cx('flex shrink-0 items-center justify-center rounded-xl bg-slate-100 dark:bg-white/10', compacta ? 'h-9 w-9 text-xl' : 'h-11 w-11 text-2xl')} aria-hidden>{h.emoji}</span>
+        <IconoHucha valor={h.emoji} tam={compacta ? 's' : 'm'} llena={e.llena} />
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between gap-2">
             <span className="truncate font-semibold text-slate-900 dark:text-white">{h.nombre}</span>

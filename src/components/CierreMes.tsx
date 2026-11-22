@@ -14,6 +14,7 @@ import { useEur } from '../lib/discreto'
 import { nombreMes } from '../lib/fechas'
 import type { Mes } from '../lib/tipos'
 import { Icono } from './ios'
+import { IconoHucha } from './HuchaTarjeta'
 
 /** Repaso antes de cerrar un mes: saldo real, inversiones, pendientes y resumen. */
 export function CierreMes({
@@ -135,7 +136,8 @@ export function CierreMes({
                       aria-label={`Aportar a ${p.hucha.nombre}`}
                       onChange={(e) => setAportes({ ...aportes, [p.hucha.id]: { ...a, si: e.target.checked } })}
                     />
-                    <span className="min-w-0 flex-1 truncate">{p.hucha.emoji} {p.hucha.nombre}</span>
+                    <IconoHucha valor={p.hucha.emoji} tam="s" />
+                    <span className="min-w-0 flex-1 truncate">{p.hucha.nombre}</span>
                     <input
                       className="campo num w-28 py-1 text-right"
                       inputMode="decimal"
