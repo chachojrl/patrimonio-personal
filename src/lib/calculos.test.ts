@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { calcular, resumenAnual } from './calculos'
+import { calcular, interesesEstimados, resumenAnual } from './calculos'
 import { anadirGasto, aplicarPlan, borrarMes, datosIniciales, deshacerApunte, estadoPresupuesto, planMesNuevo, reordenar, sumarUnMes, validarAhorro } from './operaciones'
 import { formatEUR, formatPct, parseImporte, toCents, centsToDecimal } from './money'
 import type { Datos } from './tipos'
@@ -410,5 +410,85 @@ describe('Copias antiguas', () => {
     for (const g of d.expenses) { delete g.fijo; delete g.presupuesto }
     const n = normalizarDatos(d as unknown as Datos)
     expect(n.expenses.every((g) => g.fijo === false && g.presupuesto === null)).toBe(true)
+  })
+})
+
+describe('Intereses de la cuenta remunerada (TAE)', () => {
+  // Octubre deja la cuenta remunerada en 12.488,75 € y noviembre no la mueve
+  const conTae = (tae: Datos['config']['tae_cuenta_rem'], retencion = 19) => {
+    const d = datosIniciales()
+    d.config = { ...d.config, tae_cuenta_rem: tae, retencion_intereses: retencion }
+    return d
+  }
+
+  it('sin TAE no hay intereses y todo queda como antes', () => {
+    const c = calcular(datosIniciales())
+    expect(c.meses.every((m) => m.interesesCtaRem === 0)).toBe(true)
+    expect(c.kpis.interesesTotales).toBe(0)
+  })
+
+  it('interesesEstimados: TAE mensual equivalente y retención', () => {
+    // 10.000 € al 2 % TAE: (1,02^(1/12) − 1) × 10.000 = 16,5158 € brutos; netos al 19 % = 13,38 €
+    expect(interesesEstimados(1000000, 2, 0)).toBe(1652)
+    expect(interesesEstimados(1000000, 2, 19)).toBe(1338)
+    expect(interesesEstimados(0, 2, 19)).toBe(0)
+    expect(interesesEstimados(-5000, 2, 19)).toBe(0)
+    expect(interesesEstimados(1000000, 0, 19)).toBe(0)
+    // 12 meses seguidos reinvirtiendo, sin retención, dan la TAE
+    let saldo = 1000000
+    for (let i = 0; i < 12; i++) saldo += interesesEstimados(saldo, 2, 0)
+    expect(Math.abs(saldo - 1020000)).toBeLessThanOrEqual(6)
+  })
+
+  it('se suman a la cuenta remunerada y al dinero total, con el saldo al empezar el mes', () => {
+    const base = mesPorNombre(datosIniciales(), '2026-11-01')
+    const d = conTae([{ desde: '2026-11-01', tae: 2.5 }])
+    const nov = mesPorNombre(d, '2026-11-01')
+    const esperado = interesesEstimados(1248875, 2.5, 19)
+    expect(esperado).toBeGreaterThan(0)
+    expect(nov.interesesCtaRem).toBe(esperado)
+    expect(nov.interesesReales).toBe(false)
+    expect(nov.tae).toBe(2.5)
+    expect(nov.cuentaRemAcum).toBe(base.cuentaRemAcum + esperado)
+    expect(nov.dineroTotal).toBe(base.dineroTotal + esperado)
+    // No cuenta como ahorro ni como movimiento del mes, ni toca el saldo disponible
+    expect(nov.ahorroTotal).toBe(base.ahorroTotal)
+    expect(nov.ctaRemMes).toBe(base.ctaRemMes)
+    expect(nov.saldoDisponible).toBe(base.saldoDisponible)
+    // Octubre es anterior a la TAE: sin intereses
+    expect(mesPorNombre(d, '2026-10-01').interesesCtaRem).toBe(0)
+    expect(calcular(d).kpis.interesesTotales).toBe(esperado)
+  })
+
+  it('cada mes usa la TAE de su tramo y los intereses se acumulan', () => {
+    let d = conTae([{ desde: '2026-10-01', tae: 3 }, { desde: '2026-12-01', tae: 1 }], 0)
+    d = aplicarPlan(d, planMesNuevo(d, true))
+    const c = calcular(d)
+    expect(c.meses.map((m) => m.tae)).toEqual([3, 3, 1])
+    const [oct, nov, dic] = c.meses
+    expect(nov.interesesCtaRem).toBe(interesesEstimados(oct.cuentaRemAcum, 3, 0))
+    expect(dic.interesesCtaRem).toBe(interesesEstimados(nov.cuentaRemAcum, 1, 0))
+  })
+
+  it('los intereses reales del banco sustituyen a la estimación', () => {
+    const d = conTae([{ desde: '2026-10-01', tae: 2.5 }])
+    const nov = d.months.find((m) => m.fecha === '2026-11-01')!
+    nov.intereses_cuenta_rem = 2000
+    const m = mesPorNombre(d, '2026-11-01')
+    expect(m.interesesCtaRem).toBe(2000)
+    expect(m.interesesReales).toBe(true)
+    const oct = mesPorNombre(d, '2026-10-01')
+    expect(m.cuentaRemAcum).toBe(oct.cuentaRemAcum + 2000)
+  })
+
+  it('datos antiguos sin TAE se normalizan', () => {
+    const d = datosIniciales() as unknown as { config: Record<string, unknown>; months: Record<string, unknown>[] }
+    delete d.config.tae_cuenta_rem
+    delete d.config.retencion_intereses
+    d.months.forEach((m) => delete m.intereses_cuenta_rem)
+    const n = normalizarDatos(d as unknown as Datos)
+    expect(n.config.tae_cuenta_rem).toEqual([])
+    expect(n.config.retencion_intereses).toBe(19)
+    expect(n.months.every((m) => m.intereses_cuenta_rem === null)).toBe(true)
   })
 })

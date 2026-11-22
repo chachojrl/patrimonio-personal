@@ -125,3 +125,31 @@ test('¿Me lo puedo permitir? a plazos a medida, con entrada y TAE', async ({ ap
   await app.getByLabel('Número de meses').fill('900')
   await expect(app.getByText('Escribe entre 2 y 480 meses.')).toBeVisible()
 })
+
+test('TAE de la cuenta remunerada: intereses en Inicio, en el mes y al cerrarlo', async ({ app }) => {
+  await app.goto('/#/ajustes/intereses')
+  await app.getByRole('button', { name: 'Poner la TAE' }).click()
+  const tae = app.getByLabel(/^TAE desde/)
+  await tae.fill('2,5')
+  await tae.press('Enter')
+  await expect(app.getByText('generas unos')).toBeVisible()
+  await expect.poll(async () => (await guardado(app)).config.tae_cuenta_rem).toEqual([{ desde: '2025-12-01', tae: 2.5 }])
+
+  await app.goto('/#/')
+  await expect(app.getByText(/de intereses este mes \(2,5 % TAE\)/)).toBeVisible()
+
+  // La página no se sale de la pantalla (en el móvil) con las filas nuevas
+  await app.goto('/#/mes/2026-10')
+  if (esMovil(app)) expect(await app.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(app.viewportSize()!.width)
+  await expect(app.getByText('Intereses al 2,5 % TAE')).toBeVisible()
+
+  // Al cerrar el mes se pueden escribir los intereses que pagó el banco
+  await app.getByRole('button', { name: 'Cerrar mes…' }).click()
+  const dialogo = app.getByRole('dialog')
+  await dialogo.getByLabel('Intereses cuenta remunerada').fill('12,34')
+  await dialogo.getByLabel('Intereses cuenta remunerada').press('Tab')
+  await dialogo.getByRole('button', { name: 'Cerrar el mes' }).click()
+  await expect(app.getByText('Mes cerrado: todo está en solo lectura.')).toBeVisible()
+  await expect.poll(async () => (await guardado(app)).months.find((m) => m.fecha === '2026-10-01')!.intereses_cuenta_rem).toBe(1234)
+  await expect(app.getByText('Intereses del banco')).toBeVisible()
+})

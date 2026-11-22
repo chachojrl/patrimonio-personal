@@ -54,3 +54,8 @@ export function hoyISO(): string {
   const p = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
+
+/** Primer día del mes en curso: "2026-11-01" (hora local). */
+export function mesActual(): string {
+  return `${hoyISO().slice(0, 7)}-01`
+}

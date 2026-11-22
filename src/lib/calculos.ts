@@ -1,7 +1,7 @@
 // Módulo PURO de cálculo: réplica exacta de las fórmulas del Excel.
 // Todo en céntimos enteros. Nada de lo que se calcula aquí se guarda en la base de datos.
 import type { Cents } from './money'
-import type { Ahorro, CuentaDinero, Datos, Mes } from './tipos'
+import type { Ahorro, Config, CuentaDinero, Datos, Mes } from './tipos'
 import { fechaDesdeIndice, indiceMes, nombreMes, partes } from './fechas'
 
 const suma = (xs: Cents[]) => xs.reduce((a, b) => a + b, 0)
@@ -19,6 +19,26 @@ export function netoCuenta(movs: Ahorro[], cuenta: CuentaDinero): Cents {
   return suma(movs.map((x) => (cuentaDestino(x) === cuenta ? x.importe : 0) - (cuentaOrigen(x) === cuenta ? x.importe : 0)))
 }
 
+/** TAE (en %) que vale en un mes: la del último tramo que empieza ese mes o antes. 0 si no hay. */
+export function taeDelMes(cfg: Pick<Config, 'tae_cuenta_rem'>, fecha: string): number {
+  let tae = 0
+  let desde = ''
+  for (const t of cfg.tae_cuenta_rem ?? []) {
+    if (t.desde <= fecha && t.desde >= desde) { tae = t.tae; desde = t.desde }
+  }
+  return tae
+}
+
+/**
+ * Intereses netos que genera en un mes la cuenta remunerada con este saldo al empezar el mes:
+ * saldo × ((1 + TAE)^(1/12) − 1) × (1 − retención). En céntimos, redondeado.
+ */
+export function interesesEstimados(saldoInicio: Cents, tae: number, retencion: number): Cents {
+  if (saldoInicio <= 0 || !(tae > 0)) return 0
+  const mensual = Math.pow(1 + tae / 100, 1 / 12) - 1
+  return Math.round(saldoInicio * mensual * (1 - Math.min(100, Math.max(0, retencion)) / 100))
+}
+
 export interface MesCalculado {
   mes: Mes
   nombre: string
@@ -34,6 +54,12 @@ export interface MesCalculado {
   ctaRemMes: Cents
   /** Neto que entra en la cuenta de gastos desde las otras cuentas (negativo si sale). */
   traspasoGastos: Cents
+  /** Intereses netos de la cuenta remunerada este mes (los reales si se escribieron; si no, estimados con la TAE). */
+  interesesCtaRem: Cents
+  /** ¿interesesCtaRem es lo que pagó el banco (true) o una estimación (false)? */
+  interesesReales: boolean
+  /** TAE que se ha usado para estimar los intereses de este mes (en %). */
+  tae: number
   // 4.1
   anterior: Cents
   saldoCalculado: Cents
@@ -71,6 +97,8 @@ export interface Kpis {
   gananciaInversiones: Cents
   cuentaRemInicial: Cents
   totalCuentaRem: Cents
+  /** Intereses de la cuenta remunerada sumados desde el primer mes. */
+  interesesTotales: Cents
 }
 
 export interface Calculo {
@@ -123,7 +151,13 @@ export function calcular(d: Datos): Calculo {
     else invEstimada += invMes
     const inversionesAcum = invEstimada
 
-    acumCtaRem += netoCtaRem
+    // Intereses: sobre el saldo de la cuenta remunerada al empezar el mes
+    const saldoRemInicio = cfg.cuenta_remunerada_inicial + acumCtaRem
+    const tae = taeDelMes(cfg, mes.fecha)
+    const interesesReales = (mes.intereses_cuenta_rem ?? null) !== null
+    const interesesCtaRem = interesesReales ? mes.intereses_cuenta_rem! : interesesEstimados(saldoRemInicio, tae, cfg.retencion_intereses ?? 19)
+
+    acumCtaRem += netoCtaRem + interesesCtaRem
     const cuentaRemAcum = cfg.cuenta_remunerada_inicial + acumCtaRem
     const ahorroAcumulado = inversionesAcum + cuentaRemAcum
     const dineroTotal = ahorroAcumulado + saldoDisponible
@@ -135,6 +169,7 @@ export function calcular(d: Datos): Calculo {
       mes,
       nombre: nombreMes(mes.fecha),
       sumIngresos, sumGastos, ahorroTotal, invDesdeCtaRem, invMes, ctaRemMes, traspasoGastos,
+      interesesCtaRem, interesesReales, tae,
       anterior, saldoCalculado, ajuste, ingresosTotales, gastosTotales, saldoDisponible,
       pctGastado, pctDisponible: 1 - pctGastado,
       neto: ingresosTotales - gastosTotales,
@@ -174,6 +209,7 @@ export function calcular(d: Datos): Calculo {
     gananciaInversiones: totalInversiones - totalInvertido,
     cuentaRemInicial: cfg.cuenta_remunerada_inicial,
     totalCuentaRem: ultimo ? ultimo.cuentaRemAcum : cfg.cuenta_remunerada_inicial,
+    interesesTotales: suma(resultado.map((m) => m.interesesCtaRem)),
   }
 
   return { meses: resultado, porId, historial, kpis }

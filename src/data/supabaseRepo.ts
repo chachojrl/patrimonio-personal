@@ -7,13 +7,13 @@ import { centsToDecimal, toCents, toCentsOrNull } from '../lib/money'
 
 // Campos que son importes (céntimos en la app, NUMERIC(12,2) en la BD)
 const CAMPOS_DINERO = new Set([
-  'importe', 'presupuesto', 'saldo_real_cuenta', 'valor_real_inversiones',
+  'importe', 'presupuesto', 'saldo_real_cuenta', 'valor_real_inversiones', 'intereses_cuenta_rem',
   'ajuste_cuenta_gastos_inicial', 'inversiones_iniciales', 'aportado_inicial_inversiones', 'cuenta_remunerada_inicial',
 ])
 // Columnas que la app escribe en cada tabla (lo demás no se envía).
 // aportacion_de / aportacion_cuenta no están: las gestiona el servidor.
 const COLUMNAS: Record<Tabla, string[]> = {
-  months: ['id', 'fecha', 'titulo', 'estado', 'ultimo_cambio', 'saldo_real_cuenta', 'valor_real_inversiones'],
+  months: ['id', 'fecha', 'titulo', 'estado', 'ultimo_cambio', 'saldo_real_cuenta', 'valor_real_inversiones', 'intereses_cuenta_rem'],
   incomes: ['id', 'month_id', 'concepto', 'importe', 'orden'],
   expenses: ['id', 'month_id', 'concepto', 'fecha_vencimiento', 'importe', 'orden', 'fijo', 'presupuesto', 'reparto'],
   expense_entries: ['id', 'expense_id', 'importe', 'creado_en', 'nota'],
@@ -35,6 +35,12 @@ function aBD(tabla: Tabla | 'config', obj: Record<string, unknown>): Record<stri
 }
 
 type Fila = Record<string, unknown>
+
+/** Ajustes que añadieron migraciones posteriores a la 0009 (pueden faltar en la BD). */
+const CONFIG_NUEVOS = ['clasificacion', 'tae_cuenta_rem', 'retencion_intereses']
+function sinCamposNuevos<T extends object>(patch: T, campos: string[]): Partial<T> {
+  return Object.fromEntries(Object.entries(patch).filter(([k]) => !campos.includes(k))) as Partial<T>
+}
 type Error_ = { message: string; code?: string } | null
 
 /** ¿El error es "esa tabla / función no existe todavía" (migración sin ejecutar)? */
@@ -122,6 +128,10 @@ export function mapConfig(cfg: Fila): Config {
     plantilla_ingresos: (cfg.plantilla_ingresos as string[]) ?? CONFIG_INICIAL.plantilla_ingresos,
     plantilla_gastos: (cfg.plantilla_gastos as string[]) ?? CONFIG_INICIAL.plantilla_gastos,
     clasificacion: (cfg.clasificacion as Config['clasificacion']) ?? {},
+    tae_cuenta_rem: Array.isArray(cfg.tae_cuenta_rem)
+      ? (cfg.tae_cuenta_rem as { desde: string; tae: number | string }[]).map((t) => ({ desde: String(t.desde), tae: Number(t.tae) }))
+      : [],
+    retencion_intereses: cfg.retencion_intereses == null ? 19 : Number(cfg.retencion_intereses),
   }
 }
 
@@ -134,6 +144,7 @@ export const MAPEOS: { [T in Tabla]: (x: Fila) => Datos[T][number] } = {
     ultimo_cambio: (m.ultimo_cambio as string) ?? null,
     saldo_real_cuenta: toCentsOrNull(m.saldo_real_cuenta as string),
     valor_real_inversiones: toCentsOrNull(m.valor_real_inversiones as string),
+    intereses_cuenta_rem: toCentsOrNull(m.intereses_cuenta_rem as string),
   }),
   incomes: (x): Ingreso => ({
     id: x.id as string, month_id: x.month_id as string, concepto: x.concepto as string, importe: toCents(x.importe as string), orden: Number(x.orden),
@@ -237,7 +248,13 @@ export function crearSupabaseRepo(sb: SupabaseClient, cuentaId: string | null): 
       if (filas.length === 0) return
       // months y debts llevan la cuenta; el resto la hereda de su mes en el servidor
       const conC = tabla === 'months' || tabla === 'debts' || tabla === 'lista_compra' || tabla === 'viajes'
-      const { error } = await sb.from(tabla).insert(filas.map((f) => (conC ? conCuenta(aBD(tabla, f as Fila)) : aBD(tabla, f as Fila))))
+      const preparar = (f: object) => {
+        const fila = aBD(tabla, f as Fila)
+        // Columnas de migraciones nuevas: vacías no se envían (así funciona aunque falte la migración)
+        if (tabla === 'months' && fila.intereses_cuenta_rem == null) delete fila.intereses_cuenta_rem
+        return conC ? conCuenta(fila) : fila
+      }
+      const { error } = await sb.from(tabla).insert(filas.map(preparar))
       lanzar(error)
     },
     async actualizar(tabla, id, patch) {
@@ -249,9 +266,9 @@ export function crearSupabaseRepo(sb: SupabaseClient, cuentaId: string | null): 
     async actualizarConfig(patch) {
       if (cuentaId) {
         let { error } = await sb.from('config').update(aBD('config', patch as Fila)).eq('cuenta_id', cuentaId)
-        // Sin la migración 0010 no existe «clasificacion»: se guarda el resto (p. ej. al restaurar una copia)
-        if (error && faltaEnBD(error) && 'clasificacion' in patch && Object.keys(patch).length > 1) {
-          const { clasificacion: _c, ...resto } = patch
+        // Sin las migraciones nuevas faltan columnas: se guarda el resto (p. ej. al restaurar una copia)
+        const resto = sinCamposNuevos(patch, CONFIG_NUEVOS)
+        if (error && faltaEnBD(error) && Object.keys(resto).length > 0 && Object.keys(resto).length < Object.keys(patch).length) {
           ;({ error } = await sb.from('config').update(aBD('config', resto as Fila)).eq('cuenta_id', cuentaId))
         }
         lanzar(error)
