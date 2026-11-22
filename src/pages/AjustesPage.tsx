@@ -20,11 +20,13 @@ import { useBloqueo } from '../components/useBloqueo'
 import { bloquearAhora } from '../components/Bloqueo'
 import { MINUTOS_EN_SEGUNDO_PLANO } from '../lib/bloqueo'
 import { NOMBRE_TEMA, useTema, type Tema } from '../lib/tema'
-import { MESES, nombreMes, partes } from '../lib/fechas'
+import { MESES, mesActual, nombreMes, partes } from '../lib/fechas'
 import { Avatar, BotonGrande, COLOR, Fila, FilaCampo, FilaLibre, Grupo, Icono, IconoApp, Interruptor, claseCampoIos, type NombreIcono } from '../components/ios'
-import type { Config, Datos } from '../lib/tipos'
+import type { Config, Datos, TramoTae } from '../lib/tipos'
+import { formatEUR, formatTae, parsePct } from '../lib/money'
+import { interesesEstimados, taeDelMes } from '../lib/calculos'
 
-type Id = 'perfil' | 'guia' | 'informe' | 'exportar' | 'copias' | 'partida' | 'conceptos' | 'compartida' | 'seguridad' | 'faceid' | 'discreto' | 'apariencia' | 'recordatorios' | 'atajos'
+type Id = 'perfil' | 'guia' | 'informe' | 'exportar' | 'copias' | 'partida' | 'intereses' | 'conceptos' | 'compartida' | 'seguridad' | 'faceid' | 'discreto' | 'apariencia' | 'recordatorios' | 'atajos'
 
 interface Apartado {
   id: Id
@@ -39,6 +41,7 @@ const APARTADOS: Record<Exclude<Id, 'perfil'>, Apartado> = {
   exportar: { id: 'exportar', titulo: 'Exportar', icono: 'grafica', color: COLOR.verde },
   copias: { id: 'copias', titulo: 'Copias de seguridad', icono: 'archivo', color: COLOR.azul },
   partida: { id: 'partida', titulo: 'Punto de partida', icono: 'bandera', color: COLOR.amarillo },
+  intereses: { id: 'intereses', titulo: 'Cuenta remunerada', icono: 'billete', color: COLOR.verde },
   conceptos: { id: 'conceptos', titulo: 'Conceptos del primer mes', icono: 'lista', color: COLOR.morado },
   compartida: { id: 'compartida', titulo: 'Cuentas compartidas', icono: 'casa', color: COLOR.marron },
   seguridad: { id: 'seguridad', titulo: 'Contraseña y seguridad', icono: 'candado', color: COLOR.grafito },
@@ -56,6 +59,7 @@ const CLAVES: Record<Exclude<Id, 'perfil'>, string> = {
   exportar: 'excel xlsx csv numbers descargar tablas',
   copias: 'copia seguridad backup json restaurar icloud',
   partida: 'saldos iniciales inicio primer mes inversiones cuenta remunerada',
+  intereses: 'tae interes intereses rentabilidad retencion hacienda banco ahorro',
   conceptos: 'plantilla ingresos gastos primer mes',
   compartida: 'pareja casa compartir invitar miembros',
   seguridad: 'contraseña verificacion dos pasos 2fa sesion cerrar',
@@ -97,7 +101,7 @@ export function AjustesPage() {
   const nombre = compartida ? activa?.nombre ?? '' : (yo ? nombreMiembro(yo) : '') || leerNombreLocal()
 
   const disponibles: Id[] = [
-    'perfil', 'guia', 'informe', 'exportar', 'copias', 'partida', 'conceptos',
+    'perfil', 'guia', 'informe', 'exportar', 'copias', 'partida', ...(compartida ? [] : (['intereses'] as Id[])), 'conceptos',
     ...(supabase ? (['compartida', 'seguridad'] as Id[]) : []),
     'faceid', 'discreto', 'apariencia', 'recordatorios', 'atajos',
   ]
@@ -111,6 +115,7 @@ export function AjustesPage() {
   const valores: Partial<Record<Id, string>> = {
     exportar: 'Excel, CSV',
     partida: `${MESES[mes - 1].toLowerCase()} ${anio}`,
+    intereses: taeActual(datos.config) > 0 ? `${formatTae(taeActual(datos.config))} TAE` : 'Sin TAE',
     conceptos: String(datos.config.plantilla_ingresos.length + datos.config.plantilla_gastos.length),
     compartida: compartidas.length === 0 ? 'Ninguna' : compartidas.length === 1 ? compartidas[0].nombre : String(compartidas.length),
     faceid: bloqueo.activo ? 'Sí' : 'No',
@@ -186,7 +191,7 @@ export function AjustesPage() {
       </Grupo>
       <Grupo>{fila('guia')}</Grupo>
       <Grupo>{fila('informe')}{fila('exportar')}{fila('copias')}</Grupo>
-      <Grupo>{fila('partida')}{fila('conceptos')}{fila('compartida')}</Grupo>
+      <Grupo>{fila('partida')}{fila('intereses')}{fila('conceptos')}{fila('compartida')}</Grupo>
       <Grupo>{fila('seguridad')}{fila('faceid')}{fila('discreto')}</Grupo>
       <Grupo>{fila('apariencia')}{fila('recordatorios')}{fila('atajos')}</Grupo>
       {supabase && <CerrarSesion />}
@@ -205,6 +210,7 @@ export function AjustesPage() {
       {enPanel === 'exportar' && <ExportarDetalle />}
       {enPanel === 'copias' && <CopiasDetalle />}
       {enPanel === 'partida' && <PartidaDetalle />}
+      {enPanel === 'intereses' && <InteresesDetalle />}
       {enPanel === 'conceptos' && <ConceptosDetalle />}
       {enPanel === 'compartida' && <div className="mb-8"><CuentaCompartidaCard /></div>}
       {enPanel === 'seguridad' && <SeguridadDetalle email={email} />}
@@ -413,6 +419,17 @@ const FICHAS: { grupo: string; fichas: Ficha[] }[] = [
           'Al final de la hoja del mes, «Cerrar mes…» te enseña un repaso (presupuestos pasados, avisos, lo que te deben) y lo deja en solo lectura.',
           'Si necesitas cambiar algo, puedes reabrirlo.',
         ],
+      },
+      {
+        titulo: 'Intereses de la cuenta remunerada',
+        icono: 'billete',
+        color: COLOR.verde,
+        pasos: [
+          'En Ajustes → Cuenta remunerada pon la TAE de tu cuenta. Si el banco la cambia, añade la nueva desde el mes en que cambia.',
+          'Cada mes se suman solos los intereses netos (ya sin el 19 % de Hacienda) sobre lo que había en la cuenta al empezar el mes.',
+          'Si el banco te paga otra cifra, escríbela en el mes («Intereses cuenta remunerada») o al cerrarlo: manda la tuya.',
+        ],
+        ir: { texto: 'Poner la TAE', to: '/ajustes/intereses' },
       },
     ],
   },
@@ -767,6 +784,131 @@ function PartidaDetalle() {
       </Grupo>
     </>
   )
+}
+
+// ---------------- Cuenta remunerada (TAE) ----------------
+/** TAE que vale este mes (o la del último tramo si empieza más adelante, para no mostrar «Sin TAE» al ponerla). */
+function taeActual(cfg: Config): number {
+  const hoy = taeDelMes(cfg, mesActual())
+  if (hoy > 0) return hoy
+  const tramos = [...(cfg.tae_cuenta_rem ?? [])].sort((a, b) => b.desde.localeCompare(a.desde))
+  return tramos[0]?.tae ?? 0
+}
+
+/** Campo para un porcentaje: se escribe libre y se guarda al salir. */
+function CampoPct({ valor, onCambio, ariaLabel, max = 100 }: { valor: number; onCambio: (v: number) => void; ariaLabel: string; max?: number }) {
+  const [texto, setTexto] = useState(String(valor).replace('.', ','))
+  useEffect(() => setTexto(String(valor).replace('.', ',')), [valor])
+  const guardar = () => {
+    const v = parsePct(texto)
+    if (v === null || v < 0 || v > max) return setTexto(String(valor).replace('.', ','))
+    if (v !== valor) onCambio(v)
+  }
+  return (
+    <span className="flex items-center gap-1">
+      <input
+        type="text"
+        inputMode="decimal"
+        aria-label={ariaLabel}
+        className={cx(claseCampoIos, 'w-20')}
+        value={texto}
+        onChange={(e) => setTexto(e.target.value)}
+        onBlur={guardar}
+        onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+      />
+      <span className="text-[17px] text-slate-500 dark:text-slate-400">%</span>
+    </span>
+  )
+}
+
+function InteresesDetalle() {
+  const { datos, calc, actualizarConfig } = useStore()
+  const eur = (c: number) => formatEUR(c, { dash: false })
+  const cfg = datos.config
+  const tramos = [...(cfg.tae_cuenta_rem ?? [])].sort((a, b) => b.desde.localeCompare(a.desde))
+  const guardar = (nuevos: TramoTae[]) => actualizarConfig({ tae_cuenta_rem: [...nuevos].sort((a, b) => a.desde.localeCompare(b.desde)) })
+  const cambiar = (i: number, t: Partial<TramoTae>) => {
+    const nuevos = tramos.map((x, j) => (j === i ? { ...x, ...t } : x))
+    // Dos TAE desde el mismo mes no tienen sentido: se queda la que acabas de tocar
+    guardar(nuevos.filter((x, j) => j === i || x.desde !== nuevos[i].desde))
+  }
+  const anadir = () => {
+    const ultimoMes = calc.meses[calc.meses.length - 1]?.mes.fecha
+    const desde = tramos.length === 0 ? (calc.meses[0]?.mes.fecha ?? cfg.mes_inicio) : (ultimoMes && ultimoMes > tramos[0].desde ? ultimoMes : mesActual())
+    guardar([...tramos.filter((x) => x.desde !== desde), { desde, tae: tramos[0]?.tae ?? 2 }])
+  }
+
+  const tae = taeActual(cfg)
+  const saldo = calc.kpis.totalCuentaRem
+  const alMes = interesesEstimados(saldo, tae, cfg.retencion_intereses)
+
+  return (
+    <>
+      <Portada
+        icono="billete"
+        color={COLOR.verde}
+        titulo="Intereses de la cuenta remunerada"
+        texto="Pon la TAE de tu cuenta y cada mes se suman solos los intereses a la cuenta remunerada y a tu dinero total. Si el banco te paga otra cifra, escríbela en el mes y manda esa."
+      />
+      <Grupo
+        titulo="TAE"
+        pie={tramos.length > 1
+          ? 'Cada mes usa la TAE que vale desde ese mes. Los meses anteriores a la primera no generan intereses.'
+          : 'Si tu banco cambia la TAE, añade otra desde el mes en que cambia: los meses anteriores siguen con la de antes.'}
+      >
+        {tramos.map((t, i) => (
+          <div key={t.desde} className="ios-fila">
+            <div className="ios-sep ml-4 flex min-h-11 items-center gap-3 py-1.5 pr-4">
+              <span className="text-[17px] text-slate-900 dark:text-slate-100">Desde</span>
+              <input
+                type="month"
+                aria-label="Desde el mes"
+                className={cx(claseCampoIos, 'w-44! shrink-0 text-left!')}
+                value={t.desde.slice(0, 7)}
+                onChange={(e) => e.target.value && cambiar(i, { desde: `${e.target.value}-01` })}
+              />
+              <span className="flex-1" />
+              <CampoPct ariaLabel={`TAE desde ${nombreMes(t.desde)}`} valor={t.tae} max={50} onCambio={(v) => cambiar(i, { tae: v })} />
+              <button
+                type="button"
+                aria-label={`Quitar la TAE desde ${nombreMes(t.desde)}`}
+                className="-mr-1 rounded-full p-1.5 text-[#FF3B30] active:bg-slate-200/70 dark:text-[#FF453A] dark:active:bg-white/10"
+                onClick={() => guardar(tramos.filter((_, j) => j !== i))}
+              >
+                <Icono nombre="papelera" className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+        ))}
+        <Fila titulo={tramos.length === 0 ? 'Poner la TAE' : 'Cambió la TAE…'} accion="azul" onClick={anadir} />
+      </Grupo>
+      <Grupo
+        titulo="Hacienda"
+        pie="Lo que se queda Hacienda de los intereses (en España, el 19 % de los primeros 6.000 € al año). La app suma los intereses netos, lo que de verdad te llega."
+      >
+        <FilaCampo etiqueta="Retención">
+          <CampoPct ariaLabel="Retención sobre los intereses" valor={cfg.retencion_intereses} onCambio={(v) => actualizarConfig({ retencion_intereses: v })} />
+        </FilaCampo>
+      </Grupo>
+      {tae > 0 && saldo > 0 && (
+        <Grupo titulo="Así queda">
+          <FilaLibre>
+            Con <strong>{eur(saldo)}</strong> en la cuenta remunerada al {formatTae(tae)} TAE generas unos{' '}
+            <strong className="text-emerald-700 dark:text-emerald-400">{eur(alMes)} al mes</strong> netos
+            {' '}(unos {eur(interesesAnuales(saldo, tae, cfg.retencion_intereses))} en un año, si no mueves el dinero).
+          </FilaLibre>
+          {calc.kpis.interesesTotales > 0 && <Fila titulo="Intereses hasta ahora" derecha={<Dinero c={calc.kpis.interesesTotales} dash={false} className="text-[17px] text-slate-500" />} />}
+        </Grupo>
+      )}
+    </>
+  )
+}
+
+/** Intereses netos de 12 meses seguidos sin mover el dinero (cada mes sobre el saldo con los anteriores). */
+function interesesAnuales(saldo: number, tae: number, retencion: number) {
+  let s = saldo
+  for (let i = 0; i < 12; i++) s += interesesEstimados(s, tae, retencion)
+  return s - saldo
 }
 
 // ---------------- Conceptos ----------------

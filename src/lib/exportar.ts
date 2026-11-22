@@ -19,7 +19,7 @@ const sello = () => new Date().toISOString().slice(0, 10)
 
 // ---------- JSON (copia completa; importes en euros con 2 decimales) ----------
 
-const DINERO = ['importe', 'presupuesto', 'saldo_real_cuenta', 'valor_real_inversiones', 'ajuste_cuenta_gastos_inicial', 'inversiones_iniciales', 'aportado_inicial_inversiones', 'cuenta_remunerada_inicial']
+const DINERO = ['importe', 'presupuesto', 'saldo_real_cuenta', 'valor_real_inversiones', 'intereses_cuenta_rem', 'ajuste_cuenta_gastos_inicial', 'inversiones_iniciales', 'aportado_inicial_inversiones', 'cuenta_remunerada_inicial']
 
 function mapDinero(obj: unknown, fn: (v: number) => number): unknown {
   if (Array.isArray(obj)) return obj.map((x) => mapDinero(x, fn))
@@ -77,7 +77,7 @@ export function exportarCSV(d: Datos, tabla: 'incomes' | 'expenses' | 'savings' 
         fecha: formatFecha(h.fecha), hoja: h.nombre, estado: c ? 'Registrado' : 'Sin hoja',
         ingresos: c ? eurCsv(c.ingresosTotales) : '', gastos: c ? eurCsv(c.gastosTotales) : '', ahorro: c ? eurCsv(c.ahorroTotal) : '',
         saldo_disponible: c ? eurCsv(c.saldoDisponible) : '', neto: c ? eurCsv(c.neto) : '',
-        inversiones_mes: c ? eurCsv(c.invMes) : '', cuenta_rem_mes: c ? eurCsv(c.ctaRemMes) : '', inv_desde_cuenta_rem: c ? eurCsv(c.invDesdeCtaRem) : '',
+        inversiones_mes: c ? eurCsv(c.invMes) : '', cuenta_rem_mes: c ? eurCsv(c.ctaRemMes) : '', intereses_cuenta_rem: c ? eurCsv(c.interesesCtaRem) : '', inv_desde_cuenta_rem: c ? eurCsv(c.invDesdeCtaRem) : '',
         inversiones_acum: c ? eurCsv(c.inversionesAcum) : '', cuenta_rem_acum: c ? eurCsv(c.cuentaRemAcum) : '',
         ahorro_acumulado: c ? eurCsv(c.ahorroAcumulado) : '', dinero_total: c ? eurCsv(c.dineroTotal) : '',
         valor_real_inversiones: c ? eurCsv(c.mes.valor_real_inversiones) : '', estado_mes: c?.mes.estado ?? '',
@@ -178,19 +178,19 @@ export async function exportarExcel(d: Datos) {
 
   // Historial
   const h: Celda[][] = [['Historial'], [], [
-    'Fecha', 'Hoja', 'Estado', 'Ingresos', 'Gastos', 'Ahorro', 'Saldo disponible', 'Neto del mes', 'Inversiones (mes)', 'Cuenta remunerada (mes)',
+    'Fecha', 'Hoja', 'Estado', 'Ingresos', 'Gastos', 'Ahorro', 'Saldo disponible', 'Neto del mes', 'Inversiones (mes)', 'Cuenta remunerada (mes)', 'Intereses cuenta rem.',
     'Inversión desde cuenta rem. (mes)', 'Inversiones acum.', 'Cuenta rem. acum.', 'Ahorro acumulado', 'Dinero total', 'Valor real inversiones', 'Estado del mes',
   ]]
   for (const f of c.historial) {
     const m = f.calc
     h.push(m
-      ? [formatFecha(f.fecha), f.nombre, 'Registrado', e(m.ingresosTotales), e(m.gastosTotales), e(m.ahorroTotal), e(m.saldoDisponible), e(m.neto), e(m.invMes), e(m.ctaRemMes), e(m.invDesdeCtaRem), e(m.inversionesAcum), e(m.cuentaRemAcum), e(m.ahorroAcumulado), e(m.dineroTotal), e(m.mes.valor_real_inversiones), m.mes.estado]
+      ? [formatFecha(f.fecha), f.nombre, 'Registrado', e(m.ingresosTotales), e(m.gastosTotales), e(m.ahorroTotal), e(m.saldoDisponible), e(m.neto), e(m.invMes), e(m.ctaRemMes), e(m.interesesCtaRem), e(m.invDesdeCtaRem), e(m.inversionesAcum), e(m.cuentaRemAcum), e(m.ahorroAcumulado), e(m.dineroTotal), e(m.mes.valor_real_inversiones), m.mes.estado]
       : [formatFecha(f.fecha), f.nombre, 'Sin hoja'])
   }
   const k = c.kpis
   h.push([], ['Dinero total actual', e(k.dineroTotalActual)], ['Saldo inicial total', e(k.saldoInicialTotal)], ['Total en inversiones', e(k.totalInversiones)],
-    ['Total invertido (aportado)', e(k.totalInvertido)], ['Ganancia/pérdida inversiones', e(k.gananciaInversiones)], ['Cuenta remunerada inicial', e(k.cuentaRemInicial)], ['Total en cuenta remunerada', e(k.totalCuentaRem)])
-  hoja('Historial', h, [12, 18, 12, ...Array(13).fill(16), 12], [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], [], 3)
+    ['Total invertido (aportado)', e(k.totalInvertido)], ['Ganancia/pérdida inversiones', e(k.gananciaInversiones)], ['Cuenta remunerada inicial', e(k.cuentaRemInicial)], ['Total en cuenta remunerada', e(k.totalCuentaRem)], ['Intereses generados', e(k.interesesTotales)])
+  hoja('Historial', h, [12, 18, 12, ...Array(14).fill(16), 12], [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], [], 3)
 
   XLSX.writeFile(wb, `presupuesto-${sello()}.xlsx`)
 }

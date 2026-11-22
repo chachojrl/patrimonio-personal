@@ -15,6 +15,7 @@ import { cuentaDestino, cuentaOrigen } from '../lib/calculos'
 import { anadirGasto, borrarCreaHueco, deshacerApunte, estadoPresupuesto, mesesOrdenados, reordenar, separarImporteNota, uid } from '../lib/operaciones'
 import { Asa, useOrdenable } from '../components/Ordenable'
 import type { Ahorro, Gasto, Ingreso, Mes, OrigenAhorro, TipoAhorro } from '../lib/tipos'
+import { formatTae } from '../lib/money'
 
 export function MesPage() {
   const { ym } = useParams()
@@ -103,7 +104,7 @@ function VistaMes({ mes, c }: { mes: Mes; c: NonNullable<ReturnType<ReturnType<t
           </div>
         </section>
 
-        <section aria-labelledby="titulo-cuadrar">
+        <section aria-labelledby="titulo-cuadrar" className="min-w-0">
           <h2 id="titulo-cuadrar" className="mb-1.5 px-4 text-[13px] text-slate-500 dark:text-slate-400">Cuadrar con el banco (opcional)</h2>
           <div className="overflow-hidden rounded-xl bg-white dark:bg-[#1c1c1e]">
             <FilaCampo etiqueta="Saldo real en cuenta">
@@ -132,12 +133,27 @@ function VistaMes({ mes, c }: { mes: Mes; c: NonNullable<ReturnType<ReturnType<t
                   />
                 </FilaCampo>
                 <Fila titulo="Inversiones acumuladas" sub={mes.valor_real_inversiones === null ? 'Estimado' : 'Valor real'} derecha={<Dinero c={c.inversionesAcum} dash={false} className="text-[17px]" />} />
+                <Fila
+                  titulo="Cuenta remunerada"
+                  sub={c.interesesReales ? 'Intereses del banco' : c.tae > 0 ? `Intereses al ${formatTae(c.tae)} TAE` : 'Sin TAE (en Ajustes)'}
+                  derecha={<Dinero c={c.cuentaRemAcum} dash={false} className="text-[17px]" />}
+                />
+                <FilaCampo etiqueta="Intereses del mes">
+                  <CeldaImporte
+                    ariaLabel="Intereses cuenta remunerada"
+                    valor={mes.intereses_cuenta_rem}
+                    permitirVacio
+                    placeholder={c.tae > 0 && !c.interesesReales ? eur(c.interesesCtaRem, { dash: false }) : 'Vacío'}
+                    className="w-40 text-right"
+                    onCambio={(v) => actualizar('months', mes.id, { intereses_cuenta_rem: v })}
+                  />
+                </FilaCampo>
               </>
             )}
           </div>
           <p className="mt-1.5 px-4 text-[13px] leading-snug text-slate-500 dark:text-slate-400">
             Si escribes el saldo real, la diferencia con el calculado cuenta como ingreso extra o como gasto no apuntado.
-            {!compartida && ' El valor real de las inversiones sustituye a la estimación en este mes y los siguientes.'}
+            {!compartida && ' El valor real de las inversiones sustituye a la estimación en este mes y los siguientes. Los intereses que escribas sustituyen a los estimados con la TAE.'}
           </p>
         </section>
       </div>

@@ -18,6 +18,15 @@ export interface Config {
   plantilla_gastos: string[]
   /** Regla 50/30/20: concepto de gasto (normalizado) → necesidad o capricho. */
   clasificacion: Record<string, Clase>
+  /** TAE de la cuenta remunerada (en %) y desde qué mes vale cada una. Vacía = sin intereses. */
+  tae_cuenta_rem: TramoTae[]
+  /** % de los intereses que retiene Hacienda (19 en España). La app suma los intereses netos. */
+  retencion_intereses: number
+}
+
+export interface TramoTae {
+  desde: string // primer día del mes: "2026-10-01"
+  tae: number // en %: 2.5 = 2,5 %
 }
 
 export type Clase = 'necesidad' | 'capricho'
@@ -30,6 +39,8 @@ export interface Mes {
   ultimo_cambio: string | null
   saldo_real_cuenta: Cents | null
   valor_real_inversiones: Cents | null
+  /** Intereses que pagó de verdad la cuenta remunerada ese mes (null = se estiman con la TAE). */
+  intereses_cuenta_rem: Cents | null
 }
 
 export interface Ingreso {
@@ -176,6 +187,8 @@ export const CONFIG_INICIAL: Config = {
   plantilla_ingresos: PLANTILLA_INGRESOS,
   plantilla_gastos: PLANTILLA_GASTOS,
   clasificacion: {},
+  tae_cuenta_rem: [],
+  retencion_intereses: 19,
 }
 
 export function datosVacios(): Datos {
@@ -186,7 +199,13 @@ export function datosVacios(): Datos {
 export function normalizarDatos(d: Datos): Datos {
   return {
     ...d,
-    config: { ...d.config, clasificacion: d.config?.clasificacion ?? {} },
+    config: {
+      ...d.config,
+      clasificacion: d.config?.clasificacion ?? {},
+      tae_cuenta_rem: d.config?.tae_cuenta_rem ?? [],
+      retencion_intereses: d.config?.retencion_intereses ?? 19,
+    },
+    months: d.months.map((m) => ({ ...m, intereses_cuenta_rem: m.intereses_cuenta_rem ?? null })),
     expenses: d.expenses.map((g) => ({ ...g, fijo: g.fijo ?? false, presupuesto: g.presupuesto ?? null })),
     expense_entries: d.expense_entries ?? [],
     debts: d.debts ?? [],

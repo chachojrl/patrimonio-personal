@@ -5,7 +5,10 @@ import { LineaDineroTotal } from '../components/Graficos'
 import { InversionesKpi } from '../components/InversionesKpi'
 import { ColchonCard } from '../components/ColchonCard'
 import { MESES_CORTOS, formatFecha, partes } from '../lib/fechas'
+import { formatTae } from '../lib/money'
 
+const TOOLTIP_INTERESES =
+  'Intereses netos de la cuenta remunerada ese mes: estimados con la TAE de Ajustes, o los que pagó el banco si los escribiste en el mes.'
 const TOOLTIP_VALOR =
   'Escribe el valor total de la cartera ese mes, no la ganancia. En blanco se conserva la última valoración más aportaciones posteriores.'
 
@@ -19,7 +22,7 @@ export function HistorialPage() {
 
   const cols: { t: string; info?: string }[] = [
     { t: 'Fecha' }, { t: 'Hoja' }, { t: 'Estado' }, { t: 'Ingresos' }, { t: 'Gastos' }, { t: 'Ahorro' }, { t: 'Saldo disponible' },
-    { t: 'Neto del mes' }, { t: 'Inversiones (mes)' }, { t: 'Cuenta remunerada (mes)' }, { t: 'Inversión desde cuenta rem. (mes)' },
+    { t: 'Neto del mes' }, { t: 'Inversiones (mes)' }, { t: 'Cuenta remunerada (mes)' }, { t: 'Intereses cuenta rem.', info: TOOLTIP_INTERESES }, { t: 'Inversión desde cuenta rem. (mes)' },
     { t: 'Inversiones acum.' }, { t: 'Cuenta rem. acum.' }, { t: 'Ahorro acumulado' }, { t: 'Dinero total' },
     { t: 'Valor real inversiones', info: TOOLTIP_VALOR }, { t: 'Estado del mes' },
   ]
@@ -54,6 +57,7 @@ export function HistorialPage() {
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-1 xl:grid-cols-2">
             <Kpi titulo="Total en cuenta remunerada" valor={k.totalCuentaRem} grande />
             <Kpi titulo="Cuenta remunerada inicial" valor={k.cuentaRemInicial} />
+            {k.interesesTotales !== 0 && <Kpi titulo="Intereses generados" valor={k.interesesTotales} verde />}
           </div>
         </Card>
       </div>
@@ -69,7 +73,7 @@ export function HistorialPage() {
                     className={cx(
                       'sticky top-0 z-10 border-b border-slate-200 bg-white px-3 py-2.5 text-left text-[13px] font-medium text-slate-500 dark:border-white/15 dark:bg-[#1c1c1e] dark:text-slate-400',
                       i === 0 && 'left-0 z-20',
-                      i >= 3 && i <= 15 && 'text-right',
+                      i >= 3 && i <= 16 && 'text-right',
                     )}
                   >
                     {c.t}
@@ -98,6 +102,9 @@ export function HistorialPage() {
                         <td className={cx(td, 'text-right')}><Dinero c={c.neto} /></td>
                         <td className={cx(td, 'text-right')}><Dinero c={c.invMes} /></td>
                         <td className={cx(td, 'text-right')}><Dinero c={c.ctaRemMes} /></td>
+                        <td className={cx(td, 'text-right', !c.interesesReales && c.interesesCtaRem !== 0 && 'text-slate-500 dark:text-slate-400')} title={c.interesesReales ? 'Lo que pagó el banco' : c.interesesCtaRem ? `Estimado con ${formatTae(c.tae)} TAE` : undefined}>
+                          <Dinero c={c.interesesCtaRem} />
+                        </td>
                         <td className={cx(td, 'text-right')}><Dinero c={c.invDesdeCtaRem} /></td>
                         <td className={cx(td, 'text-right')}><Dinero c={c.inversionesAcum} /></td>
                         <td className={cx(td, 'text-right')}><Dinero c={c.cuentaRemAcum} /></td>
@@ -115,7 +122,7 @@ export function HistorialPage() {
                         <td className={td}><BadgeEstado estado={c.mes.estado} /></td>
                       </>
                     ) : (
-                      <td className={td} colSpan={14} />
+                      <td className={td} colSpan={15} />
                     )}
                   </tr>
                 )

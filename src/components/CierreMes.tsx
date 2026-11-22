@@ -4,7 +4,7 @@ import { useCuentas } from '../data/cuentas'
 import { Boton, CeldaImporte, Dinero, Modal, cx } from './ui'
 import { gastosRaros } from '../lib/analisis'
 import { estadoPresupuesto } from '../lib/operaciones'
-import { formatPct } from '../lib/money'
+import { formatPct, formatTae } from '../lib/money'
 import { useEur } from '../lib/discreto'
 import { nombreMes } from '../lib/fechas'
 import type { Mes } from '../lib/tipos'
@@ -90,7 +90,21 @@ export function CierreMes({
           </Paso>
         )}
 
-        <Paso n={compartida ? 2 : 3} hecho={pasados.length === 0 && avisos.length === 0 && pendientesDeuda.length === 0} titulo="Pendientes">
+        {!compartida && c.tae > 0 && (
+          <Paso n={3} hecho={mes.intereses_cuenta_rem !== null} titulo="Intereses de la cuenta remunerada">
+            <p className="text-xs text-slate-500">Lo que te ha pagado el banco este mes (ya sin la retención). En blanco se usa la estimación con el {formatTae(c.tae)} TAE{c.interesesReales ? '' : ` (${eur(c.interesesCtaRem, { dash: false })})`}.</p>
+            <CeldaImporte
+              ariaLabel="Intereses cuenta remunerada"
+              valor={mes.intereses_cuenta_rem}
+              permitirVacio
+              placeholder="Intereses del mes"
+              className="campo mt-1 text-left"
+              onCambio={(v) => actualizar('months', mes.id, { intereses_cuenta_rem: v })}
+            />
+          </Paso>
+        )}
+
+        <Paso n={compartida ? 2 : c.tae > 0 ? 4 : 3} hecho={pasados.length === 0 && avisos.length === 0 && pendientesDeuda.length === 0} titulo="Pendientes">
           <ul className="space-y-1 text-sm">
             {pasados.length === 0 && avisos.length === 0 && pendientesDeuda.length === 0 && <li className="text-slate-500">Nada pendiente.</li>}
             {pasados.map(({ g, e }) => (
@@ -108,7 +122,7 @@ export function CierreMes({
           </ul>
         </Paso>
 
-        <Paso n={compartida ? 3 : 4} hecho titulo="Resumen del mes">
+        <Paso n={compartida ? 3 : c.tae > 0 ? 5 : 4} hecho titulo="Resumen del mes">
           <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
             <dt className="text-slate-500">Ingresos</dt><dd className="text-right"><Dinero c={c.ingresosTotales} dash={false} /></dd>
             <dt className="text-slate-500">Gastos</dt>

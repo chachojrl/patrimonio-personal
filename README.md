@@ -138,6 +138,12 @@ Debe responder `OK` en todas las tablas: sin sesión no se lee nada y el registr
   inversiones y «Traspaso», una de la cuenta remunerada a la cuenta de gastos; luego puedes cambiar
   las cuentas. Un traspaso no es un ingreso ni un gasto: si llega a la cuenta de gastos, suma al saldo
   disponible y resta del ahorro del mes; el dinero total no cambia. Necesita la migración `0011_traspasos.sql`.
+- **Intereses de la cuenta remunerada:** en *Ajustes → Cuenta remunerada* pon la TAE (y desde qué mes
+  vale cada una, si el banco la cambia) y la retención de Hacienda (19 % por defecto). Cada mes se suman
+  solos los intereses netos: saldo de la cuenta remunerada al empezar el mes × ((1 + TAE)^(1/12) − 1) ×
+  (1 − retención). Si el banco paga otra cifra, escríbela en el mes («Intereses cuenta remunerada») o al
+  cerrarlo y sustituye a la estimación. Se ven en el mes, en Inicio, como columna en Historial y en el
+  Excel. Necesita la migración `0013_intereses_cuenta_remunerada.sql`.
 - **Cerrar mes guiado:** «Cerrar mes…», al final de la hoja del mes, repasa el saldo real del banco,
   el valor de las inversiones, lo pendiente (presupuestos, avisos, lo que te deben) y el resumen frente
   al mes anterior. Después todo pasa a solo lectura, también en la base de datos; usa **Reabrir mes**
@@ -234,6 +240,7 @@ vez** en *Supabase → SQL Editor*, en orden. Se pueden repetir sin problema.
 | `0010_clasificacion_reparto.sql` | Necesidades/caprichos (50/30/20) y reparto por concepto en la cuenta compartida |
 | `0011_traspasos.sql` | Traspasos entre cualquier par de cuentas (p. ej. de la cuenta remunerada a la cuenta de gastos) |
 | `0012_historial_tres_meses.sql` | El historial de cambios (Actividad) se guarda 3 meses en vez de un año, para ocupar menos |
+| `0013_intereses_cuenta_remunerada.sql` | TAE de la cuenta remunerada y los intereses de cada mes (estimados o los reales del banco) |
 
 ## Cuenta compartida (opcional)
 

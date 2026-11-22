@@ -8,8 +8,8 @@ import { Icono } from '../components/ios'
 import { usePreferencias, mesesSinCerrar } from '../lib/preferencias'
 import { anioParaAviso } from '../lib/anioEnCifras'
 import { empezarRecorrido, guiaVista, marcarGuiaVista } from '../lib/guia'
-import { OCULTO, useDiscreto } from '../lib/discreto'
-import { formatEUR, type Cents } from '../lib/money'
+import { OCULTO, useDiscreto, useEur } from '../lib/discreto'
+import { formatEUR, formatTae, type Cents } from '../lib/money'
 import { MESES, MESES_CORTOS } from '../lib/fechas'
 import type { ReactNode } from 'react'
 import { useCuentas } from '../data/cuentas'
@@ -45,6 +45,7 @@ function leerAnioGuardado(): number | null {
 export function InicioPage() {
   const { calc, datos, modo } = useStore()
   const discreto = useDiscreto()
+  const eur = useEur()
   const compartida = useCuentas().activa?.tipo === 'compartida'
   const anios = aniosConMeses(calc)
   const [anioElegido, setAnioElegido] = useState<number | null>(leerAnioGuardado)
@@ -178,7 +179,12 @@ export function InicioPage() {
               <div className="overflow-hidden rounded-xl bg-white dark:bg-[#1c1c1e]">
                 <Reparto partes={[ultimo.saldoDisponible, k.totalCuentaRem, k.totalInversiones]} />
                 <FilaCifra titulo="Disponible" c={ultimo.saldoDisponible} marca={<Marca n={0} />} />
-                <FilaCifra titulo="Cuenta remunerada" c={k.totalCuentaRem} marca={<Marca n={1} />} />
+                <FilaCifra
+                  titulo="Cuenta remunerada"
+                  sub={ultimo.interesesCtaRem > 0 ? `+${eur(ultimo.interesesCtaRem, { dash: false })} de intereses este mes${ultimo.interesesReales ? '' : ` (${formatTae(ultimo.tae)} TAE)`}` : undefined}
+                  c={k.totalCuentaRem}
+                  marca={<Marca n={1} />}
+                />
                 <FilaInversiones marca={<Marca n={2} />} />
               </div>
             </section>
@@ -377,12 +383,15 @@ function Reparto({ partes: valores }: { partes: number[] }) {
 }
 
 /** Fila de lista con un importe a la derecha. */
-function FilaCifra({ titulo, c, to, marca, fuerte, verde }: { titulo: string; c: Cents; to?: string; marca?: ReactNode; fuerte?: boolean; verde?: boolean }) {
+function FilaCifra({ titulo, sub, c, to, marca, fuerte, verde }: { titulo: string; sub?: string; c: Cents; to?: string; marca?: ReactNode; fuerte?: boolean; verde?: boolean }) {
   const contenido = (
     <>
       {marca && <span className="flex items-center pl-4">{marca}</span>}
       <span className={cx('ios-sep flex min-h-11 flex-1 items-center gap-2 py-2 pr-4', marca ? 'ml-2.5' : 'ml-4')}>
-        <span className={cx('flex-1 text-[17px]', fuerte && 'font-semibold')}>{titulo}</span>
+        <span className={cx('flex-1 text-[17px]', fuerte && 'font-semibold')}>
+          {titulo}
+          {sub && <span className="block text-[13px] font-normal text-slate-500 dark:text-slate-400">{sub}</span>}
+        </span>
         <Dinero c={c} dash={false} verde={verde} className={cx('text-[17px]', fuerte && 'font-semibold')} />
         {to && <Chevron />}
       </span>

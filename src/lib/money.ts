@@ -104,3 +104,15 @@ export function formatPct(p: number | null | undefined, decimales = 1): string {
   if (p === null || p === undefined || !Number.isFinite(p)) return ''
   return `${(p * 100).toFixed(decimales).replace('.', ',')} %`
 }
+
+/** Un porcentaje escrito por la persona (TAE, retención…): «2,5 %». Hasta 2 decimales, sin ceros de sobra. */
+export function formatTae(pct: number): string {
+  return `${pct.toLocaleString('es-ES', { maximumFractionDigits: 2 })} %`
+}
+
+/** Lee un porcentaje escrito a mano («2,5», «2.5 %»). null si no es un número. */
+export function parsePct(input: string): number | null {
+  const t = input.replace(/%/g, '').trim().replace(',', '.')
+  if (t === '' || !/^-?\d+(\.\d+)?$/.test(t)) return null
+  return Math.round(Number(t) * 100) / 100
+}
