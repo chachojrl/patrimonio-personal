@@ -159,7 +159,9 @@ export function CierreMes({
               <li key={g.id}>Te has pasado del presupuesto de <strong>{g.concepto}</strong> en {eur(e!.exceso, { dash: false })}.</li>
             ))}
             {avisos.map((a) => (
-              <li key={`${a.tipo}${a.concepto}${a.importe}`}>{a.tipo === 'duplicado' ? `¿Apunte duplicado en ${a.concepto}?` : `${a.concepto} va muy por encima de tu media.`}</li>
+              <li key={`${a.tipo}${a.concepto}${a.importe}`}>
+                {a.tipo === 'duplicado' ? `¿Apunte duplicado en ${a.concepto}?` : a.tipo === 'subida' ? `${a.concepto} ha subido de precio (${eur(a.antes!, { dash: false })} → ${eur(a.importe, { dash: false })}).` : `${a.concepto} va muy por encima de tu media.`}
+              </li>
             ))}
             {pendientesDeuda.length > 0 && (
               <li>

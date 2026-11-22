@@ -409,6 +409,7 @@ const FICHAS: { grupo: string; fichas: Ficha[] }[] = [
           'En los tres puntos de un gasto puedes marcarlo como fijo (se copia al mes siguiente), ponerle un presupuesto o borrarlo. Arrastra ⋮⋮ para cambiar el orden.',
           'Ahorro y traspasos: lo que mandas a inversiones o a la cuenta remunerada, o lo que traes de vuelta a la cuenta de gastos.',
           '«Cuadrar con el banco» es opcional: si escribes el saldo real, la diferencia cuenta como ingreso extra o gasto no apuntado.',
+          '«Revisa» te avisa si un concepto va muy por encima de su media, de apuntes duplicados y de suscripciones que suben de precio.',
         ],
         ir: { texto: 'Ir al mes actual', to: '/mes/actual' },
       },
@@ -448,6 +449,29 @@ const FICHAS: { grupo: string; fichas: Ficha[] }[] = [
           'Historial: todos los meses seguidos, con la evolución de tu dinero total y todas las columnas del Excel.',
         ],
         ir: { texto: 'Ir a Resumen', to: '/resumen' },
+      },
+      {
+        titulo: 'Calendario de gastos',
+        icono: 'calendario',
+        color: COLOR.azul,
+        pasos: [
+          'En Resumen, un calendario del mes: cada día más oscuro cuanto más gastaste. Toca un día para ver qué apuntaste.',
+          'Debajo, el gasto medio por día de la semana del año: por ejemplo, «los viernes gastas el doble».',
+          'Solo tienen día los gastos apuntados con el botón + o con «+ € nota» (guardan la hora) y los que tienen fecha de vencimiento. Lo que escribes directamente en la casilla de un concepto no sabe qué día fue.',
+        ],
+        ir: { texto: 'Ir a Resumen', to: '/resumen' },
+      },
+      {
+        titulo: 'Suscripciones',
+        icono: 'ticket',
+        color: COLOR.rosa,
+        pasos: [
+          'En Resumen ves cuánto pagas al mes y al año en suscripciones, y cada una con lo que llevas pagado.',
+          'Se detectan solas: servicios conocidos (Netflix, Spotify, el gimnasio…) en los conceptos y en las notas, gastos fijos pequeños y gastos que se repiten 3 meses seguidos con casi el mismo importe.',
+          'Si una sube de precio, te avisa en «Revisa» del mes y al cerrarlo.',
+          'Si alguna no es una suscripción, toca «No es una suscripción» y no vuelve a salir.',
+        ],
+        ir: { texto: 'Ver mis suscripciones', to: '/resumen' },
       },
       {
         titulo: 'Tu año en cifras',

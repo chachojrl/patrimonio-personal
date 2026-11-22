@@ -30,6 +30,8 @@ export interface Config {
   pct_retirada: number
   /** Conceptos de gasto (normalizados) que no tendrías al vivir de tus ahorros. */
   fire_excluidos: string[]
+  /** Gastos (clave normalizada) que marcaste como «no es una suscripción». */
+  no_suscripciones: string[]
 }
 
 export interface TramoTae {
@@ -230,6 +232,7 @@ export const CONFIG_INICIAL: Config = {
   inflacion: 2,
   pct_retirada: 4,
   fire_excluidos: [],
+  no_suscripciones: [],
 }
 
 export function datosVacios(): Datos {
@@ -249,6 +252,7 @@ export function normalizarDatos(d: Datos): Datos {
       inflacion: d.config?.inflacion ?? 2,
       pct_retirada: d.config?.pct_retirada ?? 4,
       fire_excluidos: d.config?.fire_excluidos ?? [],
+      no_suscripciones: d.config?.no_suscripciones ?? [],
     },
     months: d.months.map((m) => ({ ...m, intereses_cuenta_rem: m.intereses_cuenta_rem ?? null })),
     expenses: d.expenses.map((g) => ({ ...g, fijo: g.fijo ?? false, presupuesto: g.presupuesto ?? null })),

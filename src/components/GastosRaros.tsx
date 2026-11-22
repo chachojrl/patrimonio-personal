@@ -5,7 +5,7 @@ import { useEur } from '../lib/discreto'
 import { formatFechaHora } from '../lib/fechas'
 import { Icono } from './ios'
 
-/** Avisos del mes: un concepto muy por encima de su media o dos apuntes iguales seguidos. */
+/** Avisos del mes: un concepto muy por encima de su media, dos apuntes iguales seguidos o una suscripción que sube. */
 export function GastosRaros({ monthId }: { monthId: string }) {
   const { datos } = useStore()
   const eur = useEur()
@@ -24,6 +24,11 @@ export function GastosRaros({ monthId }: { monthId: string }) {
                 <>
                   <strong>{a.concepto}</strong>: {eur(a.importe, { dash: false })} este mes, {a.veces!.toLocaleString('es-ES', { maximumFractionDigits: 1 })} veces tu media
                   ({eur(a.media!, { dash: false })}).
+                </>
+              ) : a.tipo === 'subida' ? (
+                <>
+                  <strong>{a.concepto}</strong> ha subido de {eur(a.antes!, { dash: false })} a {eur(a.importe, { dash: false })} al mes
+                  ({eur((a.importe - a.antes!) * 12, { dash: false })} más al año).
                 </>
               ) : (
                 <>

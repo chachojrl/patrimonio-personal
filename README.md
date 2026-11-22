@@ -153,7 +153,7 @@ Debe responder `OK` en todas las tablas: sin sesión no se lee nada y el registr
 - **¿En qué se va?** (cada mes): necesidades, caprichos y ahorro frente a la regla 50/30/20. Clasifica
   cada concepto una vez con un toque; se recuerda para los meses siguientes. La aportación a la cuenta
   compartida cuenta como necesidad.
-- **Avisos** («Revisa», arriba del mes): un concepto que va más de 2,5 veces por encima de su media
+- **Avisos** («Revisa», arriba del mes): una suscripción que sube de precio, un concepto que va más de 2,5 veces por encima de su media
   (con al menos 3 meses de historia y 30 € o más) o dos apuntes iguales casi seguidos.
 - **Apuntar con Siri o Atajos:** *Ajustes → Siri y Atajos* genera un enlace
   (`#/apuntar?gasto=Supermercado&importe=…`) y explica cómo crear el atajo. El enlace abre la app con
@@ -164,6 +164,15 @@ Debe responder `OK` en todas las tablas: sin sesión no se lee nada y el registr
 - **Resumen:** el año mes a mes, con la gráfica de dónde está el dinero cada mes (saldo disponible,
   cuenta remunerada e inversiones, con los mismos colores que en Inicio).
 - **Historial:** todos los meses seguidos, con la evolución del dinero total y todas las columnas del Excel.
+- **Calendario de gastos** (en *Resumen*): mapa de calor del mes (cada día, más oscuro cuanto más se gastó;
+  al tocarlo se ve qué se apuntó) y gasto medio por día de la semana del año. Solo tienen día los apuntes
+  (botón +, «+ € nota», Siri) y los gastos con fecha de vencimiento; lo escrito directamente en la casilla de
+  un concepto no tiene día, y se indica cuánto del mes tiene día.
+- **Suscripciones** (en *Resumen*): lo que se paga al mes y al año. Se detectan solas: servicios conocidos
+  (Netflix, Spotify, el gimnasio…) en conceptos y notas, gastos fijos de menos de 100 € y gastos de menos de
+  100 € que se repiten 3 meses seguidos con casi el mismo importe. Avisa de las subidas de precio en «Revisa»
+  y al cerrar el mes. «No es una suscripción» la quita también en los demás dispositivos (necesita la
+  migración `0016_suscripciones.sql`).
 - **Tu año en cifras:** el resumen del año como historias: cuánto creció el patrimonio, lo que entró
   y salió, el mejor mes, dónde más se fue el dinero, los apuntes y los viajes. Toca a la derecha para
   avanzar, a la izquierda para volver y mantén pulsado para pararlo; al final se puede compartir como
@@ -265,6 +274,7 @@ vez** en *Supabase → SQL Editor*, en orden. Se pueden repetir sin problema.
 | `0013_intereses_cuenta_remunerada.sql` | TAE de la cuenta remunerada y los intereses de cada mes (estimados o los reales del banco) |
 | `0014_huchas.sql` | Huchas (objetivos de ahorro) y lo que se mete o se saca de cada una |
 | `0015_futuro.sql` | Ajustes de la proyección y la libertad financiera (rentabilidad, inflación, % de retirada y gastos que no tendrías) |
+| `0016_suscripciones.sql` | Gastos marcados como «no es una suscripción» |
 
 ## Cuenta compartida (opcional)
 

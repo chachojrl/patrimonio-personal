@@ -248,3 +248,42 @@ test('Logros: rachas, logros conseguidos y aviso de uno nuevo', async ({ app }) 
   await app.goto('/#/')
   await expect(app.locator('main').getByRole('link', { name: /Racha de ahorro|Logros/ })).toBeVisible()
 })
+
+test('Resumen: calendario de gastos y suscripciones (con subida de precio)', async ({ app }) => {
+  await app.goto('/#/')
+  // Tres meses pagando Netflix (apuntado en «Otros» con nota) y una subida en noviembre
+  await app.evaluate(() => {
+    const d = JSON.parse(localStorage.getItem('presupuesto-local-v1')!)
+    const meses = [...d.months].sort((a: { fecha: string }, b: { fecha: string }) => a.fecha.localeCompare(b.fecha)).slice(-3)
+    meses.forEach((m: { id: string; fecha: string }, i: number) => {
+      const otros = d.expenses.find((g: { month_id: string; concepto: string }) => g.month_id === m.id && g.concepto === 'Otros')
+      const importe = i === 2 ? 1399 : 1299
+      otros.importe += importe
+      d.expense_entries.push({ id: `nf${i}`, expense_id: otros.id, importe, creado_en: `${m.fecha.slice(0, 8)}05T12:00:00`, nota: 'Netflix' })
+    })
+    localStorage.setItem('presupuesto-local-v1', JSON.stringify(d))
+  })
+  await app.reload()
+  await app.goto('/#/resumen/2026')
+  const sus = app.locator('section', { has: app.getByRole('heading', { name: 'Suscripciones' }) })
+  await expect(sus.getByText('Netflix', { exact: true })).toBeVisible()
+  await expect(sus.getByText(/Subió en noviembre de 2026: 12,99 € → 13,99 €/)).toBeVisible()
+  await expect(sus.getByText(/13,99 €/).first()).toBeVisible()
+
+  // Calendario: el día 5 de noviembre tiene el apunte
+  const cal = app.locator('section', { has: app.getByRole('heading', { name: 'Calendario de gastos' }) })
+  await cal.getByRole('gridcell', { name: /^05\/11\/2026/ }).click()
+  await expect(cal.getByText('Otros · Netflix')).toBeVisible()
+  await expect(cal.getByText('Gasto medio por día de la semana · 2026')).toBeVisible()
+
+  // El mes avisa de la subida
+  await app.goto('/#/mes/2026-11')
+  await expect(app.getByText(/Netflix ha subido de 12,99 € a 13,99 € al mes/)).toBeVisible()
+
+  // «No es una suscripción» la quita y se guarda
+  await app.goto('/#/resumen/2026')
+  await sus.getByRole('button', { name: 'Netflix no es una suscripción' }).click()
+  await expect(sus.getByText('Netflix', { exact: true })).toHaveCount(0)
+  await expect.poll(async () => (await guardado(app)).config.no_suscripciones).toEqual(['nota:netflix'])
+  if (esMovil(app)) expect(await app.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(app.viewportSize()!.width)
+})
