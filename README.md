@@ -185,7 +185,7 @@ Debe responder `OK` en todas las tablas: sin sesión no se lee nada y el registr
   moneda) y se puede escribir a mano; cada gasto guarda el del día. Al volver, «Cerrar y pasar al
   mes» lo apunta en tu presupuesto (fila nueva o sumado a un gasto).
 - **Actividad:** quién cambió qué y cuándo. Lo apunta la base de datos sola (nadie puede editarlo ni
-  borrarlo) y se guarda un año. En la cuenta compartida, Inicio muestra los últimos cambios.
+  borrarlo) y se guarda 3 meses. En la cuenta compartida, Inicio muestra los últimos cambios.
 - **Tiempo real:** lo que se apunta en un dispositivo aparece solo en los demás que tengan la app
   abierta (por ejemplo, un gasto que apunta tu pareja en la cuenta compartida), sin recargar. Si
   estás escribiendo en una fila, no se te pisa. Necesita la migración `0008_tiempo_real.sql`.
@@ -233,6 +233,7 @@ vez** en *Supabase → SQL Editor*, en orden. Se pueden repetir sin problema.
 | `0009_historial_compra_viajes.sql` | Historial de cambios, lista de la compra y viajes |
 | `0010_clasificacion_reparto.sql` | Necesidades/caprichos (50/30/20) y reparto por concepto en la cuenta compartida |
 | `0011_traspasos.sql` | Traspasos entre cualquier par de cuentas (p. ej. de la cuenta remunerada a la cuenta de gastos) |
+| `0012_historial_tres_meses.sql` | El historial de cambios (Actividad) se guarda 3 meses en vez de un año, para ocupar menos |
 
 ## Cuenta compartida (opcional)
 

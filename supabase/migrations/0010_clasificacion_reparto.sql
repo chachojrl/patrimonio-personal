@@ -143,7 +143,7 @@ begin
   values (cuenta, auth.uid(), tg_table_name, (r ->> 'id')::uuid,
           case tg_op when 'INSERT' then 'alta' when 'UPDATE' then 'cambio' else 'baja' end, detalle);
 
-  -- Se guarda un año
-  delete from cambios where cuenta_id = cuenta and creado_en < now() - interval '1 year';
+  -- Se guarda 3 meses (ver 0012)
+  delete from cambios where cuenta_id = cuenta and creado_en < now() - interval '3 months';
   return null;
 end $$;

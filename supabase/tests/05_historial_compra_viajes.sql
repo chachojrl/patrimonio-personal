@@ -107,6 +107,18 @@ reset role;
 select pruebas.ok((select count(*) from viaje_gastos where viaje_id = 'f0000000-3333-0000-0000-000000000001') = 0, 'borrar un viaje borra sus gastos');
 select pruebas.ok((select count(*) from pg_publication_tables where pubname = 'supabase_realtime' and tablename in ('lista_compra', 'viajes', 'viaje_gastos')) = 3, 'lista y viajes en tiempo real');
 
+\echo '--- El historial se guarda 3 meses'
+reset role;
+update cambios set creado_en = now() - interval '3 months 1 day' where id = (select min(id) from cambios where cuenta_id = :'hogar');
+update cambios set creado_en = now() - interval '2 months' where id = (select max(id) from cambios where cuenta_id = :'hogar');
+select count(*) as antes from cambios where cuenta_id = :'hogar' \gset
+set role authenticated; select pruebas.como('yo');
+update expenses set importe = 61 where id = 'f0000000-1111-0000-0000-000000000002';
+reset role;
+select pruebas.ok((select count(*) from cambios where cuenta_id = :'hogar') = :antes, 'apuntar un cambio borra los de más de 3 meses (uno menos, uno más)');
+select pruebas.ok(not exists (select 1 from cambios where creado_en < now() - interval '3 months'), 'no queda nada con más de 3 meses');
+select pruebas.ok(exists (select 1 from cambios where creado_en < now() - interval '1 month'), 'lo de hace 2 meses se conserva');
+
 \echo '--- Borrar la cuenta compartida sigue funcionando con historial, lista y viajes'
 set role authenticated; select pruebas.como('pareja');
 select borrar_cuenta_compartida(:'hogar', 'hogar');
