@@ -161,7 +161,7 @@ function VistaMes({ mes, c }: { mes: Mes; c: NonNullable<ReturnType<ReturnType<t
       {!compartida && <Reparto503020Card monthId={mes.id} cerrado={cerrado} />}
       {compartida && <RepartoCompartidaCard monthId={mes.id} />}
 
-      <div className="grid gap-6 xl:grid-cols-[2fr_3fr]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
         <TablaIngresos mes={mes} cerrado={cerrado} />
         <TablaAhorro mes={mes} cerrado={cerrado} />
       </div>
@@ -588,8 +588,9 @@ function TablaAhorro({ mes, cerrado }: { mes: Mes; cerrado: boolean }) {
         </button>
       </div>
     )}>
-      <div>
-        <div>
+      {/* En escritorio la fila necesita ~38 rem: si la columna es más estrecha, la tabla se desplaza dentro de la tarjeta */}
+      <div className="overflow-x-auto">
+        <div className="min-w-fit">
           <div className={cx('hidden gap-x-1 md:grid', claseCabecera, cols)}>
             <span>Fecha</span><span className="text-right">Importe</span><span className="pl-2">Desde</span><span /><span>Hacia</span><span />
           </div>

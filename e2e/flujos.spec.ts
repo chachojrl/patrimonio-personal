@@ -138,9 +138,9 @@ test('TAE de la cuenta remunerada: intereses en Inicio, en el mes y al cerrarlo'
   await app.goto('/#/')
   await expect(app.getByText(/de intereses este mes \(2,5 % TAE\)/)).toBeVisible()
 
-  // La página no se sale de la pantalla (en el móvil) con las filas nuevas
+  // La página no se sale de la pantalla (ni en el móvil ni en escritorio) con las filas nuevas
   await app.goto('/#/mes/2026-10')
-  if (esMovil(app)) expect(await app.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(app.viewportSize()!.width)
+  expect(await app.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(app.viewportSize()!.width)
   await expect(app.getByText('Intereses al 2,5 % TAE')).toBeVisible()
 
   // Al cerrar el mes se pueden escribir los intereses que pagó el banco
