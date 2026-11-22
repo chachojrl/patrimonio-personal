@@ -287,3 +287,18 @@ test('Resumen: calendario de gastos y suscripciones (con subida de precio)', asy
   await expect.poll(async () => (await guardado(app)).config.no_suscripciones).toEqual(['nota:netflix'])
   if (esMovil(app)) expect(await app.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(app.viewportSize()!.width)
 })
+
+test('Guía de uso: buscar, abrir todas y seguir un enlace', async ({ app }) => {
+  await app.goto('/#/ajustes/guia')
+  await expect(app.getByText('Cómo está organizada la app')).toBeVisible()
+  await app.getByLabel('Buscar en la guía').fill('retencion')
+  await expect(app.getByRole('button', { name: /Intereses de la cuenta remunerada/ })).toHaveAttribute('aria-expanded', 'true')
+  await expect(app.getByText(/La retención de Hacienda viene al 19 %/)).toBeVisible()
+  await app.getByLabel('Buscar en la guía').fill('zzzz')
+  await expect(app.getByText('No hay nada en la guía sobre «zzzz».')).toBeVisible()
+  await app.getByLabel('Buscar en la guía').fill('')
+  await app.getByRole('button', { name: 'Abrir todas' }).click()
+  await expect(app.getByText(/Arrastra el asa ⋮⋮/)).toBeVisible()
+  await app.getByRole('link', { name: 'Ir a Huchas' }).click()
+  await expect(app.getByRole('heading', { name: 'Huchas', level: 1 })).toBeVisible()
+})
