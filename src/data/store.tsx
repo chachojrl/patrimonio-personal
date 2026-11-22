@@ -223,6 +223,7 @@ export function StoreProvider({ repo, inicial, children }: { repo: Repo; inicial
       d = { ...d, [tabla]: (d[tabla] as unknown as { id: string }[]).filter((x) => x.id !== id) }
       if (tabla === 'expenses') d = { ...d, expense_entries: d.expense_entries.filter((x) => x.expense_id !== id) }
       if (tabla === 'viajes') d = { ...d, viaje_gastos: d.viaje_gastos.filter((x) => x.viaje_id !== id) }
+      if (tabla === 'huchas') d = { ...d, hucha_movimientos: d.hucha_movimientos.filter((x) => x.hucha_id !== id) }
       d = tocar(d, mid)
       datosRef.current = d
       setDatos(d)

@@ -1,4 +1,4 @@
-import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { formatEUR } from '../lib/money'
 import { OCULTO, useDiscreto } from '../lib/discreto'
 
@@ -87,6 +87,39 @@ export function LineaDineroTotal({ datos }: { datos: { mes: string; valor: numbe
           <YAxis tickFormatter={f.corto} tick={eje} axisLine={false} tickLine={false} width={60} domain={['auto', 'auto']} />
           <Tooltip {...estiloTooltip} cursor={{ stroke: 'var(--grid)', strokeWidth: 1 }} formatter={(v) => [f.largo(v), 'Dinero total']} />
           <Line type="monotone" dataKey="valor" stroke={COL.total} strokeWidth={2.5} dot={false} activeDot={{ r: 5, strokeWidth: 2, stroke: 'var(--surface)' }} isAnimationActive={false} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
+
+export interface PuntoFuturo {
+  etiqueta: string
+  Pesimista: number
+  Normal: number
+  Optimista: number
+}
+
+/** Proyección del patrimonio: tres escenarios y, si se indica, la línea de la libertad financiera. */
+export function LineaProyeccion({ datos, meta }: { datos: PuntoFuturo[]; meta?: number | null }) {
+  const f = useFormatos()
+  const max = Math.max(...datos.map((d) => d.Optimista))
+  const verMeta = meta != null && meta > 0 && meta <= max * 1.15
+  return (
+    <div className="h-72 w-full" role="img" aria-label="Gráfica de la proyección de tu patrimonio en tres escenarios">
+      <ResponsiveContainer>
+        <LineChart data={datos} margin={{ top: 12, right: 12, left: 0, bottom: 0 }}>
+          <CartesianGrid vertical={false} stroke="var(--grid)" />
+          <XAxis dataKey="etiqueta" tick={eje} axisLine={false} tickLine={false} minTickGap={24} />
+          <YAxis tickFormatter={f.corto} tick={eje} axisLine={false} tickLine={false} width={60} domain={[0, 'auto']} />
+          <Tooltip {...estiloTooltip} formatter={f.largo} />
+          {verMeta && (
+            <ReferenceLine y={meta!} stroke="var(--serie-inversiones)" strokeDasharray="4 4" label={{ value: 'Libertad financiera', position: 'insideTopLeft', fontSize: 11, fill: 'var(--text-secondary)' }} />
+          )}
+          <Line type="monotone" dataKey="Optimista" stroke={COL.inversiones} strokeWidth={1.5} strokeDasharray="5 4" dot={false} isAnimationActive={false} />
+          <Line type="monotone" dataKey="Normal" stroke={COL.total} strokeWidth={2.5} dot={false} isAnimationActive={false} />
+          <Line type="monotone" dataKey="Pesimista" stroke={COL.cuentaRem} strokeWidth={1.5} strokeDasharray="5 4" dot={false} isAnimationActive={false} />
+          <Legend content={() => <LeyendaSeries series={[{ nombre: 'Optimista', color: COL.inversiones }, { nombre: 'Normal', color: COL.total }, { nombre: 'Pesimista', color: COL.cuentaRem }]} />} />
         </LineChart>
       </ResponsiveContainer>
     </div>

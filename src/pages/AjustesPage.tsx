@@ -383,6 +383,8 @@ const FICHAS: { grupo: string; fichas: Ficha[] }[] = [
           'Debajo, el mes en curso (ingresos, gastos y lo que te queda) y dónde está tu dinero: disponible, cuenta remunerada e inversiones.',
           'En la fila de Inversiones, el lápiz sirve para escribir lo que vale hoy tu cartera.',
           'Si un mes ya terminado sigue abierto, aparece un aviso para que lo cierres.',
+          'Si tienes huchas, las ves debajo con lo que llevas en cada una y el dinero que te queda libre.',
+          'La tarjeta de la racha te dice cuántos meses seguidos llevas ahorrando; tócala para ver tus logros.',
         ],
         ir: { texto: 'Ir a Inicio', to: '/' },
       },
@@ -407,6 +409,7 @@ const FICHAS: { grupo: string; fichas: Ficha[] }[] = [
           'En los tres puntos de un gasto puedes marcarlo como fijo (se copia al mes siguiente), ponerle un presupuesto o borrarlo. Arrastra ⋮⋮ para cambiar el orden.',
           'Ahorro y traspasos: lo que mandas a inversiones o a la cuenta remunerada, o lo que traes de vuelta a la cuenta de gastos.',
           '«Cuadrar con el banco» es opcional: si escribes el saldo real, la diferencia cuenta como ingreso extra o gasto no apuntado.',
+          '«Revisa» te avisa si un concepto va muy por encima de su media, de apuntes duplicados y de suscripciones que suben de precio.',
         ],
         ir: { texto: 'Ir al mes actual', to: '/mes/actual' },
       },
@@ -416,7 +419,8 @@ const FICHAS: { grupo: string; fichas: Ficha[] }[] = [
         color: COLOR.grafito,
         pasos: [
           '«Crear mes nuevo» (en Inicio o en el último mes) crea el siguiente con los mismos conceptos y los gastos fijos ya puestos.',
-          'Al final de la hoja del mes, «Cerrar mes…» te enseña un repaso (presupuestos pasados, avisos, lo que te deben) y lo deja en solo lectura.',
+          'Al final de la hoja del mes, «Cerrar mes…» te enseña un repaso (saldo del banco, inversiones, intereses, presupuestos pasados, avisos, lo que te deben) y lo deja en solo lectura.',
+          'Si tienes huchas con aportación mensual, te propone lo de cada una: cámbialo o desmárcalo y se aparta al cerrar.',
           'Si necesitas cambiar algo, puedes reabrirlo.',
         ],
       },
@@ -447,6 +451,29 @@ const FICHAS: { grupo: string; fichas: Ficha[] }[] = [
         ir: { texto: 'Ir a Resumen', to: '/resumen' },
       },
       {
+        titulo: 'Calendario de gastos',
+        icono: 'calendario',
+        color: COLOR.azul,
+        pasos: [
+          'En Resumen, un calendario del mes: cada día más oscuro cuanto más gastaste. Toca un día para ver qué apuntaste.',
+          'Debajo, el gasto medio por día de la semana del año: por ejemplo, «los viernes gastas el doble».',
+          'Solo tienen día los gastos apuntados con el botón + o con «+ € nota» (guardan la hora) y los que tienen fecha de vencimiento. Lo que escribes directamente en la casilla de un concepto no sabe qué día fue.',
+        ],
+        ir: { texto: 'Ir a Resumen', to: '/resumen' },
+      },
+      {
+        titulo: 'Suscripciones',
+        icono: 'ticket',
+        color: COLOR.rosa,
+        pasos: [
+          'En Resumen ves cuánto pagas al mes y al año en suscripciones, y cada una con lo que llevas pagado.',
+          'Se detectan solas: servicios conocidos (Netflix, Spotify, el gimnasio…) en los conceptos y en las notas, gastos fijos pequeños y gastos que se repiten 3 meses seguidos con casi el mismo importe.',
+          'Si una sube de precio, te avisa en «Revisa» del mes y al cerrarlo.',
+          'Si alguna no es una suscripción, toca «No es una suscripción» y no vuelve a salir.',
+        ],
+        ir: { texto: 'Ver mis suscripciones', to: '/resumen' },
+      },
+      {
         titulo: 'Tu año en cifras',
         icono: 'estrella',
         color: COLOR.rosa,
@@ -455,6 +482,41 @@ const FICHAS: { grupo: string; fichas: Ficha[] }[] = [
           'Se abre desde Resumen y, en diciembre y enero, desde Inicio. Toca a la derecha para avanzar y mantén pulsado para pararlo.',
           'Al final puedes compartirlo.',
         ],
+      },
+      {
+        titulo: 'Futuro',
+        icono: 'cohete',
+        color: COLOR.indigo,
+        pasos: [
+          'Una gráfica con lo que podrías tener en 5, 10, 20 o 30 años si sigues ahorrando como hasta ahora, en tres escenarios (pesimista, normal y optimista).',
+          'Parte de lo que tienes hoy y de tu ahorro medio de los últimos meses. Las inversiones crecen con la rentabilidad que elijas y la cuenta remunerada, con tu TAE.',
+          'Mueve «Ahorro extra al mes» para ver qué cambiaría ahorrando un poco más. «En euros de hoy» descuenta la inflación para que las cifras no engañen.',
+          'Hitos: cuándo llegarías a una cifra redonda, a llenar cada hucha y a la libertad financiera.',
+        ],
+        ir: { texto: 'Ir a Futuro', to: '/futuro' },
+      },
+      {
+        titulo: 'Libertad financiera',
+        icono: 'bandera',
+        color: COLOR.verde,
+        pasos: [
+          'Tu número es lo que necesitarías para vivir de tus ahorros: lo que gastas al año dividido entre lo que sacarías cada año (el 4 % por defecto).',
+          'Ves qué porcentaje llevas y cuándo llegarías según la proyección.',
+          'En «Quitar gastos que entonces no tendrías» desmarca, por ejemplo, la hipoteca si ya estará pagada: el número baja.',
+        ],
+        ir: { texto: 'Ver mi número', to: '/futuro' },
+      },
+      {
+        titulo: 'Rachas y logros',
+        icono: 'estrella',
+        color: COLOR.amarillo,
+        pasos: [
+          'Rachas: meses seguidos ahorrando, gastando menos de lo que entra, sin pasarte de ningún presupuesto y cerrando los meses. El mes en curso suma cuando lo cumples y, mientras tanto, no rompe la racha.',
+          'Logros: tu primer mes cerrado, 3, 6 y 12 meses ahorrando, ahorrar el 20 %, el colchón de 3 y 6 meses, cada cifra de patrimonio, tu primera hucha conseguida…',
+          'Cuando consigues uno nuevo te avisa. En Inicio ves tu racha de ahorro y cuántos llevas.',
+          'Se calculan solos con tus meses: no tienes que apuntar nada.',
+        ],
+        ir: { texto: 'Ver mis logros', to: '/logros' },
       },
       {
         titulo: 'Colchón y «¿Me lo puedo permitir?»',
@@ -471,6 +533,18 @@ const FICHAS: { grupo: string; fichas: Ficha[] }[] = [
   {
     grupo: 'Más herramientas',
     fichas: [
+      {
+        titulo: 'Huchas',
+        icono: 'hucha',
+        color: COLOR.rosa,
+        pasos: [
+          'Crea una hucha para lo que quieras conseguir (un viaje, la entrada de un piso…) con su objetivo y, si quieres, para cuándo lo necesitas.',
+          'Puedes meter de golpe parte del dinero que ya tienes, o ponerle una aportación mensual: al cerrar cada mes te la propone para que la confirmes.',
+          'Te dice cuándo llegarás o cuánto tendrías que meter al mes para llegar a tiempo. Al llenarla, ¡confeti!',
+          'Las huchas reservan dinero, no lo mueven: tu dinero total no cambia y ves cuánto te queda libre. Si indicas en qué cuenta está, no te deja reservar más de lo que hay en ella.',
+        ],
+        ir: { texto: 'Ir a Huchas', to: '/huchas' },
+      },
       {
         titulo: 'Te deben',
         icono: 'billete',

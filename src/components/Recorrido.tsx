@@ -16,8 +16,8 @@ const PASOS: Paso[] = [
   { guia: 'patrimonio', titulo: 'Tu patrimonio', texto: 'Todo tu dinero sumado: disponible, cuenta remunerada e inversiones, y cómo ha cambiado. Toca la línea para ver el historial.' },
   { guia: 'apuntar', titulo: 'Apuntar un gasto', texto: 'Desde cualquier pantalla: eliges el concepto, escribes el importe y listo. Se suma al gasto del mes abierto y puedes deshacerlo.' },
   { guia: 'nav-mes', titulo: 'El mes', texto: 'Tu hoja del mes, como en el Excel: ingresos, gastos, ahorro y traspasos. Desde aquí creas el mes siguiente y cierras el actual.' },
-  { guia: 'nav-resumen', titulo: 'Resumen del año', texto: 'Cómo va el año mes a mes, con una gráfica de dónde está tu dinero y tu año en cifras.' },
-  { guia: 'nav-mas', titulo: 'Más', texto: 'El resto de secciones: Te deben, Viajes, la lista de la compra, «¿Me lo puedo permitir?», Historial y Ajustes.' },
+  { guia: 'nav-resumen', titulo: 'Resumen del año', texto: 'Cómo va el año mes a mes, con una gráfica de dónde está tu dinero, el calendario de gastos, tus suscripciones y tu año en cifras.' },
+  { guia: 'nav-mas', titulo: 'Más', texto: 'El resto de secciones: Huchas, Futuro (cuánto podrías tener y cuándo vivir de tus ahorros), Logros, Te deben, Viajes, la lista de la compra, «¿Me lo puedo permitir?», Historial y Ajustes.' },
   { guia: 'discreto', titulo: 'Ocultar cifras', texto: 'Si abres la app delante de otras personas, toca el ojo y los importes se cambian por •••• €.' },
   { titulo: '¡Listo!', texto: 'En Ajustes › Guía de uso tienes cada función explicada con más detalle, y puedes repetir este recorrido.' },
 ]

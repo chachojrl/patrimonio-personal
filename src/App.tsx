@@ -16,6 +16,10 @@ import { InicioPage } from './pages/InicioPage'
 import { MesPage } from './pages/MesPage'
 // Inicio y Mes van en el paquete principal (son lo que más se abre). El resto, y con ellas las
 // gráficas, se descarga la primera vez que se visitan: así la app arranca antes en el móvil.
+const HuchasPage = lazy(() => import('./pages/HuchasPage').then((m) => ({ default: m.HuchasPage })))
+const HuchaPage = lazy(() => import('./pages/HuchasPage').then((m) => ({ default: m.HuchaPage })))
+const FuturoPage = lazy(() => import('./pages/FuturoPage').then((m) => ({ default: m.FuturoPage })))
+const LogrosPage = lazy(() => import('./pages/LogrosPage').then((m) => ({ default: m.LogrosPage })))
 const HistorialPage = lazy(() => import('./pages/HistorialPage').then((m) => ({ default: m.HistorialPage })))
 const ResumenPage = lazy(() => import('./pages/ResumenPage').then((m) => ({ default: m.ResumenPage })))
 const AjustesPage = lazy(() => import('./pages/AjustesPage').then((m) => ({ default: m.AjustesPage })))
@@ -54,6 +58,10 @@ function Rutas() {
           <Route path="compra" element={<CompraPage />} />
           <Route path="viajes" element={<ViajesPage />} />
           <Route path="viajes/:id" element={<ViajePage />} />
+          <Route path="huchas" element={<HuchasPage />} />
+          <Route path="futuro" element={<FuturoPage />} />
+          <Route path="logros" element={<LogrosPage />} />
+          <Route path="huchas/:id" element={<HuchaPage />} />
           <Route path="apuntar" element={<ApuntarPage />} />
           <Route path="permitir" element={<PermitirPage />} />
           <Route path="anio/:anio" element={<AnioEnCifrasPage />} />

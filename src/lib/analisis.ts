@@ -3,6 +3,7 @@ import type { Cents } from './money'
 import type { Calculo } from './calculos'
 import type { Clase, Datos, Gasto } from './tipos'
 import { normalizar } from './buscar'
+import { detectarSuscripciones } from './suscripciones'
 
 const suma = (xs: number[]) => xs.reduce((a, b) => a + b, 0)
 
@@ -80,7 +81,9 @@ export function reparto503020(d: Datos, c: Calculo, monthId: string): Reparto503
 // ---------- 3. Gastos raros ----------
 
 export interface Aviso {
-  tipo: 'por-encima' | 'duplicado'
+  tipo: 'por-encima' | 'duplicado' | 'subida'
+  /** Subida de una suscripción: lo que costaba antes. */
+  antes?: Cents
   concepto: string
   importe: Cents
   media?: Cents
@@ -125,6 +128,10 @@ export function gastosRaros(d: Datos, monthId: string): Aviso[] {
         avisos.push({ tipo: 'duplicado', concepto: gastosMes.get(b.expense_id)!.concepto, importe: b.importe, cuando: b.creado_en })
       }
     }
+  }
+  // Una suscripción que ha subido de precio este mes
+  for (const x of detectarSuscripciones(d)) {
+    if (x.subida && x.subida.mes === mes.fecha) avisos.push({ tipo: 'subida', concepto: x.nombre, importe: x.subida.a, antes: x.subida.de })
   }
   return avisos
 }

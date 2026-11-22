@@ -98,7 +98,7 @@ Debe responder `OK` en todas las tablas: sin sesión no se lee nada y el registr
 ### Moverse por la app
 
 - **Móvil:** barra inferior con **Inicio**, **Mes**, el botón **+** (apuntar un gasto), **Resumen** y
-  **Más** (Historial, Lista de la compra, Buscar, Viajes, Te deben, «¿Me lo puedo permitir?»,
+  **Más** (Historial, Huchas, Futuro, Logros, Lista de la compra, Buscar, Viajes, Te deben, «¿Me lo puedo permitir?»,
   Actividad y Ajustes). Arriba, la lupa abre Buscar y el ojo, el modo discreto.
 - **Ordenador y tablet:** barra lateral con todas las secciones y el botón **Apuntar gasto**.
 - **Inicio:** patrimonio con su evolución, el mes en curso, dónde está tu dinero (disponible, cuenta
@@ -153,7 +153,7 @@ Debe responder `OK` en todas las tablas: sin sesión no se lee nada y el registr
 - **¿En qué se va?** (cada mes): necesidades, caprichos y ahorro frente a la regla 50/30/20. Clasifica
   cada concepto una vez con un toque; se recuerda para los meses siguientes. La aportación a la cuenta
   compartida cuenta como necesidad.
-- **Avisos** («Revisa», arriba del mes): un concepto que va más de 2,5 veces por encima de su media
+- **Avisos** («Revisa», arriba del mes): una suscripción que sube de precio, un concepto que va más de 2,5 veces por encima de su media
   (con al menos 3 meses de historia y 30 € o más) o dos apuntes iguales casi seguidos.
 - **Apuntar con Siri o Atajos:** *Ajustes → Siri y Atajos* genera un enlace
   (`#/apuntar?gasto=Supermercado&importe=…`) y explica cómo crear el atajo. El enlace abre la app con
@@ -164,10 +164,34 @@ Debe responder `OK` en todas las tablas: sin sesión no se lee nada y el registr
 - **Resumen:** el año mes a mes, con la gráfica de dónde está el dinero cada mes (saldo disponible,
   cuenta remunerada e inversiones, con los mismos colores que en Inicio).
 - **Historial:** todos los meses seguidos, con la evolución del dinero total y todas las columnas del Excel.
+- **Calendario de gastos** (en *Resumen*): mapa de calor del mes (cada día, más oscuro cuanto más se gastó;
+  al tocarlo se ve qué se apuntó) y gasto medio por día de la semana del año. Solo tienen día los apuntes
+  (botón +, «+ € nota», Siri) y los gastos con fecha de vencimiento; lo escrito directamente en la casilla de
+  un concepto no tiene día, y se indica cuánto del mes tiene día.
+- **Suscripciones** (en *Resumen*): lo que se paga al mes y al año. Se detectan solas: servicios conocidos
+  (Netflix, Spotify, el gimnasio…) en conceptos y notas, gastos fijos de menos de 100 € y gastos de menos de
+  100 € que se repiten 3 meses seguidos con casi el mismo importe. Avisa de las subidas de precio en «Revisa»
+  y al cerrar el mes. «No es una suscripción» la quita también en los demás dispositivos (necesita la
+  migración `0016_suscripciones.sql`).
 - **Tu año en cifras:** el resumen del año como historias: cuánto creció el patrimonio, lo que entró
   y salió, el mejor mes, dónde más se fue el dinero, los apuntes y los viajes. Toca a la derecha para
   avanzar, a la izquierda para volver y mantén pulsado para pararlo; al final se puede compartir como
   texto. Se abre desde *Resumen* y, en diciembre y enero, desde Inicio.
+- **Futuro** (en *Más*): proyección del patrimonio a 5, 10, 20 y 30 años en tres escenarios (pesimista,
+  normal y optimista: 2 puntos menos y más de rentabilidad), partiendo de lo que tienes y de tu ahorro medio
+  de los últimos 12 meses. Las inversiones crecen con la rentabilidad que elijas (5 % por defecto), la
+  cuenta remunerada con tu TAE y el resto se queda en la cuenta de gastos. Controles para probar «ahorro X €
+  más al mes» y otra rentabilidad, opción «en euros de hoy» (descuenta la inflación, 2 % por defecto) e hitos
+  (una cifra redonda, cada hucha, la libertad financiera).
+- **Libertad financiera** (en *Futuro*): tu número = lo que gastas al año ÷ lo que sacarías cada año (4 % por
+  defecto), el porcentaje que llevas y cuándo llegarías. Se pueden quitar los gastos que entonces no tendrías
+  (por ejemplo, la hipoteca pagada). Necesita la migración `0015_futuro.sql` para guardar estos ajustes.
+- **Rachas y logros** (en *Más*): rachas de meses seguidos ahorrando, gastando menos de lo que entra, sin
+  pasarse de ningún presupuesto y cerrando los meses (el mes en curso suma cuando se cumple y mientras tanto
+  no rompe la racha), y logros con su fecha: primer mes cerrado, 3/6/12 meses ahorrando, el 20 % al ahorro,
+  colchón de 3 y 6 meses, cifras de patrimonio, primera hucha conseguida, 100 € de intereses, 1.000 €
+  ganados invirtiendo… Los pendientes muestran su progreso. Avisa al conseguir uno nuevo (una vez por
+  dispositivo) y en Inicio se ve la racha de ahorro. Se calculan con los meses: no necesitan migración.
 - **Colchón de emergencia** (Inicio e Historial): cuántos meses podrías vivir sin ingresos con tu saldo
   y tu cuenta remunerada, según lo que gastas de media (las inversiones no cuentan).
 - **¿Me lo puedo permitir?** (en *Más*): escribe lo que cuesta algo y si lo pagarías de una vez o a
@@ -181,6 +205,13 @@ Debe responder `OK` en todas las tablas: sin sesión no se lee nada y el registr
 
 - **Buscar** (la lupa): escribe un concepto («super», «regalos») o una persona y verás cuánto llevas
   gastado o ingresado, mes a mes, en el año elegido o en todos. No distingue mayúsculas ni tildes.
+- **Huchas** (en *Más*): objetivos de ahorro con su meta, fecha límite opcional, aportación mensual
+  opcional y, si quieres, la cuenta donde está el dinero. Puedes meter de golpe parte de lo que ya tienes;
+  la aportación mensual la propone «Cerrar mes…» para que la confirmes o la cambies. Calcula cuándo
+  llegarás o cuánto tendrías que meter al mes para llegar a tiempo, y celebra con confeti al llenarla.
+  Las huchas **reservan** dinero, no lo mueven: el dinero total no cambia y se ve cuánto queda libre (no
+  deja reservar más de lo que tienes, ni más de lo que hay en la cuenta de la hucha). Inicio muestra las
+  que están en curso. Necesita la migración `0014_huchas.sql`.
 - **Te deben:** apunta quién te debe dinero y márcalo como devuelto cuando te pague. No se
   suma al dinero total ni a los gastos del mes. Si hay algo pendiente, aparece en Inicio.
 - **Lista de la compra:** una por cuenta; la de la compartida la veis los dos en tiempo real. Al
@@ -241,6 +272,9 @@ vez** en *Supabase → SQL Editor*, en orden. Se pueden repetir sin problema.
 | `0011_traspasos.sql` | Traspasos entre cualquier par de cuentas (p. ej. de la cuenta remunerada a la cuenta de gastos) |
 | `0012_historial_tres_meses.sql` | El historial de cambios (Actividad) se guarda 3 meses en vez de un año, para ocupar menos |
 | `0013_intereses_cuenta_remunerada.sql` | TAE de la cuenta remunerada y los intereses de cada mes (estimados o los reales del banco) |
+| `0014_huchas.sql` | Huchas (objetivos de ahorro) y lo que se mete o se saca de cada una |
+| `0015_futuro.sql` | Ajustes de la proyección y la libertad financiera (rentabilidad, inflación, % de retirada y gastos que no tendrías) |
+| `0016_suscripciones.sql` | Gastos marcados como «no es una suscripción» |
 
 ## Cuenta compartida (opcional)
 

@@ -6,6 +6,8 @@ import { aniosConMeses, resumenAnual } from '../lib/calculos'
 import { MESES, MESES_CORTOS } from '../lib/fechas'
 import { formatPct } from '../lib/money'
 import { Icono } from '../components/ios'
+import { CalendarioGastos } from '../components/CalendarioGastos'
+import { Suscripciones } from '../components/Suscripciones'
 
 export function ResumenPage() {
   const { anio: anioParam } = useParams()
@@ -72,6 +74,11 @@ export function ResumenPage() {
       <Card titulo="Dónde está el dinero cada mes">
         <BarrasDineroAnual datos={grafico} />
       </Card>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <CalendarioGastos anio={anio} />
+        <Suscripciones />
+      </div>
 
       {/* Móvil: lista de meses */}
       <section className="md:hidden" aria-label="Meses del año">
