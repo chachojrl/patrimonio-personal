@@ -98,7 +98,7 @@ Debe responder `OK` en todas las tablas: sin sesión no se lee nada y el registr
 ### Moverse por la app
 
 - **Móvil:** barra inferior con **Inicio**, **Mes**, el botón **+** (apuntar un gasto), **Resumen** y
-  **Más** (Historial, Lista de la compra, Buscar, Viajes, Te deben, «¿Me lo puedo permitir?»,
+  **Más** (Historial, Huchas, Lista de la compra, Buscar, Viajes, Te deben, «¿Me lo puedo permitir?»,
   Actividad y Ajustes). Arriba, la lupa abre Buscar y el ojo, el modo discreto.
 - **Ordenador y tablet:** barra lateral con todas las secciones y el botón **Apuntar gasto**.
 - **Inicio:** patrimonio con su evolución, el mes en curso, dónde está tu dinero (disponible, cuenta
@@ -181,6 +181,13 @@ Debe responder `OK` en todas las tablas: sin sesión no se lee nada y el registr
 
 - **Buscar** (la lupa): escribe un concepto («super», «regalos») o una persona y verás cuánto llevas
   gastado o ingresado, mes a mes, en el año elegido o en todos. No distingue mayúsculas ni tildes.
+- **Huchas** (en *Más*): objetivos de ahorro con su meta, fecha límite opcional, aportación mensual
+  opcional y, si quieres, la cuenta donde está el dinero. Puedes meter de golpe parte de lo que ya tienes;
+  la aportación mensual la propone «Cerrar mes…» para que la confirmes o la cambies. Calcula cuándo
+  llegarás o cuánto tendrías que meter al mes para llegar a tiempo, y celebra con confeti al llenarla.
+  Las huchas **reservan** dinero, no lo mueven: el dinero total no cambia y se ve cuánto queda libre (no
+  deja reservar más de lo que tienes, ni más de lo que hay en la cuenta de la hucha). Inicio muestra las
+  que están en curso. Necesita la migración `0014_huchas.sql`.
 - **Te deben:** apunta quién te debe dinero y márcalo como devuelto cuando te pague. No se
   suma al dinero total ni a los gastos del mes. Si hay algo pendiente, aparece en Inicio.
 - **Lista de la compra:** una por cuenta; la de la compartida la veis los dos en tiempo real. Al
@@ -241,6 +248,7 @@ vez** en *Supabase → SQL Editor*, en orden. Se pueden repetir sin problema.
 | `0011_traspasos.sql` | Traspasos entre cualquier par de cuentas (p. ej. de la cuenta remunerada a la cuenta de gastos) |
 | `0012_historial_tres_meses.sql` | El historial de cambios (Actividad) se guarda 3 meses en vez de un año, para ocupar menos |
 | `0013_intereses_cuenta_remunerada.sql` | TAE de la cuenta remunerada y los intereses de cada mes (estimados o los reales del banco) |
+| `0014_huchas.sql` | Huchas (objetivos de ahorro) y lo que se mete o se saca de cada una |
 
 ## Cuenta compartida (opcional)
 

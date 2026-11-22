@@ -131,6 +131,33 @@ export interface GastoViaje {
   cambio: number // euros por unidad, el del día del gasto
 }
 
+/** Hucha: un objetivo de ahorro. Reserva dinero, no lo mueve (el dinero total no cambia). */
+export interface Hucha {
+  id: string
+  nombre: string
+  emoji: string
+  objetivo: Cents
+  fecha_objetivo: string | null
+  /** Lo que piensas meter cada mes (null = sin aportación mensual). «Cerrar mes…» lo propone. */
+  aportacion_mensual: Cents | null
+  /** Cuenta donde está el dinero (opcional). */
+  cuenta: CuentaDinero | null
+  orden: number
+  /** Día en que la marcaste como conseguida (null = en curso). */
+  conseguida_en: string | null
+}
+
+/** Dinero que se mete (positivo) o se saca (negativo) de una hucha. */
+export interface MovimientoHucha {
+  id: string
+  hucha_id: string
+  fecha: string
+  importe: Cents
+  nota: string | null
+  /** Mes de la aportación mensual (primer día del mes); null si se metió a mano. */
+  mes: string | null
+}
+
 export type TipoCuenta = 'personal' | 'compartida'
 
 export interface MiembroCuenta {
@@ -161,9 +188,11 @@ export interface Datos {
   lista_compra: ArticuloCompra[]
   viajes: Viaje[]
   viaje_gastos: GastoViaje[]
+  huchas: Hucha[]
+  hucha_movimientos: MovimientoHucha[]
 }
 
-export type Tabla = 'months' | 'incomes' | 'expenses' | 'expense_entries' | 'savings' | 'debts' | 'lista_compra' | 'viajes' | 'viaje_gastos'
+export type Tabla = 'months' | 'incomes' | 'expenses' | 'expense_entries' | 'savings' | 'debts' | 'lista_compra' | 'viajes' | 'viaje_gastos' | 'huchas' | 'hucha_movimientos'
 
 /** Un cambio hecho desde otro dispositivo (o por el servidor), recibido en tiempo real. */
 export type CambioRemoto =
@@ -192,7 +221,7 @@ export const CONFIG_INICIAL: Config = {
 }
 
 export function datosVacios(): Datos {
-  return { config: { ...CONFIG_INICIAL }, months: [], incomes: [], expenses: [], expense_entries: [], savings: [], debts: [], lista_compra: [], viajes: [], viaje_gastos: [] }
+  return { config: { ...CONFIG_INICIAL }, months: [], incomes: [], expenses: [], expense_entries: [], savings: [], debts: [], lista_compra: [], viajes: [], viaje_gastos: [], huchas: [], hucha_movimientos: [] }
 }
 
 /** Completa campos que pueden faltar en datos antiguos (copias JSON o modo local de versiones previas). */
@@ -212,5 +241,7 @@ export function normalizarDatos(d: Datos): Datos {
     lista_compra: d.lista_compra ?? [],
     viajes: d.viajes ?? [],
     viaje_gastos: d.viaje_gastos ?? [],
+    huchas: d.huchas ?? [],
+    hucha_movimientos: d.hucha_movimientos ?? [],
   }
 }

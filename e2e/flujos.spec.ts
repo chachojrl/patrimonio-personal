@@ -1,7 +1,7 @@
 import { test, expect, guardado, esMovil } from './datos'
 
 test('todas las pantallas se abren sin errores', async ({ app }) => {
-  for (const ruta of ['/', '/mes/2026-11', '/historial', '/resumen/2026', '/ajustes', '/ajustes/apariencia', '/ajustes/guia', '/ajustes/informe', '/buscar', '/te-deben', '/compra', '/viajes', '/actividad', '/permitir']) {
+  for (const ruta of ['/', '/mes/2026-11', '/historial', '/resumen/2026', '/ajustes', '/ajustes/apariencia', '/ajustes/guia', '/ajustes/informe', '/buscar', '/te-deben', '/compra', '/viajes', '/actividad', '/permitir', '/huchas']) {
     await app.goto(`/#${ruta}`)
     // Que la pantalla tenga contenido (y, gracias al fixture, que no haya errores de JavaScript)
     await expect(app.locator('main h1, main h2, main input[aria-label="Título del mes"]').filter({ visible: true }).first()).toBeVisible()
@@ -152,4 +152,55 @@ test('TAE de la cuenta remunerada: intereses en Inicio, en el mes y al cerrarlo'
   await expect(app.getByText('Mes cerrado: todo está en solo lectura.')).toBeVisible()
   await expect.poll(async () => (await guardado(app)).months.find((m) => m.fecha === '2026-10-01')!.intereses_cuenta_rem).toBe(1234)
   await expect(app.getByText('Intereses del banco')).toBeVisible()
+})
+
+test('Huchas: crear con dinero que ya tienes, llenarla y la aportación mensual al cerrar el mes', async ({ app }) => {
+  await app.goto('/#/huchas')
+  await app.getByRole('button', { name: 'Nueva hucha' }).click()
+  const dialogo = app.getByRole('dialog')
+  await dialogo.getByLabel('Nombre de la hucha').fill('Japón')
+  await dialogo.getByRole('button', { name: 'Icono ✈️' }).click()
+  await dialogo.getByLabel('Objetivo').fill('1000')
+  await dialogo.getByLabel('Aportación mensual').fill('200')
+  await dialogo.getByLabel('Meter ya').fill('600')
+  await dialogo.getByRole('button', { name: 'Crear hucha' }).click()
+  await expect(app.getByText('Hucha «Japón» creada con 600,00 €.')).toBeVisible()
+  await expect(app.getByRole('heading', { name: 'Japón' })).toBeVisible()
+  await expect(app.getByText('Con 200,00 € al mes llegas en')).toBeVisible()
+
+  // Meter lo que falta: se llena
+  await app.getByRole('button', { name: 'Meter', exact: true }).click()
+  await app.getByRole('dialog').getByLabel('Importe').fill('400')
+  await app.getByRole('dialog').getByRole('button', { name: 'Meter' }).click()
+  await expect(app.getByText('¡Has llenado «Japón»! ✈️')).toBeVisible()
+  await expect.poll(async () => (await guardado(app)).hucha_movimientos.reduce((s, m) => s + m.importe, 0)).toBe(100000)
+
+  // Sacar más de lo que hay no se puede
+  await app.getByRole('button', { name: 'Sacar' }).click()
+  await app.getByRole('dialog').getByLabel('Importe').fill('2000')
+  await app.getByRole('dialog').getByRole('button', { name: 'Sacar' }).click()
+  await expect(app.getByRole('alert')).toHaveText('En la hucha solo hay 1.000,00 €.')
+  await app.getByRole('dialog').getByLabel('Importe').fill('300')
+  await app.getByRole('dialog').getByRole('button', { name: 'Sacar' }).click()
+  await expect(app.getByText('Sacados 300,00 € de «Japón».')).toBeVisible()
+
+  // En Huchas: reservado y libre
+  await app.goto('/#/huchas')
+  await expect(app.getByText('70 %')).toBeVisible()
+
+  // Al cerrar un mes propone la aportación mensual (200 €, sin pasarse de lo que falta)
+  await app.goto('/#/mes/2026-10')
+  await app.getByRole('button', { name: 'Cerrar mes…' }).click()
+  const cierre = app.getByRole('dialog')
+  await expect(cierre.getByText('Aportaciones a tus huchas')).toBeVisible()
+  await expect(cierre.getByLabel('Importe para Japón')).toHaveValue('200,00')
+  await cierre.getByLabel('Importe para Japón').fill('150')
+  await cierre.getByRole('button', { name: 'Cerrar el mes' }).click()
+  await expect(app.getByText('Mes cerrado: todo está en solo lectura.')).toBeVisible()
+  await expect.poll(async () => (await guardado(app)).hucha_movimientos.find((m) => m.mes === '2026-10-01')?.importe).toBe(15000)
+
+  // Inicio la muestra
+  await app.goto('/#/')
+  await expect(app.getByRole('heading', { name: /Huchas ·/ })).toBeVisible()
+  if (esMovil(app)) expect(await app.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(app.viewportSize()!.width)
 })

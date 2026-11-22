@@ -1,13 +1,13 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { NoAutorizadoError, type Repo } from './repo'
-import type { Ahorro, ApunteGasto, ArticuloCompra, Config, Cuenta, Datos, Deuda, Gasto, GastoViaje, Ingreso, Mes, Tabla, Viaje } from '../lib/tipos'
+import type { Ahorro, ApunteGasto, ArticuloCompra, Config, Cuenta, Datos, Deuda, Gasto, GastoViaje, Hucha, Ingreso, Mes, MovimientoHucha, Tabla, Viaje } from '../lib/tipos'
 import { CONFIG_INICIAL } from '../lib/tipos'
 import type { Cambio } from '../lib/actividad'
 import { centsToDecimal, toCents, toCentsOrNull } from '../lib/money'
 
 // Campos que son importes (céntimos en la app, NUMERIC(12,2) en la BD)
 const CAMPOS_DINERO = new Set([
-  'importe', 'presupuesto', 'saldo_real_cuenta', 'valor_real_inversiones', 'intereses_cuenta_rem',
+  'importe', 'presupuesto', 'saldo_real_cuenta', 'valor_real_inversiones', 'intereses_cuenta_rem', 'objetivo', 'aportacion_mensual',
   'ajuste_cuenta_gastos_inicial', 'inversiones_iniciales', 'aportado_inicial_inversiones', 'cuenta_remunerada_inicial',
 ])
 // Columnas que la app escribe en cada tabla (lo demás no se envía).
@@ -22,6 +22,8 @@ const COLUMNAS: Record<Tabla, string[]> = {
   lista_compra: ['id', 'texto', 'hecho', 'orden', 'creado_en'],
   viajes: ['id', 'nombre', 'moneda', 'cambio', 'presupuesto', 'fecha_inicio', 'fecha_fin', 'cerrado'],
   viaje_gastos: ['id', 'viaje_id', 'fecha', 'concepto', 'categoria', 'importe', 'moneda', 'cambio'],
+  huchas: ['id', 'nombre', 'emoji', 'objetivo', 'fecha_objetivo', 'aportacion_mensual', 'cuenta', 'orden', 'conseguida_en'],
+  hucha_movimientos: ['id', 'hucha_id', 'fecha', 'importe', 'nota', 'mes'],
 }
 
 function aBD(tabla: Tabla | 'config', obj: Record<string, unknown>): Record<string, unknown> {
@@ -172,6 +174,15 @@ export const MAPEOS: { [T in Tabla]: (x: Fila) => Datos[T][number] } = {
     id: x.id as string, viaje_id: x.viaje_id as string, fecha: x.fecha as string, concepto: (x.concepto as string) ?? '',
     categoria: (x.categoria as GastoViaje['categoria']) ?? 'otros', importe: toCents(x.importe as string), moneda: (x.moneda as string) ?? 'EUR', cambio: Number(x.cambio ?? 1),
   }),
+  huchas: (x): Hucha => ({
+    id: x.id as string, nombre: (x.nombre as string) ?? '', emoji: (x.emoji as string) ?? '🐷', objetivo: toCents(x.objetivo as string),
+    fecha_objetivo: (x.fecha_objetivo as string) ?? null, aportacion_mensual: toCentsOrNull(x.aportacion_mensual as string),
+    cuenta: (x.cuenta as Hucha['cuenta']) ?? null, orden: Number(x.orden ?? 0), conseguida_en: (x.conseguida_en as string) ?? null,
+  }),
+  hucha_movimientos: (x): MovimientoHucha => ({
+    id: x.id as string, hucha_id: x.hucha_id as string, fecha: x.fecha as string, importe: toCents(x.importe as string),
+    nota: (x.nota as string) ?? null, mes: (x.mes as string) ?? null,
+  }),
 }
 
 /**
@@ -220,7 +231,7 @@ export function crearSupabaseRepo(sb: SupabaseClient, cuentaId: string | null): 
     modo: 'supabase',
     async cargar() {
       const cfg = await asegurarConfig()
-      const [months, incomes, expenses, entries, savings, debts, compra, viajes, viajeGastos] = await Promise.all([
+      const [months, incomes, expenses, entries, savings, debts, compra, viajes, viajeGastos, huchas, huchaMovs] = await Promise.all([
         leerTodo('months', 'fecha'),
         leerTodo('incomes', 'orden'),
         leerTodo('expenses', 'orden'),
@@ -230,6 +241,8 @@ export function crearSupabaseRepo(sb: SupabaseClient, cuentaId: string | null): 
         leerOpcional('lista_compra', 'orden', '0009_historial_compra_viajes.sql'),
         leerOpcional('viajes', 'created_at', '0009_historial_compra_viajes.sql'),
         leerOpcional('viaje_gastos', 'fecha', '0009_historial_compra_viajes.sql'),
+        leerOpcional('huchas', 'orden', '0014_huchas.sql'),
+        leerOpcional('hucha_movimientos', 'fecha', '0014_huchas.sql'),
       ])
       return {
         config: mapConfig(cfg),
@@ -242,12 +255,14 @@ export function crearSupabaseRepo(sb: SupabaseClient, cuentaId: string | null): 
         lista_compra: compra.map(MAPEOS.lista_compra),
         viajes: viajes.map(MAPEOS.viajes),
         viaje_gastos: viajeGastos.map(MAPEOS.viaje_gastos),
+        huchas: huchas.map(MAPEOS.huchas),
+        hucha_movimientos: huchaMovs.map(MAPEOS.hucha_movimientos),
       }
     },
     async insertar(tabla, filas) {
       if (filas.length === 0) return
       // months y debts llevan la cuenta; el resto la hereda de su mes en el servidor
-      const conC = tabla === 'months' || tabla === 'debts' || tabla === 'lista_compra' || tabla === 'viajes'
+      const conC = tabla === 'months' || tabla === 'debts' || tabla === 'lista_compra' || tabla === 'viajes' || tabla === 'huchas'
       const preparar = (f: object) => {
         const fila = aBD(tabla, f as Fila)
         // Columnas de migraciones nuevas: vacías no se envían (así funciona aunque falte la migración)
@@ -343,7 +358,7 @@ export function crearSupabaseRepo(sb: SupabaseClient, cuentaId: string | null): 
       // 1) borrar todos los meses de ESTA cuenta (en cascada se borra todo lo demás) y sus deudas
       const del = await enCuenta(sb.from('months').delete().not('id', 'is', null))
       lanzar(del.error)
-      for (const t of ['debts', 'lista_compra', 'viajes']) { // viajes borra sus gastos en cascada
+      for (const t of ['debts', 'lista_compra', 'viajes', 'huchas']) { // viajes y huchas borran lo suyo en cascada
         const del2 = await enCuenta(sb.from(t).delete().not('id', 'is', null))
         if (del2.error && !faltaEnBD(del2.error)) lanzar(del2.error)
       }
@@ -354,6 +369,15 @@ export function crearSupabaseRepo(sb: SupabaseClient, cuentaId: string | null): 
       for (const tabla of ['incomes', 'expenses', 'expense_entries', 'savings', 'debts', 'lista_compra', 'viajes', 'viaje_gastos'] as const) {
         const filas = d[tabla] as object[]
         for (let i = 0; i < filas.length; i += 500) await this.insertar(tabla, filas.slice(i, i + 500))
+      }
+      // Huchas (0014): si falta la migración, se restaura el resto
+      if (d.huchas.length > 0) {
+        try {
+          await this.insertar('huchas', d.huchas)
+          for (let i = 0; i < d.hucha_movimientos.length; i += 500) await this.insertar('hucha_movimientos', d.hucha_movimientos.slice(i, i + 500))
+        } catch (e) {
+          if (!/migraciones nuevas|does not exist|schema cache/i.test((e as Error).message)) throw e
+        }
       }
       const cerrados = d.months.filter((m) => m.estado === 'Cerrado').map((m) => m.id)
       if (cerrados.length) {

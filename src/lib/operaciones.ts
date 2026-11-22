@@ -228,6 +228,8 @@ export function datosIniciales(): Datos {
     lista_compra: [],
     viajes: [],
     viaje_gastos: [],
+    huchas: [],
+    hucha_movimientos: [],
     savings: [
       { id: uid(), month_id: oct.id, fecha: '2026-10-01', importe: 400000, tipo: 'Inversiones', origen: 'Cuenta remunerada' },
       { id: uid(), month_id: oct.id, fecha: '2026-10-16', importe: 200000, tipo: 'Inversiones', origen: 'Cuenta remunerada' },
@@ -258,6 +260,7 @@ export function aplicarCambioRemoto(d: Datos, c: CambioRemoto): Datos {
     const sin = { ...d, [tabla]: filas.filter((x) => x.id !== c.id) } as Datos
     if (tabla === 'expenses') return { ...sin, expense_entries: sin.expense_entries.filter((a) => a.expense_id !== c.id) }
     if (tabla === 'viajes') return { ...sin, viaje_gastos: sin.viaje_gastos.filter((g) => g.viaje_id !== c.id) }
+    if (tabla === 'huchas') return { ...sin, hucha_movimientos: sin.hucha_movimientos.filter((m) => m.hucha_id !== c.id) }
     return sin
   }
   if (!('fila' in c)) return d

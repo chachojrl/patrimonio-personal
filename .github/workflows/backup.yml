@@ -40,7 +40,7 @@ jobs:
           set -euo pipefail
           mkdir -p copia
           # Supabase devuelve como máximo 1.000 filas por petición: se descarga por páginas
-          for t in config months incomes expenses expense_entries savings debts cuentas cuenta_miembros lista_compra viajes viaje_gastos cambios; do
+          for t in config months incomes expenses expense_entries savings debts cuentas cuenta_miembros lista_compra viajes viaje_gastos huchas hucha_movimientos cambios; do
             echo "[]" > "copia/$t.json"
             offset=0
             clave=id; [ "$t" = config ] && clave=user_id

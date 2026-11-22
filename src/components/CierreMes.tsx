@@ -1,10 +1,15 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useStore } from '../data/store'
 import { useCuentas } from '../data/cuentas'
 import { Boton, CeldaImporte, Dinero, Modal, cx } from './ui'
 import { gastosRaros } from '../lib/analisis'
 import { estadoPresupuesto } from '../lib/operaciones'
-import { formatPct, formatTae } from '../lib/money'
+import { formatEUR, formatPct, formatTae, parseImporte } from '../lib/money'
+import { mesActual, hoyISO } from '../lib/fechas'
+import { propuestasCierre } from '../lib/huchas'
+import { uid } from '../lib/operaciones'
+import type { MovimientoHucha } from '../lib/tipos'
 import { useEur } from '../lib/discreto'
 import { nombreMes } from '../lib/fechas'
 import type { Mes } from '../lib/tipos'
@@ -29,7 +34,11 @@ export function CierreMes({
   textoCancelar?: string
   ocupado?: boolean
 }) {
-  const { datos, calc, actualizar } = useStore()
+  const { datos, calc, actualizar, insertar } = useStore()
+  const propuestas = propuestasCierre(datos, mes.fecha, mesActual())
+  // Aportaciones a las huchas: marcadas por defecto con lo previsto; se pueden cambiar o desmarcar
+  const [aportes, setAportes] = useState<Record<string, { si: boolean; texto: string }>>({})
+  const aporte = (id: string, previsto: number) => aportes[id] ?? { si: true, texto: formatEUR(previsto, { dash: false }).replace(/[^\d,]/g, '') }
   const compartida = useCuentas().activa?.tipo === 'compartida'
   const eur = useEur()
   const c = calc.porId.get(mes.id)
@@ -42,6 +51,13 @@ export function CierreMes({
   const varGastos = anterior && anterior.gastosTotales > 0 ? c.gastosTotales / anterior.gastosTotales - 1 : null
 
   function cerrar() {
+    for (const p of propuestas) {
+      const a = aporte(p.hucha.id, p.importe)
+      const c = parseImporte(a.texto)
+      if (a.si && c !== null && c > 0) {
+        insertar('hucha_movimientos', { id: uid(), hucha_id: p.hucha.id, fecha: hoyISO(), importe: c, nota: null, mes: mes.fecha } satisfies MovimientoHucha)
+      }
+    }
     if (onConfirmar) return onConfirmar()
     actualizar('months', mes.id, { estado: 'Cerrado' })
     onCerrar()
@@ -101,6 +117,38 @@ export function CierreMes({
               className="campo mt-1 text-left"
               onCambio={(v) => actualizar('months', mes.id, { intereses_cuenta_rem: v })}
             />
+          </Paso>
+        )}
+
+        {propuestas.length > 0 && (
+          <Paso n={0} hecho titulo="Aportaciones a tus huchas">
+            <p className="text-xs text-slate-500">Lo que pensabas meter este mes. Cámbialo o desmárcalo; se aparta al cerrar el mes.</p>
+            <ul className="mt-1.5 space-y-1.5">
+              {propuestas.map((p) => {
+                const a = aporte(p.hucha.id, p.importe)
+                return (
+                  <li key={p.hucha.id} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={a.si}
+                      aria-label={`Aportar a ${p.hucha.nombre}`}
+                      onChange={(e) => setAportes({ ...aportes, [p.hucha.id]: { ...a, si: e.target.checked } })}
+                    />
+                    <span className="min-w-0 flex-1 truncate">{p.hucha.emoji} {p.hucha.nombre}</span>
+                    <input
+                      className="campo num w-28 py-1 text-right"
+                      inputMode="decimal"
+                      aria-label={`Importe para ${p.hucha.nombre}`}
+                      value={a.texto}
+                      disabled={!a.si}
+                      onChange={(e) => setAportes({ ...aportes, [p.hucha.id]: { ...a, texto: e.target.value } })}
+                    />
+                    <span className="text-slate-500">€</span>
+                  </li>
+                )
+              })}
+            </ul>
           </Paso>
         )}
 

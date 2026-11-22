@@ -15,6 +15,9 @@ import type { ReactNode } from 'react'
 import { useCuentas } from '../data/cuentas'
 import { UltimosCambios } from './ActividadPage'
 import { ColchonCard } from '../components/ColchonCard'
+import { TarjetaHucha } from '../components/HuchaTarjeta'
+import { dineroLibre, estadosHuchas } from '../lib/huchas'
+import { mesActual } from '../lib/fechas'
 import { aniosConMeses, resumenAnual } from '../lib/calculos'
 import { partes } from '../lib/fechas'
 import type { EstadoMes } from '../lib/tipos'
@@ -204,6 +207,8 @@ export function InicioPage() {
           )}
         </div>
       )}
+
+      <HuchasInicio />
 
       {compartida && <UltimosCambios />}
 
@@ -401,5 +406,26 @@ function FilaCifra({ titulo, sub, c, to, marca, fuerte, verde }: { titulo: strin
     <Link to={to} className="ios-fila flex items-stretch active:bg-slate-100 dark:active:bg-white/10">{contenido}</Link>
   ) : (
     <div className="ios-fila flex items-stretch">{contenido}</div>
+  )
+}
+
+/** Las huchas en curso (hasta 4), con lo que queda libre. */
+function HuchasInicio() {
+  const { datos, calc } = useStore()
+  const enCurso = estadosHuchas(datos, mesActual()).filter((e) => !e.hucha.conseguida_en)
+  if (enCurso.length === 0) return null
+  const l = dineroLibre(calc, datos)
+  return (
+    <section aria-labelledby="titulo-huchas">
+      <div className="mb-1.5 flex items-center justify-between gap-2 px-4">
+        <h2 id="titulo-huchas" className="text-[13px] text-slate-500 dark:text-slate-400">
+          Huchas · <Dinero c={l.reservado} dash={false} /> reservados, <Dinero c={l.libre} dash={false} /> libres
+        </h2>
+        <Link to="/huchas" className="shrink-0 text-[13px] text-[#007AFF] dark:text-[#0A84FF]">Ver todas</Link>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {enCurso.slice(0, 4).map((e) => <TarjetaHucha key={e.hucha.id} e={e} compacta />)}
+      </div>
+    </section>
   )
 }

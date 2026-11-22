@@ -59,3 +59,9 @@ export function hoyISO(): string {
 export function mesActual(): string {
   return `${hoyISO().slice(0, 7)}-01`
 }
+
+/** "2027-07-01" → "julio de 2027" */
+export function mesLargo(fecha: string): string {
+  const { anio, mes } = partes(fecha)
+  return `${MESES[mes - 1].toLowerCase()} de ${anio}`
+}

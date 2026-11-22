@@ -383,6 +383,7 @@ const FICHAS: { grupo: string; fichas: Ficha[] }[] = [
           'Debajo, el mes en curso (ingresos, gastos y lo que te queda) y dónde está tu dinero: disponible, cuenta remunerada e inversiones.',
           'En la fila de Inversiones, el lápiz sirve para escribir lo que vale hoy tu cartera.',
           'Si un mes ya terminado sigue abierto, aparece un aviso para que lo cierres.',
+          'Si tienes huchas, las ves debajo con lo que llevas en cada una y el dinero que te queda libre.',
         ],
         ir: { texto: 'Ir a Inicio', to: '/' },
       },
@@ -416,7 +417,8 @@ const FICHAS: { grupo: string; fichas: Ficha[] }[] = [
         color: COLOR.grafito,
         pasos: [
           '«Crear mes nuevo» (en Inicio o en el último mes) crea el siguiente con los mismos conceptos y los gastos fijos ya puestos.',
-          'Al final de la hoja del mes, «Cerrar mes…» te enseña un repaso (presupuestos pasados, avisos, lo que te deben) y lo deja en solo lectura.',
+          'Al final de la hoja del mes, «Cerrar mes…» te enseña un repaso (saldo del banco, inversiones, intereses, presupuestos pasados, avisos, lo que te deben) y lo deja en solo lectura.',
+          'Si tienes huchas con aportación mensual, te propone lo de cada una: cámbialo o desmárcalo y se aparta al cerrar.',
           'Si necesitas cambiar algo, puedes reabrirlo.',
         ],
       },
@@ -471,6 +473,18 @@ const FICHAS: { grupo: string; fichas: Ficha[] }[] = [
   {
     grupo: 'Más herramientas',
     fichas: [
+      {
+        titulo: 'Huchas',
+        icono: 'hucha',
+        color: COLOR.rosa,
+        pasos: [
+          'Crea una hucha para lo que quieras conseguir (un viaje, la entrada de un piso…) con su objetivo y, si quieres, para cuándo lo necesitas.',
+          'Puedes meter de golpe parte del dinero que ya tienes, o ponerle una aportación mensual: al cerrar cada mes te la propone para que la confirmes.',
+          'Te dice cuándo llegarás o cuánto tendrías que meter al mes para llegar a tiempo. Al llenarla, ¡confeti!',
+          'Las huchas reservan dinero, no lo mueven: tu dinero total no cambia y ves cuánto te queda libre. Si indicas en qué cuenta está, no te deja reservar más de lo que hay en ella.',
+        ],
+        ir: { texto: 'Ir a Huchas', to: '/huchas' },
+      },
       {
         titulo: 'Te deben',
         icono: 'billete',

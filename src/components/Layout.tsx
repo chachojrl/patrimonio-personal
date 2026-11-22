@@ -131,6 +131,7 @@ export function Layout() {
   const ajustes: EnlaceNav = { to: '/ajustes', txt: 'Ajustes', icono: 'engranaje' }
   const enlaces = [inicio, mes, historial, resumen, ajustes]
   const extras: EnlaceNav[] = [
+    { to: '/huchas', txt: 'Huchas', icono: 'hucha' },
     { to: '/compra', txt: 'Lista de la compra', icono: 'carrito' },
     { to: '/buscar', txt: 'Buscar', icono: 'lupa' },
     { to: '/viajes', txt: 'Viajes', icono: 'avion' },

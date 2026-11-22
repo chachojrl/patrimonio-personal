@@ -19,7 +19,7 @@ const sello = () => new Date().toISOString().slice(0, 10)
 
 // ---------- JSON (copia completa; importes en euros con 2 decimales) ----------
 
-const DINERO = ['importe', 'presupuesto', 'saldo_real_cuenta', 'valor_real_inversiones', 'intereses_cuenta_rem', 'ajuste_cuenta_gastos_inicial', 'inversiones_iniciales', 'aportado_inicial_inversiones', 'cuenta_remunerada_inicial']
+const DINERO = ['importe', 'presupuesto', 'saldo_real_cuenta', 'valor_real_inversiones', 'intereses_cuenta_rem', 'objetivo', 'aportacion_mensual', 'ajuste_cuenta_gastos_inicial', 'inversiones_iniciales', 'aportado_inicial_inversiones', 'cuenta_remunerada_inicial']
 
 function mapDinero(obj: unknown, fn: (v: number) => number): unknown {
   if (Array.isArray(obj)) return obj.map((x) => mapDinero(x, fn))
@@ -44,6 +44,8 @@ export function importarJSON(texto: string): Datos {
   }
   d.expense_entries = d.expense_entries ?? []
   d.debts = d.debts ?? []
+  const huchas = new Set((d.huchas ?? []).map((h) => h.id))
+  if ((d.hucha_movimientos ?? []).some((m) => !huchas.has(m.hucha_id))) throw new Error('El archivo tiene movimientos de hucha que no pertenecen a ninguna hucha.')
   const viajes = new Set((d.viajes ?? []).map((v) => v.id))
   if ((d.viaje_gastos ?? []).some((g) => !viajes.has(g.viaje_id))) throw new Error('El archivo tiene gastos de viaje que no pertenecen a ningún viaje.')
   d.config = { ...CONFIG_INICIAL, ...d.config }
