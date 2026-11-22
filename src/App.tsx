@@ -19,6 +19,7 @@ import { MesPage } from './pages/MesPage'
 const HuchasPage = lazy(() => import('./pages/HuchasPage').then((m) => ({ default: m.HuchasPage })))
 const HuchaPage = lazy(() => import('./pages/HuchasPage').then((m) => ({ default: m.HuchaPage })))
 const FuturoPage = lazy(() => import('./pages/FuturoPage').then((m) => ({ default: m.FuturoPage })))
+const LogrosPage = lazy(() => import('./pages/LogrosPage').then((m) => ({ default: m.LogrosPage })))
 const HistorialPage = lazy(() => import('./pages/HistorialPage').then((m) => ({ default: m.HistorialPage })))
 const ResumenPage = lazy(() => import('./pages/ResumenPage').then((m) => ({ default: m.ResumenPage })))
 const AjustesPage = lazy(() => import('./pages/AjustesPage').then((m) => ({ default: m.AjustesPage })))
@@ -59,6 +60,7 @@ function Rutas() {
           <Route path="viajes/:id" element={<ViajePage />} />
           <Route path="huchas" element={<HuchasPage />} />
           <Route path="futuro" element={<FuturoPage />} />
+          <Route path="logros" element={<LogrosPage />} />
           <Route path="huchas/:id" element={<HuchaPage />} />
           <Route path="apuntar" element={<ApuntarPage />} />
           <Route path="permitir" element={<PermitirPage />} />

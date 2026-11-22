@@ -16,6 +16,7 @@ import { useCuentas } from '../data/cuentas'
 import { UltimosCambios } from './ActividadPage'
 import { ColchonCard } from '../components/ColchonCard'
 import { TarjetaHucha } from '../components/HuchaTarjeta'
+import { LogrosCard } from '../components/Logros'
 import { dineroLibre, estadosHuchas } from '../lib/huchas'
 import { mesActual } from '../lib/fechas'
 import { aniosConMeses, resumenAnual } from '../lib/calculos'
@@ -198,6 +199,7 @@ export function InicioPage() {
       {(!compartida || pendientes.length > 0) && (
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {!compartida && <ColchonCard compacta />}
+          {!compartida && <LogrosCard />}
           {pendientes.length > 0 && (
             <Link to="/te-deben" className="rounded-xl bg-white p-3.5 active:bg-slate-100 dark:bg-[#1c1c1e] dark:active:bg-white/10 sm:p-4">
               <div className="text-[13px] text-slate-500 dark:text-slate-400">Te deben</div>

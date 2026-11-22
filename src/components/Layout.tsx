@@ -8,6 +8,7 @@ import { PanelApuntar } from './PanelApuntar'
 import { Recorrido } from './Recorrido'
 import { useRecorrido } from '../lib/guia'
 import { CLAVE_AVISO, nombreMiembro, useCuentas } from '../data/cuentas'
+import { AvisoLogros } from './Logros'
 
 function EstadoGuardadoChip() {
   const { guardado } = useStore()
@@ -133,6 +134,7 @@ export function Layout() {
   const extras: EnlaceNav[] = [
     { to: '/huchas', txt: 'Huchas', icono: 'hucha' },
     { to: '/futuro', txt: 'Futuro', icono: 'cohete' },
+    { to: '/logros', txt: 'Logros', icono: 'estrella' },
     { to: '/compra', txt: 'Lista de la compra', icono: 'carrito' },
     { to: '/buscar', txt: 'Buscar', icono: 'lupa' },
     { to: '/viajes', txt: 'Viajes', icono: 'avion' },
@@ -225,6 +227,7 @@ export function Layout() {
         <div className="bg-amber-500 px-4 py-1.5 text-center text-xs font-medium text-white">Sin conexión: los cambios se guardarán al recuperarla.</div>
       )}
 
+      <AvisoLogros />
       <main className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6">
         <Suspense fallback={<CargandoPantalla />}>
           <Outlet />

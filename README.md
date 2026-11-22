@@ -98,7 +98,7 @@ Debe responder `OK` en todas las tablas: sin sesión no se lee nada y el registr
 ### Moverse por la app
 
 - **Móvil:** barra inferior con **Inicio**, **Mes**, el botón **+** (apuntar un gasto), **Resumen** y
-  **Más** (Historial, Huchas, Futuro, Lista de la compra, Buscar, Viajes, Te deben, «¿Me lo puedo permitir?»,
+  **Más** (Historial, Huchas, Futuro, Logros, Lista de la compra, Buscar, Viajes, Te deben, «¿Me lo puedo permitir?»,
   Actividad y Ajustes). Arriba, la lupa abre Buscar y el ojo, el modo discreto.
 - **Ordenador y tablet:** barra lateral con todas las secciones y el botón **Apuntar gasto**.
 - **Inicio:** patrimonio con su evolución, el mes en curso, dónde está tu dinero (disponible, cuenta
@@ -177,6 +177,12 @@ Debe responder `OK` en todas las tablas: sin sesión no se lee nada y el registr
 - **Libertad financiera** (en *Futuro*): tu número = lo que gastas al año ÷ lo que sacarías cada año (4 % por
   defecto), el porcentaje que llevas y cuándo llegarías. Se pueden quitar los gastos que entonces no tendrías
   (por ejemplo, la hipoteca pagada). Necesita la migración `0015_futuro.sql` para guardar estos ajustes.
+- **Rachas y logros** (en *Más*): rachas de meses seguidos ahorrando, gastando menos de lo que entra, sin
+  pasarse de ningún presupuesto y cerrando los meses (el mes en curso suma cuando se cumple y mientras tanto
+  no rompe la racha), y logros con su fecha: primer mes cerrado, 3/6/12 meses ahorrando, el 20 % al ahorro,
+  colchón de 3 y 6 meses, cifras de patrimonio, primera hucha conseguida, 100 € de intereses, 1.000 €
+  ganados invirtiendo… Los pendientes muestran su progreso. Avisa al conseguir uno nuevo (una vez por
+  dispositivo) y en Inicio se ve la racha de ahorro. Se calculan con los meses: no necesitan migración.
 - **Colchón de emergencia** (Inicio e Historial): cuántos meses podrías vivir sin ingresos con tu saldo
   y tu cuenta remunerada, según lo que gastas de media (las inversiones no cuentan).
 - **¿Me lo puedo permitir?** (en *Más*): escribe lo que cuesta algo y si lo pagarías de una vez o a

@@ -1,7 +1,7 @@
 import { test, expect, guardado, esMovil } from './datos'
 
 test('todas las pantallas se abren sin errores', async ({ app }) => {
-  for (const ruta of ['/', '/mes/2026-11', '/historial', '/resumen/2026', '/ajustes', '/ajustes/apariencia', '/ajustes/guia', '/ajustes/informe', '/buscar', '/te-deben', '/compra', '/viajes', '/actividad', '/permitir', '/huchas', '/futuro']) {
+  for (const ruta of ['/', '/mes/2026-11', '/historial', '/resumen/2026', '/ajustes', '/ajustes/apariencia', '/ajustes/guia', '/ajustes/informe', '/buscar', '/te-deben', '/compra', '/viajes', '/actividad', '/permitir', '/huchas', '/futuro', '/logros']) {
     await app.goto(`/#${ruta}`)
     // Que la pantalla tenga contenido (y, gracias al fixture, que no haya errores de JavaScript)
     await expect(app.locator('main h1, main h2, main input[aria-label="Título del mes"]').filter({ visible: true }).first()).toBeVisible()
@@ -227,4 +227,24 @@ test('Futuro: proyección, ahorro extra y libertad financiera', async ({ app }) 
   await expect.poll(numero).toBeLessThan(n1)
   await expect.poll(async () => (await guardado(app)).config.fire_excluidos.length).toBe(1)
   if (esMovil(app)) expect(await app.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(app.viewportSize()!.width)
+})
+
+test('Logros: rachas, logros conseguidos y aviso de uno nuevo', async ({ app }) => {
+  await app.goto('/#/logros')
+  await expect(app.getByRole('heading', { name: 'Logros' })).toBeVisible()
+  await expect(app.getByText('Ahorrando', { exact: true })).toBeVisible()
+  await expect(app.getByText(/Conseguidos · \d+/)).toBeVisible()
+  await expect(app.getByText('Primer mes cerrado')).toBeVisible()
+  // La primera vez no avisa de lo anterior; al conseguir uno nuevo (primera hucha) sí
+  await app.goto('/#/huchas')
+  await app.getByRole('button', { name: 'Nueva hucha' }).click()
+  const d = app.getByRole('dialog')
+  await d.getByLabel('Nombre de la hucha').fill('Bici')
+  await d.getByLabel('Objetivo').fill('100')
+  await d.getByLabel('Meter ya').fill('100')
+  await d.getByRole('button', { name: 'Crear hucha' }).click()
+  await app.getByRole('button', { name: 'Conseguida' }).click()
+  await expect(app.getByText('¡Nuevo logro! Primera hucha conseguida')).toBeVisible()
+  await app.goto('/#/')
+  await expect(app.locator('main').getByRole('link', { name: /Racha de ahorro|Logros/ })).toBeVisible()
 })

@@ -384,6 +384,7 @@ const FICHAS: { grupo: string; fichas: Ficha[] }[] = [
           'En la fila de Inversiones, el lápiz sirve para escribir lo que vale hoy tu cartera.',
           'Si un mes ya terminado sigue abierto, aparece un aviso para que lo cierres.',
           'Si tienes huchas, las ves debajo con lo que llevas en cada una y el dinero que te queda libre.',
+          'La tarjeta de la racha te dice cuántos meses seguidos llevas ahorrando; tócala para ver tus logros.',
         ],
         ir: { texto: 'Ir a Inicio', to: '/' },
       },
@@ -480,6 +481,18 @@ const FICHAS: { grupo: string; fichas: Ficha[] }[] = [
           'En «Quitar gastos que entonces no tendrías» desmarca, por ejemplo, la hipoteca si ya estará pagada: el número baja.',
         ],
         ir: { texto: 'Ver mi número', to: '/futuro' },
+      },
+      {
+        titulo: 'Rachas y logros',
+        icono: 'estrella',
+        color: COLOR.amarillo,
+        pasos: [
+          'Rachas: meses seguidos ahorrando, gastando menos de lo que entra, sin pasarte de ningún presupuesto y cerrando los meses. El mes en curso suma cuando lo cumples y, mientras tanto, no rompe la racha.',
+          'Logros: tu primer mes cerrado, 3, 6 y 12 meses ahorrando, ahorrar el 20 %, el colchón de 3 y 6 meses, cada cifra de patrimonio, tu primera hucha conseguida…',
+          'Cuando consigues uno nuevo te avisa. En Inicio ves tu racha de ahorro y cuántos llevas.',
+          'Se calculan solos con tus meses: no tienes que apuntar nada.',
+        ],
+        ir: { texto: 'Ver mis logros', to: '/logros' },
       },
       {
         titulo: 'Colchón y «¿Me lo puedo permitir?»',
