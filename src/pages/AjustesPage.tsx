@@ -23,6 +23,7 @@ import { NOMBRE_TEMA, useTema, type Tema } from '../lib/tema'
 import { MESES, mesActual, nombreMes, partes } from '../lib/fechas'
 import { Avatar, BotonGrande, COLOR, Fila, FilaCampo, FilaLibre, Grupo, Icono, IconoApp, Interruptor, claseCampoIos, type NombreIcono } from '../components/ios'
 import type { Config, Datos, TramoTae } from '../lib/tipos'
+import { GUIA, textoFicha } from '../components/guiaUso'
 import { formatEUR, formatTae, parsePct } from '../lib/money'
 import { interesesEstimados, taeDelMes } from '../lib/calculos'
 
@@ -54,7 +55,7 @@ const APARTADOS: Record<Exclude<Id, 'perfil'>, Apartado> = {
 
 /** Palabras con las que se encuentra cada apartado en el buscador de Ajustes (además del título). */
 const CLAVES: Record<Exclude<Id, 'perfil'>, string> = {
-  guia: 'ayuda tutorial como funciona recorrido aprender empezar',
+  guia: 'ayuda tutorial como funciona recorrido aprender empezar manual instrucciones preguntas',
   informe: 'pdf patrimonio imprimir',
   exportar: 'excel xlsx csv numbers descargar tablas',
   copias: 'copia seguridad backup json restaurar icloud',
@@ -360,302 +361,95 @@ function PerfilDetalle({ email }: { email: string }) {
 }
 
 // ---------------- Guía de uso ----------------
-interface Ficha {
-  titulo: string
-  icono: NombreIcono
-  color: string
-  pasos: string[]
-  ir?: { texto: string; to: string }
-  /** Solo con cuenta en la nube (no en modo local). */
-  nube?: boolean
-}
-
-const FICHAS: { grupo: string; fichas: Ficha[] }[] = [
-  {
-    grupo: 'Lo del día a día',
-    fichas: [
-      {
-        titulo: 'Inicio',
-        icono: 'casa',
-        color: COLOR.azul,
-        pasos: [
-          'Arriba ves tu patrimonio: todo tu dinero sumado y cuánto ha cambiado desde el mes anterior. Toca la línea para ver el historial.',
-          'Debajo, el mes en curso (ingresos, gastos y lo que te queda) y dónde está tu dinero: disponible, cuenta remunerada e inversiones.',
-          'En la fila de Inversiones, el lápiz sirve para escribir lo que vale hoy tu cartera.',
-          'Si un mes ya terminado sigue abierto, aparece un aviso para que lo cierres.',
-          'Si tienes huchas, las ves debajo con lo que llevas en cada una y el dinero que te queda libre.',
-          'La tarjeta de la racha te dice cuántos meses seguidos llevas ahorrando; tócala para ver tus logros.',
-        ],
-        ir: { texto: 'Ir a Inicio', to: '/' },
-      },
-      {
-        titulo: 'Apuntar un gasto',
-        icono: 'mas',
-        color: COLOR.verde,
-        pasos: [
-          'Toca el botón + de la barra de abajo (en el ordenador, «Apuntar gasto» en la barra lateral).',
-          'Elige el concepto (salen primero los que más usas), escribe el importe y, si quieres, una nota como «Mercadona».',
-          'Pulsa Apuntar: se suma a ese gasto del mes abierto. Si te equivocas, toca «Deshacer» en el aviso.',
-          'También puedes apuntar con Siri o desde un atajo del iPhone: mira «Siri y Atajos».',
-        ],
-      },
-      {
-        titulo: 'El mes',
-        icono: 'calendario',
-        color: COLOR.naranja,
-        pasos: [
-          'Es tu hoja del mes, como en el Excel. Todo se edita tocando la cifra o el texto, y se guarda solo.',
-          'Ingresos: lo que entra. Gastos: cada concepto con su importe. En la casilla «+ € nota» escribes un importe y pulsas Enter para sumarlo (cada suma queda apuntada y se puede deshacer).',
-          'En los tres puntos de un gasto puedes marcarlo como fijo (se copia al mes siguiente), ponerle un presupuesto o borrarlo. Arrastra ⋮⋮ para cambiar el orden.',
-          'Ahorro y traspasos: lo que mandas a inversiones o a la cuenta remunerada, o lo que traes de vuelta a la cuenta de gastos.',
-          '«Cuadrar con el banco» es opcional: si escribes el saldo real, la diferencia cuenta como ingreso extra o gasto no apuntado.',
-          '«Revisa» te avisa si un concepto va muy por encima de su media, de apuntes duplicados y de suscripciones que suben de precio.',
-        ],
-        ir: { texto: 'Ir al mes actual', to: '/mes/actual' },
-      },
-      {
-        titulo: 'Crear y cerrar el mes',
-        icono: 'candado',
-        color: COLOR.grafito,
-        pasos: [
-          '«Crear mes nuevo» (en Inicio o en el último mes) crea el siguiente con los mismos conceptos y los gastos fijos ya puestos.',
-          'Al final de la hoja del mes, «Cerrar mes…» te enseña un repaso (saldo del banco, inversiones, intereses, presupuestos pasados, avisos, lo que te deben) y lo deja en solo lectura.',
-          'Si tienes huchas con aportación mensual, te propone lo de cada una: cámbialo o desmárcalo y se aparta al cerrar.',
-          'Si necesitas cambiar algo, puedes reabrirlo.',
-        ],
-      },
-      {
-        titulo: 'Intereses de la cuenta remunerada',
-        icono: 'billete',
-        color: COLOR.verde,
-        pasos: [
-          'En Ajustes → Cuenta remunerada pon la TAE de tu cuenta. Si el banco la cambia, añade la nueva desde el mes en que cambia.',
-          'Cada mes se suman solos los intereses netos (ya sin el 19 % de Hacienda) sobre lo que había en la cuenta al empezar el mes.',
-          'Si el banco te paga otra cifra, escríbela en el mes («Intereses cuenta remunerada») o al cerrarlo: manda la tuya.',
-        ],
-        ir: { texto: 'Poner la TAE', to: '/ajustes/intereses' },
-      },
-    ],
-  },
-  {
-    grupo: 'Ver cómo vas',
-    fichas: [
-      {
-        titulo: 'Resumen e Historial',
-        icono: 'grafica',
-        color: COLOR.indigo,
-        pasos: [
-          'Resumen: el año mes a mes, con una gráfica de dónde está tu dinero. Cambia de año arriba.',
-          'Historial: todos los meses seguidos, con la evolución de tu dinero total y todas las columnas del Excel.',
-        ],
-        ir: { texto: 'Ir a Resumen', to: '/resumen' },
-      },
-      {
-        titulo: 'Calendario de gastos',
-        icono: 'calendario',
-        color: COLOR.azul,
-        pasos: [
-          'En Resumen, un calendario del mes: cada día más oscuro cuanto más gastaste. Toca un día para ver qué apuntaste.',
-          'Debajo, el gasto medio por día de la semana del año: por ejemplo, «los viernes gastas el doble».',
-          'Solo tienen día los gastos apuntados con el botón + o con «+ € nota» (guardan la hora) y los que tienen fecha de vencimiento. Lo que escribes directamente en la casilla de un concepto no sabe qué día fue.',
-        ],
-        ir: { texto: 'Ir a Resumen', to: '/resumen' },
-      },
-      {
-        titulo: 'Suscripciones',
-        icono: 'ticket',
-        color: COLOR.rosa,
-        pasos: [
-          'En Resumen ves cuánto pagas al mes y al año en suscripciones, y cada una con lo que llevas pagado.',
-          'Se detectan solas: servicios conocidos (Netflix, Spotify, el gimnasio…) en los conceptos y en las notas, gastos fijos pequeños y gastos que se repiten 3 meses seguidos con casi el mismo importe.',
-          'Si una sube de precio, te avisa en «Revisa» del mes y al cerrarlo.',
-          'Si alguna no es una suscripción, toca «No es una suscripción» y no vuelve a salir.',
-        ],
-        ir: { texto: 'Ver mis suscripciones', to: '/resumen' },
-      },
-      {
-        titulo: 'Tu año en cifras',
-        icono: 'estrella',
-        color: COLOR.rosa,
-        pasos: [
-          'Tu año resumido en unas pocas pantallas: cuánto creció tu patrimonio, tu mejor mes, en qué se te fue más dinero…',
-          'Se abre desde Resumen y, en diciembre y enero, desde Inicio. Toca a la derecha para avanzar y mantén pulsado para pararlo.',
-          'Al final puedes compartirlo.',
-        ],
-      },
-      {
-        titulo: 'Futuro',
-        icono: 'cohete',
-        color: COLOR.indigo,
-        pasos: [
-          'Una gráfica con lo que podrías tener en 5, 10, 20 o 30 años si sigues ahorrando como hasta ahora, en tres escenarios (pesimista, normal y optimista).',
-          'Parte de lo que tienes hoy y de tu ahorro medio de los últimos meses. Las inversiones crecen con la rentabilidad que elijas y la cuenta remunerada, con tu TAE.',
-          'Mueve «Ahorro extra al mes» para ver qué cambiaría ahorrando un poco más. «En euros de hoy» descuenta la inflación para que las cifras no engañen.',
-          'Hitos: cuándo llegarías a una cifra redonda, a llenar cada hucha y a la libertad financiera.',
-        ],
-        ir: { texto: 'Ir a Futuro', to: '/futuro' },
-      },
-      {
-        titulo: 'Libertad financiera',
-        icono: 'bandera',
-        color: COLOR.verde,
-        pasos: [
-          'Tu número es lo que necesitarías para vivir de tus ahorros: lo que gastas al año dividido entre lo que sacarías cada año (el 4 % por defecto).',
-          'Ves qué porcentaje llevas y cuándo llegarías según la proyección.',
-          'En «Quitar gastos que entonces no tendrías» desmarca, por ejemplo, la hipoteca si ya estará pagada: el número baja.',
-        ],
-        ir: { texto: 'Ver mi número', to: '/futuro' },
-      },
-      {
-        titulo: 'Rachas y logros',
-        icono: 'estrella',
-        color: COLOR.amarillo,
-        pasos: [
-          'Rachas: meses seguidos ahorrando, gastando menos de lo que entra, sin pasarte de ningún presupuesto y cerrando los meses. El mes en curso suma cuando lo cumples y, mientras tanto, no rompe la racha.',
-          'Logros: tu primer mes cerrado, 3, 6 y 12 meses ahorrando, ahorrar el 20 %, el colchón de 3 y 6 meses, cada cifra de patrimonio, tu primera hucha conseguida…',
-          'Cuando consigues uno nuevo te avisa. En Inicio ves tu racha de ahorro y cuántos llevas.',
-          'Se calculan solos con tus meses: no tienes que apuntar nada.',
-        ],
-        ir: { texto: 'Ver mis logros', to: '/logros' },
-      },
-      {
-        titulo: 'Colchón y «¿Me lo puedo permitir?»',
-        icono: 'balanza',
-        color: COLOR.marron,
-        pasos: [
-          'El colchón de emergencia dice cuántos meses podrías vivir sin ingresos con lo que tienes disponible. Lo recomendable son 6.',
-          'En Más › «¿Me lo puedo permitir?» escribes lo que cuesta algo y si lo pagarías de una vez o a plazos, y te dice cómo quedaría tu colchón y cuántos meses de ahorro supone.',
-        ],
-        ir: { texto: 'Abrir «¿Me lo puedo permitir?»', to: '/permitir' },
-      },
-    ],
-  },
-  {
-    grupo: 'Más herramientas',
-    fichas: [
-      {
-        titulo: 'Huchas',
-        icono: 'hucha',
-        color: COLOR.rosa,
-        pasos: [
-          'Crea una hucha para lo que quieras conseguir (un viaje, la entrada de un piso…) con su objetivo y, si quieres, para cuándo lo necesitas.',
-          'Puedes meter de golpe parte del dinero que ya tienes, o ponerle una aportación mensual: al cerrar cada mes te la propone para que la confirmes.',
-          'Te dice cuándo llegarás o cuánto tendrías que meter al mes para llegar a tiempo. Al llenarla, ¡confeti!',
-          'Las huchas reservan dinero, no lo mueven: tu dinero total no cambia y ves cuánto te queda libre. Si indicas en qué cuenta está, no te deja reservar más de lo que hay en ella.',
-        ],
-        ir: { texto: 'Ir a Huchas', to: '/huchas' },
-      },
-      {
-        titulo: 'Te deben',
-        icono: 'billete',
-        color: COLOR.verde,
-        pasos: ['Apunta lo que adelantas a otras personas (una cena, unas entradas…). Cuando te lo devuelvan, márcalo como devuelto. No cuenta en tus gastos ni ingresos.'],
-        ir: { texto: 'Ir a Te deben', to: '/te-deben' },
-      },
-      {
-        titulo: 'Viajes',
-        icono: 'avion',
-        color: COLOR.azul,
-        pasos: ['Crea un viaje con su presupuesto y apunta los gastos en cualquier moneda: se pasan a euros con el cambio del día. Al acabar, puedes pasar el total a un gasto del mes.'],
-        ir: { texto: 'Ir a Viajes', to: '/viajes' },
-      },
-      {
-        titulo: 'Lista de la compra',
-        icono: 'carrito',
-        color: COLOR.naranja,
-        pasos: ['Añade cosas (separadas por comas para varias a la vez) y márcalas al meterlas en el carro. En una cuenta compartida la lista es común.'],
-        ir: { texto: 'Ir a la lista', to: '/compra' },
-      },
-      {
-        titulo: 'Buscar y Actividad',
-        icono: 'lupa',
-        color: COLOR.gris,
-        pasos: ['Buscar encuentra cualquier gasto, ingreso o nota en todos los meses (la lupa de arriba). Actividad muestra los últimos cambios, útil en una cuenta compartida.'],
-        ir: { texto: 'Ir a Buscar', to: '/buscar' },
-      },
-      {
-        titulo: 'Cuentas compartidas',
-        icono: 'casa',
-        color: COLOR.marron,
-        nube: true,
-        pasos: [
-          'Una cuenta para los gastos comunes que veis los dos, cada uno con su usuario. Tu cuenta personal sigue siendo privada.',
-          'Créala en Ajustes › Cuentas compartidas y cambia de cuenta con el selector de arriba. Puedes tener varias.',
-          'Si activas las aportaciones automáticas, cada uno aporta el mismo porcentaje de sus ingresos y se apunta solo.',
-        ],
-        ir: { texto: 'Ir a Cuentas compartidas', to: '/ajustes/compartida' },
-      },
-    ],
-  },
-  {
-    grupo: 'Tus datos y tu privacidad',
-    fichas: [
-      {
-        titulo: 'Informe PDF, Excel y copias',
-        icono: 'documento',
-        color: COLOR.naranja,
-        pasos: [
-          'Informe PDF: un documento con resumen, gráficas y el detalle de cada mes. Elige todo, un año o de un mes a otro.',
-          'Exportar: el libro completo en Excel o tablas sueltas en CSV.',
-          'Copias de seguridad: descarga de vez en cuando una copia completa (por ejemplo, a iCloud Drive). Con ella puedes restaurarlo todo.',
-        ],
-        ir: { texto: 'Ir al Informe PDF', to: '/ajustes/informe' },
-      },
-      {
-        titulo: 'Face ID y modo discreto',
-        icono: 'cara',
-        color: COLOR.verde,
-        pasos: [
-          'Face ID pide tu cara, tu huella o el código del móvil al abrir la app. Se activa en cada dispositivo.',
-          'El ojo de arriba oculta los importes en pantalla. En Ajustes › Modo discreto puedes hacer que empiece siempre oculto.',
-        ],
-        ir: { texto: 'Ir a Face ID', to: '/ajustes/faceid' },
-      },
-      {
-        titulo: 'Apariencia y recordatorios',
-        icono: 'paleta',
-        color: COLOR.azul,
-        pasos: [
-          'Apariencia: tema claro, oscuro o automático, el color de la app y si ver los céntimos.',
-          'Recordatorios: el aviso de Inicio cuando queda un mes pasado sin cerrar.',
-        ],
-        ir: { texto: 'Ir a Apariencia', to: '/ajustes/apariencia' },
-      },
-    ],
-  },
-]
-
 function GuiaDetalle() {
-  const [abierta, setAbierta] = useState<string | null>(null)
+  const [abiertas, setAbiertas] = useState<Set<string>>(new Set())
+  const [busca, setBusca] = useState('')
+  const q = sinTildes(busca.trim())
+  const grupos = GUIA.map((g) => ({
+    ...g,
+    fichas: g.fichas.filter((f) => (!f.nube || supabase) && (!q || textoFicha(f).includes(q))),
+  })).filter((g) => g.fichas.length > 0)
+  const todas = GUIA.flatMap((g) => g.fichas.filter((f) => !f.nube || supabase).map((f) => f.titulo))
+  const todasAbiertas = todas.every((t) => abiertas.has(t))
+  const alternar = (t: string) => setAbiertas((s) => {
+    const n = new Set(s)
+    if (n.has(t)) n.delete(t)
+    else n.add(t)
+    return n
+  })
   return (
     <>
-      <Portada icono="libro" color={COLOR.turquesa} titulo="Cómo funciona la app" texto="Cada función explicada en pocas líneas. Toca una para verla." />
+      <Portada
+        icono="libro"
+        color={COLOR.turquesa}
+        titulo="Cómo funciona la app"
+        texto="Todo lo que puedes hacer, explicado paso a paso. Toca una ficha para leerla o busca lo que necesites."
+      />
       <BotonGrande onClick={empezarRecorrido}>Hacer el recorrido guiado</BotonGrande>
-      {FICHAS.map((g) => (
+      <label className="mb-2 flex h-9 items-center gap-1.5 rounded-[10px] bg-[#e3e3e8] px-2 text-slate-500 dark:bg-[#1c1c1e] dark:text-slate-400">
+        <Icono nombre="lupa" className="h-[18px] w-[18px] shrink-0" grosor={2.2} />
+        <input
+          type="search"
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+          onKeyDown={(e) => e.key === 'Escape' && setBusca('')}
+          placeholder="Buscar en la guía: huchas, TAE, cerrar mes…"
+          aria-label="Buscar en la guía"
+          className="min-w-0 flex-1 bg-transparent text-[17px] text-slate-900 outline-none placeholder:text-slate-500 dark:text-white dark:placeholder:text-slate-400"
+        />
+      </label>
+      {!q && (
+        <div className="mb-4 flex justify-end px-1">
+          <button type="button" className="text-[15px] text-[#007AFF] dark:text-[#0A84FF]" onClick={() => setAbiertas(todasAbiertas ? new Set() : new Set(todas))}>
+            {todasAbiertas ? 'Cerrar todas' : 'Abrir todas'}
+          </button>
+        </div>
+      )}
+      {grupos.length === 0 && <p className="mb-8 px-4 text-[15px] text-slate-500">No hay nada en la guía sobre «{busca.trim()}».</p>}
+      {grupos.map((g) => (
         <Grupo key={g.grupo} titulo={g.grupo}>
-          {g.fichas.filter((f) => !f.nube || supabase).map((f) => {
-            const sel = abierta === f.titulo
+          {g.fichas.map((f) => {
+            const sel = !!q || abiertas.has(f.titulo)
             return (
               <div key={f.titulo} className="ios-fila">
                 <button
                   type="button"
                   aria-expanded={sel}
-                  onClick={() => setAbierta(sel ? null : f.titulo)}
+                  onClick={() => alternar(f.titulo)}
                   className="flex w-full items-stretch text-left active:bg-slate-200/70 dark:active:bg-white/10"
                 >
-                  <span className="py-[7px] pl-4"><IconoApp nombre={f.icono} color={f.color} /></span>
+                  <span className="py-[9px] pl-4"><IconoApp nombre={f.icono} color={f.color} /></span>
                   <span className="ios-sep ml-3 flex min-h-11 flex-1 items-center gap-3 py-2.5 pr-4">
-                    <span className="flex-1 text-[17px]">{f.titulo}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[17px] leading-tight text-slate-900 dark:text-slate-100">{f.titulo}</span>
+                      <span className="mt-0.5 block text-[13px] leading-snug text-slate-500 dark:text-slate-400">{f.resumen}</span>
+                    </span>
                     <svg viewBox="0 0 24 24" className={cx('h-4 w-4 shrink-0 text-slate-300 transition-transform dark:text-slate-600', sel && 'rotate-90')} fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="m9 5 7 7-7 7" /></svg>
                   </span>
                 </button>
                 {sel && (
-                  <div className="ml-[60px] pb-3 pr-4">
-                    <ul className="space-y-2 text-[15px] leading-snug text-slate-700 dark:text-slate-300">
-                      {f.pasos.map((p) => <li key={p}>{p}</li>)}
-                    </ul>
+                  <div className="ml-[60px] space-y-3 pb-4 pr-4">
+                    {f.secciones.map((sec, i) => (
+                      <div key={i}>
+                        {sec.titulo && <h4 className="mb-1 text-[13px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{sec.titulo}</h4>}
+                        <ul className="space-y-1.5 text-[15px] leading-snug text-slate-700 dark:text-slate-300">
+                          {sec.pasos.map((p) => (
+                            <li key={p} className="flex gap-2">
+                              <span className="mt-[0.55em] h-1.5 w-1.5 shrink-0 rounded-full bg-slate-300 dark:bg-slate-600" aria-hidden />
+                              <span>{p}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                    {f.consejo && (
+                      <p className="flex gap-2 rounded-lg bg-sky-50 px-3 py-2 text-[14px] leading-snug text-sky-900 dark:bg-sky-400/10 dark:text-sky-200">
+                        <Icono nombre="brillo" className="mt-0.5 h-4 w-4 shrink-0" />
+                        <span>{f.consejo}</span>
+                      </p>
+                    )}
                     {f.ir && (
-                      <Link to={f.ir.to} className="mt-2.5 inline-flex min-h-9 items-center gap-1 text-[15px] font-medium text-[#007AFF] dark:text-[#0A84FF]">
+                      <Link to={f.ir.to} className="inline-flex min-h-9 items-center gap-1 text-[15px] font-medium text-[#007AFF] dark:text-[#0A84FF]">
                         {f.ir.texto}
                         <Icono nombre="siguiente" className="h-4 w-4" grosor={2.4} />
                       </Link>
@@ -764,7 +558,7 @@ function CopiasDetalle() {
   return (
     <>
       <Portada icono="archivo" color={COLOR.azul} titulo="Copias de seguridad" texto="Guarda de vez en cuando una copia de todo lo de esta cuenta, por ejemplo en iCloud Drive." />
-      <Grupo pie={<>Un archivo JSON con todo: meses, ingresos, gastos, ahorros, Te deben, viajes y ajustes. {ultima ? `La última que descargaste en este dispositivo fue ${haceCuanto(ultima)}.` : 'Todavía no has descargado ninguna en este dispositivo.'}</>}>
+      <Grupo pie={<>Un archivo JSON con todo: meses, ingresos, gastos, ahorros, Te deben, viajes, huchas y ajustes. {ultima ? `La última que descargaste en este dispositivo fue ${haceCuanto(ultima)}.` : 'Todavía no has descargado ninguna en este dispositivo.'}</>}>
         <Fila titulo="Descargar copia completa" accion="azul" onClick={() => {
           descargar(`presupuesto-copia-${new Date().toISOString().slice(0, 10)}.json`, exportarJSON(datos), 'application/json')
           guardarFechaCopia()
