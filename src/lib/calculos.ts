@@ -54,12 +54,20 @@ export interface MesCalculado {
   ctaRemMes: Cents
   /** Neto que entra en la cuenta de gastos desde las otras cuentas (negativo si sale). */
   traspasoGastos: Cents
-  /** Intereses netos de la cuenta remunerada este mes (los reales si se escribieron; si no, estimados con la TAE). */
+  /**
+   * Intereses netos que se suman este mes a la cuenta remunerada: los que paga el banco este mes
+   * (los reales si se escribieron; si no, estimados con la TAE). Con el pago el día 1 del mes
+   * siguiente, son los generados el mes anterior.
+   */
   interesesCtaRem: Cents
+  /** Intereses que se generan durante este mes y se cobran el día 1 del mes siguiente (0 si el banco paga en el mismo mes). */
+  interesesGenerados: Cents
   /** ¿interesesCtaRem es lo que pagó el banco (true) o una estimación (false)? */
   interesesReales: boolean
-  /** TAE que se ha usado para estimar los intereses de este mes (en %). */
+  /** TAE con la que se han estimado los intereses que se cobran este mes (en %). */
   tae: number
+  /** TAE que vale durante este mes (en %). */
+  taeMes: number
   // 4.1
   anterior: Cents
   saldoCalculado: Cents
@@ -99,6 +107,8 @@ export interface Kpis {
   totalCuentaRem: Cents
   /** Intereses de la cuenta remunerada sumados desde el primer mes. */
   interesesTotales: Cents
+  /** Intereses generados en el último mes que se cobrarán el día 1 del mes siguiente (0 si no hay). */
+  interesesPendientes: Cents
 }
 
 export interface Calculo {
@@ -120,6 +130,8 @@ export function calcular(d: Datos): Calculo {
   let anterior = cfg.ajuste_cuenta_gastos_inicial
   let acumCtaRem = 0 // Σ (lo que entra − lo que sale de la cuenta remunerada)
   let invEstimada = cfg.inversiones_iniciales // última valoración real (o inicial) + aportaciones posteriores
+  let pendiente = 0 // intereses generados el mes anterior que se cobran este mes (pago el día 1)
+  let taePendiente = 0
 
   for (const mes of meses) {
     const ing = ingresosPorMes.get(mes.id) ?? []
@@ -151,11 +163,20 @@ export function calcular(d: Datos): Calculo {
     else invEstimada += invMes
     const inversionesAcum = invEstimada
 
-    // Intereses: sobre el saldo de la cuenta remunerada al empezar el mes
+    // Intereses de la cuenta remunerada
     const saldoRemInicio = cfg.cuenta_remunerada_inicial + acumCtaRem
-    const tae = taeDelMes(cfg, mes.fecha)
+    const taeMes = taeDelMes(cfg, mes.fecha)
+    const retencion = cfg.retencion_intereses ?? 19
+    const alMesSiguiente = (cfg.pago_intereses ?? 'mes-siguiente') === 'mes-siguiente'
     const interesesReales = (mes.intereses_cuenta_rem ?? null) !== null
-    const interesesCtaRem = interesesReales ? mes.intereses_cuenta_rem! : interesesEstimados(saldoRemInicio, tae, cfg.retencion_intereses ?? 19)
+    // Lo que se cobra este mes: lo generado el mes anterior (pago el día 1) o lo de este mes (pago a fin de mes)
+    const estimado = alMesSiguiente ? pendiente : interesesEstimados(saldoRemInicio, taeMes, retencion)
+    const tae = alMesSiguiente ? taePendiente : taeMes
+    const interesesCtaRem = interesesReales ? mes.intereses_cuenta_rem! : estimado
+    // Lo que se genera este mes (sobre el saldo al empezar el mes, ya con lo cobrado el día 1) y se cobra el mes siguiente
+    const interesesGenerados = alMesSiguiente ? interesesEstimados(saldoRemInicio + interesesCtaRem, taeMes, retencion) : 0
+    pendiente = interesesGenerados
+    taePendiente = taeMes
 
     acumCtaRem += netoCtaRem + interesesCtaRem
     const cuentaRemAcum = cfg.cuenta_remunerada_inicial + acumCtaRem
@@ -169,7 +190,7 @@ export function calcular(d: Datos): Calculo {
       mes,
       nombre: nombreMes(mes.fecha),
       sumIngresos, sumGastos, ahorroTotal, invDesdeCtaRem, invMes, ctaRemMes, traspasoGastos,
-      interesesCtaRem, interesesReales, tae,
+      interesesCtaRem, interesesGenerados, interesesReales, tae, taeMes,
       anterior, saldoCalculado, ajuste, ingresosTotales, gastosTotales, saldoDisponible,
       pctGastado, pctDisponible: 1 - pctGastado,
       neto: ingresosTotales - gastosTotales,
@@ -210,6 +231,7 @@ export function calcular(d: Datos): Calculo {
     cuentaRemInicial: cfg.cuenta_remunerada_inicial,
     totalCuentaRem: ultimo ? ultimo.cuentaRemAcum : cfg.cuenta_remunerada_inicial,
     interesesTotales: suma(resultado.map((m) => m.interesesCtaRem)),
+    interesesPendientes: ultimo ? ultimo.interesesGenerados : 0,
   }
 
   return { meses: resultado, porId, historial, kpis }

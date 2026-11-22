@@ -22,6 +22,11 @@ export interface Config {
   tae_cuenta_rem: TramoTae[]
   /** % de los intereses que retiene Hacienda (19 en España). La app suma los intereses netos. */
   retencion_intereses: number
+  /**
+   * Cuándo paga el banco los intereses de un mes: el día 1 del mes siguiente (se suman en la hoja
+   * del mes siguiente) o el último día del mismo mes (se suman en ese mes).
+   */
+  pago_intereses: PagoIntereses
   /** Rentabilidad anual que esperas de las inversiones (%), para la proyección. */
   rentabilidad_inversiones: number
   /** Inflación anual (%), para ver la proyección en euros de hoy. */
@@ -33,6 +38,8 @@ export interface Config {
   /** Gastos (clave normalizada) que marcaste como «no es una suscripción». */
   no_suscripciones: string[]
 }
+
+export type PagoIntereses = 'mes-siguiente' | 'mismo-mes'
 
 export interface TramoTae {
   desde: string // primer día del mes: "2026-10-01"
@@ -228,6 +235,7 @@ export const CONFIG_INICIAL: Config = {
   clasificacion: {},
   tae_cuenta_rem: [],
   retencion_intereses: 19,
+  pago_intereses: 'mes-siguiente',
   rentabilidad_inversiones: 5,
   inflacion: 2,
   pct_retirada: 4,
@@ -248,6 +256,7 @@ export function normalizarDatos(d: Datos): Datos {
       clasificacion: d.config?.clasificacion ?? {},
       tae_cuenta_rem: d.config?.tae_cuenta_rem ?? [],
       retencion_intereses: d.config?.retencion_intereses ?? 19,
+      pago_intereses: d.config?.pago_intereses ?? 'mes-siguiente',
       rentabilidad_inversiones: d.config?.rentabilidad_inversiones ?? 5,
       inflacion: d.config?.inflacion ?? 2,
       pct_retirada: d.config?.pct_retirada ?? 4,

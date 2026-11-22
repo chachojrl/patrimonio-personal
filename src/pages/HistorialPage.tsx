@@ -8,7 +8,7 @@ import { MESES_CORTOS, formatFecha, partes } from '../lib/fechas'
 import { formatTae } from '../lib/money'
 
 const TOOLTIP_INTERESES =
-  'Intereses netos de la cuenta remunerada ese mes: estimados con la TAE de Ajustes, o los que pagó el banco si los escribiste en el mes.'
+  'Intereses netos que se sumaron ese mes a la cuenta remunerada (si el banco paga el día 1, son los del mes anterior): estimados con la TAE de Ajustes, o los que pagó el banco si los escribiste en el mes.'
 const TOOLTIP_VALOR =
   'Escribe el valor total de la cartera ese mes, no la ganancia. En blanco se conserva la última valoración más aportaciones posteriores.'
 

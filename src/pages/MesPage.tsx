@@ -10,8 +10,8 @@ import { Reparto503020Card } from '../components/Reparto503020Card'
 import { GastosRaros } from '../components/GastosRaros'
 import { CierreMes } from '../components/CierreMes'
 import { RepartoCompartidaCard } from '../components/RepartoCompartidaCard'
-import { MESES_CORTOS, formatFechaHora, nombreMes, hoyISO, partes } from '../lib/fechas'
-import { cuentaDestino, cuentaOrigen } from '../lib/calculos'
+import { MESES, MESES_CORTOS, formatFechaHora, indiceMes, nombreMes, hoyISO, partes } from '../lib/fechas'
+import { cuentaDestino, cuentaOrigen, type MesCalculado } from '../lib/calculos'
 import { anadirGasto, borrarCreaHueco, deshacerApunte, estadoPresupuesto, mesesOrdenados, reordenar, separarImporteNota, uid } from '../lib/operaciones'
 import { Asa, useOrdenable } from '../components/Ordenable'
 import type { Ahorro, Gasto, Ingreso, Mes, OrigenAhorro, TipoAhorro } from '../lib/tipos'
@@ -39,6 +39,7 @@ function VistaMes({ mes, c }: { mes: Mes; c: NonNullable<ReturnType<ReturnType<t
   const { datos, actualizar } = useStore()
   const cerrado = mes.estado === 'Cerrado'
   const eur = useEur()
+  const alMesSiguiente = (datos.config.pago_intereses ?? 'mes-siguiente') === 'mes-siguiente'
   const compartida = useCuentas().activa?.tipo === 'compartida'
   const ordenados = mesesOrdenados(datos)
   const idx = ordenados.findIndex((m) => m.id === mes.id)
@@ -135,10 +136,10 @@ function VistaMes({ mes, c }: { mes: Mes; c: NonNullable<ReturnType<ReturnType<t
                 <Fila titulo="Inversiones acumuladas" sub={mes.valor_real_inversiones === null ? 'Estimado' : 'Valor real'} derecha={<Dinero c={c.inversionesAcum} dash={false} className="text-[17px]" />} />
                 <Fila
                   titulo="Cuenta remunerada"
-                  sub={c.interesesReales ? 'Intereses del banco' : c.tae > 0 ? `Intereses al ${formatTae(c.tae)} TAE` : 'Sin TAE (en Ajustes)'}
+                  sub={textoInteresesMes(c, alMesSiguiente, eur)}
                   derecha={<Dinero c={c.cuentaRemAcum} dash={false} className="text-[17px]" />}
                 />
-                <FilaCampo etiqueta="Intereses del mes">
+                <FilaCampo etiqueta="Intereses cobrados">
                   <CeldaImporte
                     ariaLabel="Intereses cuenta remunerada"
                     valor={mes.intereses_cuenta_rem}
@@ -731,3 +732,13 @@ function EstadoMes({ mes }: { mes: Mes }) {
   )
 }
 
+
+/** Debajo de «Cuenta remunerada» en el mes: qué intereses se suman este mes y cuándo llegan los siguientes. */
+function textoInteresesMes(c: MesCalculado, alMesSiguiente: boolean, eur: (x: number, o?: { dash?: boolean }) => string): string {
+  const mesCorto = (indice: number) => MESES[((indice % 12) + 12) % 12].toLowerCase()
+  const i = indiceMes(c.mes.fecha)
+  if (c.interesesReales) return alMesSiguiente ? `Cobrado: lo de ${mesCorto(i - 1)}` : 'Lo que pagó el banco'
+  if (c.interesesCtaRem > 0) return alMesSiguiente ? `Lo de ${mesCorto(i - 1)} al ${formatTae(c.tae)} TAE` : `Intereses al ${formatTae(c.tae)} TAE`
+  if (alMesSiguiente && c.interesesGenerados > 0) return `${eur(c.interesesGenerados, { dash: false })} el 1 de ${mesCorto(i + 1)}`
+  return c.taeMes > 0 ? `Intereses al ${formatTae(c.taeMes)} TAE` : 'Sin TAE (en Ajustes)'
+}

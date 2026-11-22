@@ -126,24 +126,33 @@ test('¿Me lo puedo permitir? a plazos a medida, con entrada y TAE', async ({ ap
   await expect(app.getByText('Escribe entre 2 y 480 meses.')).toBeVisible()
 })
 
-test('TAE de la cuenta remunerada: intereses en Inicio, en el mes y al cerrarlo', async ({ app }) => {
+test('TAE de la cuenta remunerada: se cobra el día 1 del mes siguiente, en el mes y al cerrarlo', async ({ app }) => {
   await app.goto('/#/ajustes/intereses')
   await app.getByRole('button', { name: 'Poner la TAE' }).click()
+  // Por defecto el banco paga el día 1 del mes siguiente
+  await expect(app.getByRole('button', { name: /El día 1 del mes siguiente/ })).toHaveAttribute('aria-pressed', 'true')
+  await app.getByLabel('Desde el mes').selectOption('2026-09-01')
   const tae = app.getByLabel(/^TAE desde/)
   await tae.fill('2,5')
   await tae.press('Enter')
   await expect(app.getByText('generas unos')).toBeVisible()
-  await expect.poll(async () => (await guardado(app)).config.tae_cuenta_rem).toEqual([{ desde: '2025-12-01', tae: 2.5 }])
+  await expect(app.getByText('1 de diciembre de 2026 · lo de noviembre')).toBeVisible()
+  await expect.poll(async () => (await guardado(app)).config.tae_cuenta_rem).toEqual([{ desde: '2026-09-01', tae: 2.5 }])
 
+  // Inicio: noviembre cobra lo de octubre
   await app.goto('/#/')
-  await expect(app.getByText(/de intereses este mes \(2,5 % TAE\)/)).toBeVisible()
+  await expect(app.getByText(/de intereses cobrados este mes \(2,5 % TAE\)/)).toBeVisible()
 
-  // La página no se sale de la pantalla (ni en el móvil ni en escritorio) con las filas nuevas
+  // Octubre cobra lo generado en septiembre
   await app.goto('/#/mes/2026-10')
-  expect(await app.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(app.viewportSize()!.width)
-  await expect(app.getByText('Intereses al 2,5 % TAE')).toBeVisible()
+  if (esMovil(app)) expect(await app.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(app.viewportSize()!.width)
+  await expect(app.getByText('Lo de septiembre al 2,5 % TAE')).toBeVisible()
+  // Septiembre aún no cobra nada: genera lo que llega el 1 de octubre
+  await app.goto('/#/mes/2026-09')
+  await expect(app.getByText(/^[\d.,]+ € el 1 de octubre$/)).toBeVisible()
 
-  // Al cerrar el mes se pueden escribir los intereses que pagó el banco
+  // Al cerrar octubre se pueden escribir los intereses que pagó el banco
+  await app.goto('/#/mes/2026-10')
   await app.getByRole('button', { name: 'Cerrar mes…' }).click()
   const dialogo = app.getByRole('dialog')
   await dialogo.getByLabel('Intereses cuenta remunerada').fill('12,34')
@@ -151,7 +160,14 @@ test('TAE de la cuenta remunerada: intereses en Inicio, en el mes y al cerrarlo'
   await dialogo.getByRole('button', { name: 'Cerrar el mes' }).click()
   await expect(app.getByText('Mes cerrado: todo está en solo lectura.')).toBeVisible()
   await expect.poll(async () => (await guardado(app)).months.find((m) => m.fecha === '2026-10-01')!.intereses_cuenta_rem).toBe(1234)
-  await expect(app.getByText('Intereses del banco')).toBeVisible()
+  await expect(app.getByText('Cobrado: lo de septiembre')).toBeVisible()
+
+  // Si el banco paga a final de mes, octubre suma sus propios intereses
+  await app.goto('/#/ajustes/intereses')
+  await app.getByRole('button', { name: /El último día del mismo mes/ }).click()
+  await expect.poll(async () => (await guardado(app)).config.pago_intereses).toBe('mismo-mes')
+  await app.goto('/#/mes/2026-09')
+  await expect(app.getByText('Intereses al 2,5 % TAE')).toBeVisible()
 })
 
 test('Huchas: crear con dinero que ya tienes, llenarla y la aportación mensual al cerrar el mes', async ({ app }) => {

@@ -39,7 +39,7 @@ function aBD(tabla: Tabla | 'config', obj: Record<string, unknown>): Record<stri
 type Fila = Record<string, unknown>
 
 /** Ajustes que añadieron migraciones posteriores a la 0009 (pueden faltar en la BD). */
-const CONFIG_NUEVOS = ['clasificacion', 'tae_cuenta_rem', 'retencion_intereses', 'rentabilidad_inversiones', 'inflacion', 'pct_retirada', 'fire_excluidos', 'no_suscripciones']
+const CONFIG_NUEVOS = ['clasificacion', 'tae_cuenta_rem', 'retencion_intereses', 'pago_intereses', 'rentabilidad_inversiones', 'inflacion', 'pct_retirada', 'fire_excluidos', 'no_suscripciones']
 function sinCamposNuevos<T extends object>(patch: T, campos: string[]): Partial<T> {
   return Object.fromEntries(Object.entries(patch).filter(([k]) => !campos.includes(k))) as Partial<T>
 }
@@ -134,6 +134,7 @@ export function mapConfig(cfg: Fila): Config {
       ? (cfg.tae_cuenta_rem as { desde: string; tae: number | string }[]).map((t) => ({ desde: String(t.desde), tae: Number(t.tae) }))
       : [],
     retencion_intereses: cfg.retencion_intereses == null ? 19 : Number(cfg.retencion_intereses),
+    pago_intereses: cfg.pago_intereses === 'mismo-mes' ? 'mismo-mes' : 'mes-siguiente',
     rentabilidad_inversiones: cfg.rentabilidad_inversiones == null ? 5 : Number(cfg.rentabilidad_inversiones),
     inflacion: cfg.inflacion == null ? 2 : Number(cfg.inflacion),
     pct_retirada: cfg.pct_retirada == null ? 4 : Number(cfg.pct_retirada),
