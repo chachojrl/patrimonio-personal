@@ -1,7 +1,7 @@
 import { test, expect, guardado, esMovil } from './datos'
 
 test('todas las pantallas se abren sin errores', async ({ app }) => {
-  for (const ruta of ['/', '/mes/2026-11', '/historial', '/resumen/2026', '/ajustes', '/ajustes/apariencia', '/ajustes/guia', '/ajustes/informe', '/buscar', '/te-deben', '/compra', '/viajes', '/actividad', '/permitir', '/huchas']) {
+  for (const ruta of ['/', '/mes/2026-11', '/historial', '/resumen/2026', '/ajustes', '/ajustes/apariencia', '/ajustes/guia', '/ajustes/informe', '/buscar', '/te-deben', '/compra', '/viajes', '/actividad', '/permitir', '/huchas', '/futuro']) {
     await app.goto(`/#${ruta}`)
     // Que la pantalla tenga contenido (y, gracias al fixture, que no haya errores de JavaScript)
     await expect(app.locator('main h1, main h2, main input[aria-label="Título del mes"]').filter({ visible: true }).first()).toBeVisible()
@@ -202,5 +202,29 @@ test('Huchas: crear con dinero que ya tienes, llenarla y la aportación mensual 
   // Inicio la muestra
   await app.goto('/#/')
   await expect(app.getByRole('heading', { name: /Huchas ·/ })).toBeVisible()
+  if (esMovil(app)) expect(await app.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(app.viewportSize()!.width)
+})
+
+test('Futuro: proyección, ahorro extra y libertad financiera', async ({ app }) => {
+  await app.goto('/#/futuro')
+  await expect(app.getByText(/En 10 años \(.+\) tendrías unos/)).toBeVisible()
+  const antes = await app.locator('strong', { hasText: '€' }).first().textContent()
+  await app.getByRole('tab', { name: '30 años' }).click()
+  await expect(app.getByText(/En 30 años/)).toBeVisible()
+  // Ahorrar más da más patrimonio
+  await app.getByRole('tab', { name: '10 años' }).click()
+  await app.getByLabel('Ahorro extra al mes').fill('500')
+  await expect(app.getByText('+500,00 €')).toBeVisible()
+  const despues = await app.locator('strong', { hasText: '€' }).first().textContent()
+  const num = (t: string | null) => Number((t ?? '').replace(/[^\d,]/g, '').replace(',', '.'))
+  expect(num(despues)).toBeGreaterThan(num(antes))
+  // Libertad financiera: quitar un gasto baja el número
+  await expect(app.getByRole('heading', { name: 'Libertad financiera' })).toBeVisible()
+  const numero = async () => num(await app.getByText('Tu número').locator('xpath=following-sibling::div[1]').textContent())
+  const n1 = await numero()
+  await app.getByText('Quitar gastos que entonces no tendrías').click()
+  await app.locator('details li input[type=checkbox]').first().uncheck()
+  await expect.poll(numero).toBeLessThan(n1)
+  await expect.poll(async () => (await guardado(app)).config.fire_excluidos.length).toBe(1)
   if (esMovil(app)) expect(await app.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(app.viewportSize()!.width)
 })

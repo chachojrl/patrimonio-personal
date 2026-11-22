@@ -18,6 +18,7 @@ import { MesPage } from './pages/MesPage'
 // gráficas, se descarga la primera vez que se visitan: así la app arranca antes en el móvil.
 const HuchasPage = lazy(() => import('./pages/HuchasPage').then((m) => ({ default: m.HuchasPage })))
 const HuchaPage = lazy(() => import('./pages/HuchasPage').then((m) => ({ default: m.HuchaPage })))
+const FuturoPage = lazy(() => import('./pages/FuturoPage').then((m) => ({ default: m.FuturoPage })))
 const HistorialPage = lazy(() => import('./pages/HistorialPage').then((m) => ({ default: m.HistorialPage })))
 const ResumenPage = lazy(() => import('./pages/ResumenPage').then((m) => ({ default: m.ResumenPage })))
 const AjustesPage = lazy(() => import('./pages/AjustesPage').then((m) => ({ default: m.AjustesPage })))
@@ -57,6 +58,7 @@ function Rutas() {
           <Route path="viajes" element={<ViajesPage />} />
           <Route path="viajes/:id" element={<ViajePage />} />
           <Route path="huchas" element={<HuchasPage />} />
+          <Route path="futuro" element={<FuturoPage />} />
           <Route path="huchas/:id" element={<HuchaPage />} />
           <Route path="apuntar" element={<ApuntarPage />} />
           <Route path="permitir" element={<PermitirPage />} />

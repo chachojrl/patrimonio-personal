@@ -22,6 +22,14 @@ export interface Config {
   tae_cuenta_rem: TramoTae[]
   /** % de los intereses que retiene Hacienda (19 en España). La app suma los intereses netos. */
   retencion_intereses: number
+  /** Rentabilidad anual que esperas de las inversiones (%), para la proyección. */
+  rentabilidad_inversiones: number
+  /** Inflación anual (%), para ver la proyección en euros de hoy. */
+  inflacion: number
+  /** % del patrimonio que sacarías cada año al vivir de él (regla del 4 %). */
+  pct_retirada: number
+  /** Conceptos de gasto (normalizados) que no tendrías al vivir de tus ahorros. */
+  fire_excluidos: string[]
 }
 
 export interface TramoTae {
@@ -218,6 +226,10 @@ export const CONFIG_INICIAL: Config = {
   clasificacion: {},
   tae_cuenta_rem: [],
   retencion_intereses: 19,
+  rentabilidad_inversiones: 5,
+  inflacion: 2,
+  pct_retirada: 4,
+  fire_excluidos: [],
 }
 
 export function datosVacios(): Datos {
@@ -233,6 +245,10 @@ export function normalizarDatos(d: Datos): Datos {
       clasificacion: d.config?.clasificacion ?? {},
       tae_cuenta_rem: d.config?.tae_cuenta_rem ?? [],
       retencion_intereses: d.config?.retencion_intereses ?? 19,
+      rentabilidad_inversiones: d.config?.rentabilidad_inversiones ?? 5,
+      inflacion: d.config?.inflacion ?? 2,
+      pct_retirada: d.config?.pct_retirada ?? 4,
+      fire_excluidos: d.config?.fire_excluidos ?? [],
     },
     months: d.months.map((m) => ({ ...m, intereses_cuenta_rem: m.intereses_cuenta_rem ?? null })),
     expenses: d.expenses.map((g) => ({ ...g, fijo: g.fijo ?? false, presupuesto: g.presupuesto ?? null })),

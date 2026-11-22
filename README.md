@@ -98,7 +98,7 @@ Debe responder `OK` en todas las tablas: sin sesión no se lee nada y el registr
 ### Moverse por la app
 
 - **Móvil:** barra inferior con **Inicio**, **Mes**, el botón **+** (apuntar un gasto), **Resumen** y
-  **Más** (Historial, Huchas, Lista de la compra, Buscar, Viajes, Te deben, «¿Me lo puedo permitir?»,
+  **Más** (Historial, Huchas, Futuro, Lista de la compra, Buscar, Viajes, Te deben, «¿Me lo puedo permitir?»,
   Actividad y Ajustes). Arriba, la lupa abre Buscar y el ojo, el modo discreto.
 - **Ordenador y tablet:** barra lateral con todas las secciones y el botón **Apuntar gasto**.
 - **Inicio:** patrimonio con su evolución, el mes en curso, dónde está tu dinero (disponible, cuenta
@@ -168,6 +168,15 @@ Debe responder `OK` en todas las tablas: sin sesión no se lee nada y el registr
   y salió, el mejor mes, dónde más se fue el dinero, los apuntes y los viajes. Toca a la derecha para
   avanzar, a la izquierda para volver y mantén pulsado para pararlo; al final se puede compartir como
   texto. Se abre desde *Resumen* y, en diciembre y enero, desde Inicio.
+- **Futuro** (en *Más*): proyección del patrimonio a 5, 10, 20 y 30 años en tres escenarios (pesimista,
+  normal y optimista: 2 puntos menos y más de rentabilidad), partiendo de lo que tienes y de tu ahorro medio
+  de los últimos 12 meses. Las inversiones crecen con la rentabilidad que elijas (5 % por defecto), la
+  cuenta remunerada con tu TAE y el resto se queda en la cuenta de gastos. Controles para probar «ahorro X €
+  más al mes» y otra rentabilidad, opción «en euros de hoy» (descuenta la inflación, 2 % por defecto) e hitos
+  (una cifra redonda, cada hucha, la libertad financiera).
+- **Libertad financiera** (en *Futuro*): tu número = lo que gastas al año ÷ lo que sacarías cada año (4 % por
+  defecto), el porcentaje que llevas y cuándo llegarías. Se pueden quitar los gastos que entonces no tendrías
+  (por ejemplo, la hipoteca pagada). Necesita la migración `0015_futuro.sql` para guardar estos ajustes.
 - **Colchón de emergencia** (Inicio e Historial): cuántos meses podrías vivir sin ingresos con tu saldo
   y tu cuenta remunerada, según lo que gastas de media (las inversiones no cuentan).
 - **¿Me lo puedo permitir?** (en *Más*): escribe lo que cuesta algo y si lo pagarías de una vez o a
@@ -249,6 +258,7 @@ vez** en *Supabase → SQL Editor*, en orden. Se pueden repetir sin problema.
 | `0012_historial_tres_meses.sql` | El historial de cambios (Actividad) se guarda 3 meses en vez de un año, para ocupar menos |
 | `0013_intereses_cuenta_remunerada.sql` | TAE de la cuenta remunerada y los intereses de cada mes (estimados o los reales del banco) |
 | `0014_huchas.sql` | Huchas (objetivos de ahorro) y lo que se mete o se saca de cada una |
+| `0015_futuro.sql` | Ajustes de la proyección y la libertad financiera (rentabilidad, inflación, % de retirada y gastos que no tendrías) |
 
 ## Cuenta compartida (opcional)
 

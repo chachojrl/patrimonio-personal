@@ -459,6 +459,29 @@ const FICHAS: { grupo: string; fichas: Ficha[] }[] = [
         ],
       },
       {
+        titulo: 'Futuro',
+        icono: 'cohete',
+        color: COLOR.indigo,
+        pasos: [
+          'Una gráfica con lo que podrías tener en 5, 10, 20 o 30 años si sigues ahorrando como hasta ahora, en tres escenarios (pesimista, normal y optimista).',
+          'Parte de lo que tienes hoy y de tu ahorro medio de los últimos meses. Las inversiones crecen con la rentabilidad que elijas y la cuenta remunerada, con tu TAE.',
+          'Mueve «Ahorro extra al mes» para ver qué cambiaría ahorrando un poco más. «En euros de hoy» descuenta la inflación para que las cifras no engañen.',
+          'Hitos: cuándo llegarías a una cifra redonda, a llenar cada hucha y a la libertad financiera.',
+        ],
+        ir: { texto: 'Ir a Futuro', to: '/futuro' },
+      },
+      {
+        titulo: 'Libertad financiera',
+        icono: 'bandera',
+        color: COLOR.verde,
+        pasos: [
+          'Tu número es lo que necesitarías para vivir de tus ahorros: lo que gastas al año dividido entre lo que sacarías cada año (el 4 % por defecto).',
+          'Ves qué porcentaje llevas y cuándo llegarías según la proyección.',
+          'En «Quitar gastos que entonces no tendrías» desmarca, por ejemplo, la hipoteca si ya estará pagada: el número baja.',
+        ],
+        ir: { texto: 'Ver mi número', to: '/futuro' },
+      },
+      {
         titulo: 'Colchón y «¿Me lo puedo permitir?»',
         icono: 'balanza',
         color: COLOR.marron,
