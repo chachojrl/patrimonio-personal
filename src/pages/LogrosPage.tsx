@@ -1,6 +1,7 @@
 // Rachas y logros: se calculan con tus meses; no se guarda nada.
 import { useStore } from '../data/store'
 import { Card, cx } from '../components/ui'
+import { Icono } from '../components/ios'
 import { logros, rachas, type Logro } from '../lib/logros'
 import { formatFecha, mesLargo } from '../lib/fechas'
 
@@ -28,7 +29,7 @@ export function LogrosPage() {
           {rs.map((r) => (
             <div key={r.id} className="rounded-xl bg-white p-3.5 dark:bg-[#1c1c1e] sm:p-4" title={r.explicacion}>
               <div className="flex min-h-[2.25rem] items-start gap-1.5 text-[13px] leading-tight text-slate-500 dark:text-slate-400">
-                <span aria-hidden className={cx(r.actual === 0 && 'grayscale')}>{r.icono}</span>
+                <Icono nombre={r.icono} className={cx('h-4 w-4 shrink-0', r.actual > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400')} />
                 <span>{r.titulo}</span>
               </div>
               <div className="mt-0.5 text-[26px] font-bold tracking-tight">
@@ -66,8 +67,14 @@ function FilaLogro({ l }: { l: Logro }) {
   const si = !!l.conseguido
   return (
     <li className={cx('flex items-center gap-3 rounded-lg p-2.5', si ? 'bg-amber-50 dark:bg-amber-400/10' : 'bg-slate-50 dark:bg-white/5')}>
-      <span className={cx('flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-2xl', si ? 'bg-white shadow-sm dark:bg-white/10' : 'bg-slate-200 opacity-60 grayscale dark:bg-white/10')} aria-hidden>
-        {l.icono}
+      <span
+        className={cx(
+          'flex h-11 w-11 shrink-0 items-center justify-center rounded-full',
+          si ? 'bg-amber-500 text-white shadow-sm dark:bg-amber-500' : 'bg-slate-200 text-slate-400 dark:bg-white/10 dark:text-slate-500',
+        )}
+        aria-hidden
+      >
+        <Icono nombre={l.icono} className="h-5 w-5" grosor={1.9} />
       </span>
       <div className="min-w-0 flex-1">
         <div className="text-sm font-semibold text-slate-900 dark:text-white">{l.titulo}</div>

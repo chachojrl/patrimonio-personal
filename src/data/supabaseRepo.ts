@@ -180,7 +180,7 @@ export const MAPEOS: { [T in Tabla]: (x: Fila) => Datos[T][number] } = {
     categoria: (x.categoria as GastoViaje['categoria']) ?? 'otros', importe: toCents(x.importe as string), moneda: (x.moneda as string) ?? 'EUR', cambio: Number(x.cambio ?? 1),
   }),
   huchas: (x): Hucha => ({
-    id: x.id as string, nombre: (x.nombre as string) ?? '', emoji: (x.emoji as string) ?? '🐷', objetivo: toCents(x.objetivo as string),
+    id: x.id as string, nombre: (x.nombre as string) ?? '', emoji: (x.emoji as string) ?? 'hucha', objetivo: toCents(x.objetivo as string),
     fecha_objetivo: (x.fecha_objetivo as string) ?? null, aportacion_mensual: toCentsOrNull(x.aportacion_mensual as string),
     cuenta: (x.cuenta as Hucha['cuenta']) ?? null, orden: Number(x.orden ?? 0), conseguida_en: (x.conseguida_en as string) ?? null,
   }),

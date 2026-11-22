@@ -5,7 +5,7 @@ import { dineroLibre, estadoHucha, problemaAlMeter, propuestasCierre } from './h
 import type { Datos, Hucha, MovimientoHucha } from './tipos'
 
 const hucha = (h: Partial<Hucha> = {}): Hucha => ({
-  id: 'h1', nombre: 'Japón', emoji: '🗾', objetivo: 300000, fecha_objetivo: null, aportacion_mensual: null, cuenta: null, orden: 0, conseguida_en: null, ...h,
+  id: 'h1', nombre: 'Japón', emoji: 'avion', objetivo: 300000, fecha_objetivo: null, aportacion_mensual: null, cuenta: null, orden: 0, conseguida_en: null, ...h,
 })
 const mov = (importe: number, m: Partial<MovimientoHucha> = {}): MovimientoHucha => ({
   id: `m${Math.random()}`, hucha_id: 'h1', fecha: '2026-11-10', importe, nota: null, mes: null, ...m,

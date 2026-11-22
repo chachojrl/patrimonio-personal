@@ -4,6 +4,7 @@ import type { Calculo, MesCalculado } from './calculos'
 import type { Datos } from './tipos'
 import { estadoPresupuesto } from './operaciones'
 import { saldoHucha } from './huchas'
+import type { NombreIcono } from '../components/ios'
 
 // ---------------- Rachas ----------------
 
@@ -12,7 +13,7 @@ export interface Racha {
   titulo: string
   /** Para qué cuenta un mes. */
   explicacion: string
-  icono: string
+  icono: NombreIcono
   /** Meses seguidos hasta ahora (0 si la racha se ha roto). */
   actual: number
   /** La mejor que has tenido. */
@@ -57,10 +58,10 @@ export function racha(calc: Calculo, d: Pick<Datos, 'expenses'>, criterio: Crite
 
 export function rachas(calc: Calculo, d: Pick<Datos, 'expenses'>): Racha[] {
   const def: Omit<Racha, 'actual' | 'mejor'>[] = [
-    { id: 'ahorro', titulo: 'Ahorrando', explicacion: 'Meses seguidos pasando dinero de la cuenta de gastos al ahorro.', icono: '🔥' },
-    { id: 'neto', titulo: 'Gastando menos de lo que entra', explicacion: 'Meses seguidos con más ingresos que gastos.', icono: '📈' },
-    { id: 'presupuesto', titulo: 'Sin pasarte del presupuesto', explicacion: 'Meses seguidos con presupuestos y sin pasarte de ninguno.', icono: '🎯' },
-    { id: 'cerrados', titulo: 'Meses cerrados', explicacion: 'Meses seguidos repasados y cerrados.', icono: '✅' },
+    { id: 'ahorro', titulo: 'Ahorrando', explicacion: 'Meses seguidos pasando dinero de la cuenta de gastos al ahorro.', icono: 'fuego' },
+    { id: 'neto', titulo: 'Gastando menos de lo que entra', explicacion: 'Meses seguidos con más ingresos que gastos.', icono: 'tendencia' },
+    { id: 'presupuesto', titulo: 'Sin pasarte del presupuesto', explicacion: 'Meses seguidos con presupuestos y sin pasarte de ninguno.', icono: 'diana' },
+    { id: 'cerrados', titulo: 'Meses cerrados', explicacion: 'Meses seguidos repasados y cerrados.', icono: 'checkCirculo' },
   ]
   return def.map((x) => ({ ...x, ...racha(calc, d, CRITERIOS[x.id]) }))
 }
@@ -71,7 +72,7 @@ export interface Logro {
   id: string
   titulo: string
   descripcion: string
-  icono: string
+  icono: NombreIcono
   /** Fecha en que lo conseguiste (primer día del mes o un día), o null si aún no. */
   conseguido: string | null
   /** De 0 a 1 hacia el logro. */
@@ -87,29 +88,29 @@ export function logros(calc: Calculo, d: Pick<Datos, 'expenses' | 'huchas' | 'hu
   const lista: Logro[] = []
   const meses = calc.meses
   const add = (l: Logro) => lista.push(l)
-  const deRacha = (id: string, titulo: string, descripcion: string, icono: string, n: number, r: ReturnType<typeof racha>) =>
+  const deRacha = (id: string, titulo: string, descripcion: string, icono: NombreIcono, n: number, r: ReturnType<typeof racha>) =>
     add({ id, titulo, descripcion, icono, conseguido: r.alcanzado.get(n) ?? null, progreso: Math.min(1, Math.max(r.actual, 0) / n), textoProgreso: `${Math.min(r.actual, n)} de ${n} meses seguidos` })
 
   // Empezar
   const primerCerrado = meses.find((m) => !abierto(m))
-  add({ id: 'primer-mes', titulo: 'Primer mes cerrado', descripcion: 'Repasa y cierra tu primer mes.', icono: '🌱', conseguido: primerCerrado?.mes.fecha ?? null, progreso: primerCerrado ? 1 : 0, textoProgreso: 'Cierra un mes' })
+  add({ id: 'primer-mes', titulo: 'Primer mes cerrado', descripcion: 'Repasa y cierra tu primer mes.', icono: 'brillo', conseguido: primerCerrado?.mes.fecha ?? null, progreso: primerCerrado ? 1 : 0, textoProgreso: 'Cierra un mes' })
   const doce = meses[11]
-  add({ id: 'un-anio', titulo: 'Un año de cuentas', descripcion: '12 meses apuntados.', icono: '📅', conseguido: doce?.mes.fecha ?? null, progreso: Math.min(1, meses.length / 12), textoProgreso: `${Math.min(meses.length, 12)} de 12 meses` })
+  add({ id: 'un-anio', titulo: 'Un año de cuentas', descripcion: '12 meses apuntados.', icono: 'calendario', conseguido: doce?.mes.fecha ?? null, progreso: Math.min(1, meses.length / 12), textoProgreso: `${Math.min(meses.length, 12)} de 12 meses` })
 
   // Rachas de ahorro
   const rAhorro = racha(calc, d, CRITERIOS.ahorro)
-  deRacha('ahorro-3', '3 meses ahorrando', 'Ahorra 3 meses seguidos.', '🔥', 3, rAhorro)
-  deRacha('ahorro-6', '6 meses ahorrando', 'Ahorra 6 meses seguidos.', '🔥', 6, rAhorro)
-  deRacha('ahorro-12', 'Un año ahorrando', 'Ahorra 12 meses seguidos.', '🏆', 12, rAhorro)
+  deRacha('ahorro-3', '3 meses ahorrando', 'Ahorra 3 meses seguidos.', 'fuego', 3, rAhorro)
+  deRacha('ahorro-6', '6 meses ahorrando', 'Ahorra 6 meses seguidos.', 'fuego', 6, rAhorro)
+  deRacha('ahorro-12', 'Un año ahorrando', 'Ahorra 12 meses seguidos.', 'trofeo', 12, rAhorro)
 
   // % de ahorro
   const mejorPct = Math.max(0, ...meses.map((m) => m.pctAhorro ?? 0))
   const mes20 = meses.find((m) => (m.pctAhorro ?? 0) >= 0.2)
-  add({ id: 'ahorro-20', titulo: 'El 20 % al ahorro', descripcion: 'Un mes ahorrando al menos el 20 % de lo que entra.', icono: '💪', conseguido: mes20?.mes.fecha ?? null, progreso: Math.min(1, mejorPct / 0.2), textoProgreso: `Tu mejor mes: ${Math.round(mejorPct * 100)} %` })
+  add({ id: 'ahorro-20', titulo: 'El 20 % al ahorro', descripcion: 'Un mes ahorrando al menos el 20 % de lo que entra.', icono: 'tarta', conseguido: mes20?.mes.fecha ?? null, progreso: Math.min(1, mejorPct / 0.2), textoProgreso: `Tu mejor mes: ${Math.round(mejorPct * 100)} %` })
 
   // Presupuesto
   const rPres = racha(calc, d, CRITERIOS.presupuesto)
-  add({ id: 'presupuesto', titulo: 'Dentro del presupuesto', descripcion: 'Un mes con presupuestos sin pasarte de ninguno.', icono: '🎯', conseguido: rPres.alcanzado.get(1) ?? null, progreso: rPres.mejor > 0 ? 1 : 0, textoProgreso: 'Pon presupuestos y no te pases' })
+  add({ id: 'presupuesto', titulo: 'Dentro del presupuesto', descripcion: 'Un mes con presupuestos sin pasarte de ninguno.', icono: 'diana', conseguido: rPres.alcanzado.get(1) ?? null, progreso: rPres.mejor > 0 ? 1 : 0, textoProgreso: 'Pon presupuestos y no te pases' })
 
   // Colchón: meses que podrías vivir con lo líquido (disponible + remunerada), con el gasto medio de hasta 6 meses
   const colchonEn = (i: number) => {
@@ -123,7 +124,7 @@ export function logros(calc: Calculo, d: Pick<Datos, 'expenses' | 'huchas' | 'hu
   for (const n of [3, 6]) {
     const i = colchones.findIndex((x) => x >= n)
     add({
-      id: `colchon-${n}`, titulo: `Colchón de ${n} meses`, descripcion: `Tener para vivir ${n} meses sin ingresos (sin contar inversiones).`, icono: n === 3 ? '🛟' : '🏰',
+      id: `colchon-${n}`, titulo: `Colchón de ${n} meses`, descripcion: `Tener para vivir ${n} meses sin ingresos (sin contar inversiones).`, icono: 'escudo',
       conseguido: i >= 0 ? meses[i].mes.fecha : null, progreso: Math.min(1, colchonHoy / n), textoProgreso: `Ahora: ${colchonHoy.toLocaleString('es-ES', { maximumFractionDigits: 1 })} meses`,
     })
   }
@@ -137,7 +138,7 @@ export function logros(calc: Calculo, d: Pick<Datos, 'expenses' | 'huchas' | 'hu
     if (!m) siguienteMostrado = true
     add({
       id: `patrimonio-${x / 100}`, titulo: x >= 100000000 ? '1 millón de €' : eurCorto(x),
-      descripcion: `Patrimonio de ${eurCorto(x)}.`, icono: x >= 10000000 ? '💎' : '💰',
+      descripcion: `Patrimonio de ${eurCorto(x)}.`, icono: x >= 10000000 ? 'banco' : 'billete',
       conseguido: m?.mes.fecha ?? null, progreso: Math.min(1, Math.max(0, actual) / x), textoProgreso: `${eurCorto(Math.max(0, actual))} de ${eurCorto(x)}`,
     })
   }
@@ -146,7 +147,7 @@ export function logros(calc: Calculo, d: Pick<Datos, 'expenses' | 'huchas' | 'hu
   const conseguidas = d.huchas.filter((h) => h.conseguida_en).sort((a, b) => a.conseguida_en!.localeCompare(b.conseguida_en!))
   const mejorHucha = Math.max(0, ...d.huchas.map((h) => (h.objetivo > 0 ? Math.max(0, saldoHucha(h.id, d.hucha_movimientos)) / h.objetivo : 0)))
   add({
-    id: 'hucha', titulo: 'Primera hucha conseguida', descripcion: 'Llena una hucha y márcala como conseguida.', icono: '🐷',
+    id: 'hucha', titulo: 'Primera hucha conseguida', descripcion: 'Llena una hucha y márcala como conseguida.', icono: 'hucha',
     conseguido: conseguidas[0]?.conseguida_en ?? null, progreso: conseguidas.length ? 1 : Math.min(0.99, mejorHucha),
     textoProgreso: d.huchas.length ? `Tu hucha más llena: ${Math.round(mejorHucha * 100)} %` : 'Crea una hucha',
   })
@@ -158,12 +159,12 @@ export function logros(calc: Calculo, d: Pick<Datos, 'expenses' | 'huchas' | 'hu
     acum += m.interesesCtaRem
     if (!mesInt && acum >= 10000) mesInt = m.mes.fecha
   }
-  add({ id: 'intereses-100', titulo: '100 € de intereses', descripcion: 'Que tu cuenta remunerada te genere 100 €.', icono: '🌿', conseguido: mesInt, progreso: Math.min(1, Math.max(0, acum) / 10000), textoProgreso: `${eurCorto(Math.max(0, acum))} de 100 €` })
+  add({ id: 'intereses-100', titulo: '100 € de intereses', descripcion: 'Que tu cuenta remunerada te genere 100 €.', icono: 'porcentaje', conseguido: mesInt, progreso: Math.min(1, Math.max(0, acum) / 10000), textoProgreso: `${eurCorto(Math.max(0, acum))} de 100 €` })
 
   // Inversiones
   const ganancia = calc.kpis.gananciaInversiones
   add({
-    id: 'inversiones-1000', titulo: '1.000 € ganados invirtiendo', descripcion: 'Que tus inversiones valgan 1.000 € más de lo que metiste.', icono: '📊',
+    id: 'inversiones-1000', titulo: '1.000 € ganados invirtiendo', descripcion: 'Que tus inversiones valgan 1.000 € más de lo que metiste.', icono: 'grafica',
     conseguido: ganancia >= 100000 && meses.length ? meses[meses.length - 1].mes.fecha : null,
     progreso: Math.min(1, Math.max(0, ganancia) / 100000), textoProgreso: `Ahora: ${eurCorto(ganancia)}`,
   })

@@ -159,7 +159,7 @@ test('Huchas: crear con dinero que ya tienes, llenarla y la aportación mensual 
   await app.getByRole('button', { name: 'Nueva hucha' }).click()
   const dialogo = app.getByRole('dialog')
   await dialogo.getByLabel('Nombre de la hucha').fill('Japón')
-  await dialogo.getByRole('button', { name: 'Icono ✈️' }).click()
+  await dialogo.getByRole('button', { name: 'Icono Viaje' }).click()
   await dialogo.getByLabel('Objetivo').fill('1000')
   await dialogo.getByLabel('Aportación mensual').fill('200')
   await dialogo.getByLabel('Meter ya').fill('600')
@@ -172,7 +172,7 @@ test('Huchas: crear con dinero que ya tienes, llenarla y la aportación mensual 
   await app.getByRole('button', { name: 'Meter', exact: true }).click()
   await app.getByRole('dialog').getByLabel('Importe').fill('400')
   await app.getByRole('dialog').getByRole('button', { name: 'Meter' }).click()
-  await expect(app.getByText('¡Has llenado «Japón»! ✈️')).toBeVisible()
+  await expect(app.getByText('¡Has llenado «Japón»!')).toBeVisible()
   await expect.poll(async () => (await guardado(app)).hucha_movimientos.reduce((s, m) => s + m.importe, 0)).toBe(100000)
 
   // Sacar más de lo que hay no se puede

@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useStore } from '../data/store'
 import { useCuentas } from '../data/cuentas'
 import { logros, nuevosLogros, rachas } from '../lib/logros'
+import { Icono } from './ios'
 
 const clave = (cuenta: string) => `presupuesto-logros-vistos:${cuenta}`
 
@@ -36,7 +37,7 @@ export function AvisoLogros() {
     const nuevos = nuevosLogros(lista, vistos)
     if (vistos === null || nuevos.length > 0) guardarVistos(cuenta, [...new Set([...(vistos ?? []), ...conseguidos])])
     if (nuevos.length === 0) return
-    const texto = nuevos.length === 1 ? `${nuevos[0].icono} ¡Nuevo logro! ${nuevos[0].titulo}` : `🏅 ¡${nuevos.length} logros nuevos! ${nuevos.map((l) => l.titulo).join(', ')}`
+    const texto = nuevos.length === 1 ? `¡Nuevo logro! ${nuevos[0].titulo}` : `¡${nuevos.length} logros nuevos! ${nuevos.map((l) => l.titulo).join(', ')}`
     avisar({ texto, accion: { texto: 'Ver', fn: () => navigate('/logros') } })
   }, [cuenta, firma]) // eslint-disable-line react-hooks/exhaustive-deps
   return null
@@ -51,7 +52,10 @@ export function LogrosCard() {
   const n = ls.filter((l) => l.conseguido).length
   return (
     <Link to="/logros" className="rounded-xl bg-white p-3.5 active:bg-slate-100 dark:bg-[#1c1c1e] dark:active:bg-white/10 sm:p-4">
-      <div className="text-[13px] text-slate-500 dark:text-slate-400">{r.actual > 0 ? '🔥 Racha de ahorro' : '🏅 Logros'}</div>
+      <div className="flex items-center gap-1 text-[13px] text-slate-500 dark:text-slate-400">
+        <Icono nombre={r.actual > 0 ? 'fuego' : 'trofeo'} className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+        {r.actual > 0 ? 'Racha de ahorro' : 'Logros'}
+      </div>
       <div className="mt-0.5 text-[22px] font-bold tracking-tight">
         {r.actual > 0 ? <>{r.actual} {r.actual === 1 ? 'mes' : 'meses'}</> : <>{n} de {ls.length}</>}
       </div>
