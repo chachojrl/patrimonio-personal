@@ -58,6 +58,8 @@ export interface Mes {
   valor_real_inversiones: Cents | null
   /** Intereses que pagó de verdad la cuenta remunerada ese mes (null = se estiman con la TAE). */
   intereses_cuenta_rem: Cents | null
+  /** Lo que dice el banco que hay en la cuenta remunerada a final del mes (null = se calcula). */
+  saldo_real_remunerada: Cents | null
 }
 
 export interface Ingreso {
@@ -263,7 +265,7 @@ export function normalizarDatos(d: Datos): Datos {
       fire_excluidos: d.config?.fire_excluidos ?? [],
       no_suscripciones: d.config?.no_suscripciones ?? [],
     },
-    months: d.months.map((m) => ({ ...m, intereses_cuenta_rem: m.intereses_cuenta_rem ?? null })),
+    months: d.months.map((m) => ({ ...m, intereses_cuenta_rem: m.intereses_cuenta_rem ?? null, saldo_real_remunerada: m.saldo_real_remunerada ?? null })),
     expenses: d.expenses.map((g) => ({ ...g, fijo: g.fijo ?? false, presupuesto: g.presupuesto ?? null })),
     expense_entries: d.expense_entries ?? [],
     debts: d.debts ?? [],

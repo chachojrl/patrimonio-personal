@@ -4,7 +4,7 @@ import { datosVacios, type Datos } from './tipos'
 
 function datos(): Datos {
   const d = datosVacios()
-  d.months = [{ id: 'm', fecha: '2026-11-01', titulo: '', estado: 'Abierto', ultimo_cambio: null, saldo_real_cuenta: null, valor_real_inversiones: null, intereses_cuenta_rem: null }]
+  d.months = [{ id: 'm', fecha: '2026-11-01', titulo: '', estado: 'Abierto', ultimo_cambio: null, saldo_real_cuenta: null, valor_real_inversiones: null, intereses_cuenta_rem: null, saldo_real_remunerada: null }]
   d.expenses = [
     { id: 'super', month_id: 'm', concepto: 'Supermercado', fecha_vencimiento: null, importe: 9000, orden: 0, fijo: false, presupuesto: null },
     { id: 'luz', month_id: 'm', concepto: 'Luz', fecha_vencimiento: '2026-11-05', importe: 4500, orden: 1, fijo: true, presupuesto: null },

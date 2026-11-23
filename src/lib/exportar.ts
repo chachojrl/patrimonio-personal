@@ -19,7 +19,7 @@ const sello = () => new Date().toISOString().slice(0, 10)
 
 // ---------- JSON (copia completa; importes en euros con 2 decimales) ----------
 
-const DINERO = ['importe', 'presupuesto', 'saldo_real_cuenta', 'valor_real_inversiones', 'intereses_cuenta_rem', 'objetivo', 'aportacion_mensual', 'ajuste_cuenta_gastos_inicial', 'inversiones_iniciales', 'aportado_inicial_inversiones', 'cuenta_remunerada_inicial']
+const DINERO = ['importe', 'presupuesto', 'saldo_real_cuenta', 'valor_real_inversiones', 'intereses_cuenta_rem', 'saldo_real_remunerada', 'objetivo', 'aportacion_mensual', 'ajuste_cuenta_gastos_inicial', 'inversiones_iniciales', 'aportado_inicial_inversiones', 'cuenta_remunerada_inicial']
 
 function mapDinero(obj: unknown, fn: (v: number) => number): unknown {
   if (Array.isArray(obj)) return obj.map((x) => mapDinero(x, fn))

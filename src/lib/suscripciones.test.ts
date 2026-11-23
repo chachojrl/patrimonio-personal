@@ -7,7 +7,7 @@ function datos(n: number, gastos: (i: number) => [string, number, Partial<Gasto>
   const d = datosVacios()
   for (let i = 0; i < n; i++) {
     const id = `m${i}`
-    d.months.push({ id, fecha: `2026-${String(i + 1).padStart(2, '0')}-01`, titulo: '', estado: 'Cerrado', ultimo_cambio: null, saldo_real_cuenta: null, valor_real_inversiones: null, intereses_cuenta_rem: null })
+    d.months.push({ id, fecha: `2026-${String(i + 1).padStart(2, '0')}-01`, titulo: '', estado: 'Cerrado', ultimo_cambio: null, saldo_real_cuenta: null, valor_real_inversiones: null, intereses_cuenta_rem: null, saldo_real_remunerada: null })
     gastos(i).forEach(([concepto, importe, extra], j) => d.expenses.push({ id: `${id}g${j}`, month_id: id, concepto, fecha_vencimiento: null, importe, orden: j, fijo: false, presupuesto: null, ...extra }))
   }
   return d

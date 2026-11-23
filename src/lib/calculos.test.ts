@@ -529,3 +529,34 @@ describe('Intereses de la cuenta remunerada (TAE)', () => {
     expect(n.months.every((m) => m.intereses_cuenta_rem === null)).toBe(true)
   })
 })
+
+describe('Saldo real de la cuenta remunerada', () => {
+  it('ajusta la diferencia con lo calculado y los meses siguientes parten de ahí', () => {
+    let d = datosIniciales()
+    d.config = { ...d.config, tae_cuenta_rem: [{ desde: '2026-10-01', tae: 2.5 }], pago_intereses: 'mismo-mes' }
+    d = aplicarPlan(d, planMesNuevo(d, true))
+    const antes = calcular(d)
+    const nov = d.months.find((m) => m.fecha === '2026-11-01')!
+    // El banco dice 12.488,75 € aunque la app haya calculado intereses
+    nov.saldo_real_remunerada = 1248875
+    const c = calcular(d)
+    const n = c.meses[1]
+    expect(n.cuentaRemAcum).toBe(1248875)
+    expect(n.cuentaRemCalculada).toBe(antes.meses[1].cuentaRemAcum)
+    expect(n.ajusteCtaRem).toBe(1248875 - antes.meses[1].cuentaRemAcum)
+    expect(n.dineroTotal).toBe(antes.meses[1].dineroTotal + n.ajusteCtaRem)
+    // No es un ingreso ni toca la cuenta de gastos
+    expect(n.ingresosTotales).toBe(antes.meses[1].ingresosTotales)
+    expect(n.saldoDisponible).toBe(antes.meses[1].saldoDisponible)
+    // Diciembre parte de 12.488,75 € (y genera sus intereses sobre esa cifra)
+    const dic = c.meses[2]
+    expect(dic.cuentaRemAcum).toBe(1248875 + dic.interesesCtaRem)
+    expect(dic.interesesCtaRem).toBe(interesesEstimados(1248875, 2.5, 19))
+  })
+
+  it('vacío no cambia nada', () => {
+    const d = datosIniciales()
+    const c = calcular(d)
+    expect(c.meses.every((m) => m.ajusteCtaRem === 0 && m.cuentaRemCalculada === m.cuentaRemAcum)).toBe(true)
+  })
+})

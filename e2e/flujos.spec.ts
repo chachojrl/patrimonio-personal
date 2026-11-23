@@ -318,3 +318,18 @@ test('Guía de uso: buscar, abrir todas y seguir un enlace', async ({ app }) => 
   await app.getByRole('link', { name: 'Ir a Huchas' }).click()
   await expect(app.getByRole('heading', { name: 'Huchas', level: 1 })).toBeVisible()
 })
+
+test('Saldo real de la cuenta remunerada: ajusta lo calculado', async ({ app }) => {
+  await app.goto('/#/mes/2026-11')
+  const fila = app.locator('section[aria-labelledby="titulo-cuadrar"]')
+  await fila.getByLabel('Saldo real de la cuenta remunerada').fill('5969,15')
+  await fila.getByLabel('Saldo real de la cuenta remunerada').press('Tab')
+  await expect(fila.getByText('Ajustada −30,85 € con el banco')).toBeVisible()
+  await expect.poll(async () => (await guardado(app)).months.find((m) => m.fecha === '2026-11-01')!.saldo_real_remunerada).toBe(596915)
+  await app.goto('/#/')
+  await expect(app.getByText('5.969,15 €').first()).toBeVisible()
+  if (esMovil(app)) {
+    await app.goto('/#/mes/2026-11')
+    expect(await app.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(app.viewportSize()!.width)
+  }
+})

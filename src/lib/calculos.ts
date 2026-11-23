@@ -64,6 +64,10 @@ export interface MesCalculado {
   interesesGenerados: Cents
   /** ¿interesesCtaRem es lo que pagó el banco (true) o una estimación (false)? */
   interesesReales: boolean
+  /** Lo que se ha ajustado la cuenta remunerada para que cuadre con el saldo real del banco (0 si no se escribió). */
+  ajusteCtaRem: Cents
+  /** Lo que habría en la cuenta remunerada sin el ajuste (lo calculado). */
+  cuentaRemCalculada: Cents
   /** TAE con la que se han estimado los intereses que se cobran este mes (en %). */
   tae: number
   /** TAE que vale durante este mes (en %). */
@@ -179,6 +183,10 @@ export function calcular(d: Datos): Calculo {
     taePendiente = taeMes
 
     acumCtaRem += netoCtaRem + interesesCtaRem
+    // Saldo real de la cuenta remunerada: la diferencia con lo calculado se ajusta y los meses siguientes parten de ahí
+    const cuentaRemCalculada = cfg.cuenta_remunerada_inicial + acumCtaRem
+    const ajusteCtaRem = (mes.saldo_real_remunerada ?? null) === null ? 0 : mes.saldo_real_remunerada! - cuentaRemCalculada
+    acumCtaRem += ajusteCtaRem
     const cuentaRemAcum = cfg.cuenta_remunerada_inicial + acumCtaRem
     const ahorroAcumulado = inversionesAcum + cuentaRemAcum
     const dineroTotal = ahorroAcumulado + saldoDisponible
@@ -190,7 +198,7 @@ export function calcular(d: Datos): Calculo {
       mes,
       nombre: nombreMes(mes.fecha),
       sumIngresos, sumGastos, ahorroTotal, invDesdeCtaRem, invMes, ctaRemMes, traspasoGastos,
-      interesesCtaRem, interesesGenerados, interesesReales, tae, taeMes,
+      interesesCtaRem, interesesGenerados, interesesReales, tae, taeMes, ajusteCtaRem, cuentaRemCalculada,
       anterior, saldoCalculado, ajuste, ingresosTotales, gastosTotales, saldoDisponible,
       pctGastado, pctDisponible: 1 - pctGastado,
       neto: ingresosTotales - gastosTotales,
