@@ -7,7 +7,7 @@ import { Card, Dinero, Info, cx } from '../components/ui'
 import { LineaProyeccion, type PuntoFuturo } from '../components/Graficos'
 import { PlanesFuturo } from '../components/PlanesFuturo'
 import { useEur } from '../lib/discreto'
-import { formatTae } from '../lib/money'
+import { formatTae, parseImporte } from '../lib/money'
 import { MESES_CORTOS, mesActual, mesLargo, partes } from '../lib/fechas'
 import {
   base, conceptosRecientes, cuandoLlega, edadEn, libertadFinanciera, llegadaPercentil, proyectar, simular, sobranteMes,
@@ -44,6 +44,8 @@ export function FuturoPage() {
   const eventos = cfg.eventos_futuro
 
   const b = useMemo(() => base(calc, datos), [calc, datos])
+  // La media de los últimos meses, para enseñarla aunque hayas escrito otra cantidad
+  const bMedia = useMemo(() => base(calc, { config: { ...datos.config, inversion_mensual: null } }), [calc, datos])
   const params: Parametros = useMemo(
     () => ({ rentabilidad: rent, extra: extra * 100, inflacion, crecimiento: crec, comision, invertirSobrante: invertir, eventos }),
     [rent, extra, inflacion, crec, comision, invertir, eventos],
@@ -232,10 +234,11 @@ export function FuturoPage() {
             ayuda="Cuánto suben y bajan de un año a otro (volatilidad). Un fondo de acciones global ronda el 15 %; uno mixto, el 8–10 %. Se simulan 300 futuros posibles para dibujar la banda."
           />
         </div>
+        <InversionMensual mediaInv={bMedia.aInversiones} />
         <div className="mt-4 rounded-lg bg-slate-50 p-3 text-[13px] text-slate-600 dark:bg-white/5 dark:text-slate-300">
           Se parte de lo que tienes hoy ({eur(normal[0].total, { dash: false })}) y de tu ahorro medio
           {b.mesesMedia > 0 ? ` de los últimos ${b.mesesMedia === 1 ? 'mes' : `${b.mesesMedia} meses`}` : ''}: <strong>{eur(b.netoMedio, { dash: false })} al mes</strong>
-          {' '}(ingresos − gastos), de los que {eur(b.aInversiones, { dash: false })} van a inversiones y {eur(b.aRemunerada, { dash: false })} a la cuenta remunerada
+          {' '}(ingresos − gastos), de los que {eur(b.aInversiones, { dash: false })} van a inversiones{b.inversionManual ? ' (lo que has escrito)' : ''} y {eur(b.aRemunerada, { dash: false })} a la cuenta remunerada
           {cfg.tae_cuenta_rem.length > 0 ? ', que genera intereses con tu TAE' : ''}.
           {crec > 0 && ` Cada año ahorrarías un ${formatTae(crec)} más.`}
           {eventos.length > 0 && ` Cuenta con ${eventos.length === 1 ? 'el cambio' : `los ${eventos.length} cambios`} de «Tus planes».`}
@@ -375,6 +378,45 @@ export function FuturoPage() {
       <p className="px-1 text-xs text-slate-500">
         Las rentabilidades pasadas no garantizan las futuras. Los impuestos son una estimación con los tramos actuales del IRPF del ahorro{impuestos ? '' : ' (ahora no se descuentan)'}.
         {' '}La TAE de la cuenta remunerada se cambia en <Link to="/ajustes/intereses" className="underline">Ajustes → Cuenta remunerada</Link>.
+      </p>
+    </div>
+  )
+}
+
+/** Lo que inviertes al mes: la media de tus últimos meses o lo que escribas (se guarda). */
+function InversionMensual({ mediaInv }: { mediaInv: number }) {
+  const { datos, actualizarConfig } = useStore()
+  const eur = useEur()
+  const guardada = datos.config.inversion_mensual
+  const [texto, setTexto] = useState(guardada != null ? String(guardada / 100).replace('.', ',') : '')
+  const valor = parseImporte(texto)
+  const mal = texto.trim() !== '' && (valor === null || valor < 0)
+  const guardar = () => {
+    const nuevo = texto.trim() === '' ? null : valor !== null && valor >= 0 ? valor : undefined
+    if (nuevo !== undefined && nuevo !== guardada) actualizarConfig({ inversion_mensual: nuevo })
+  }
+  return (
+    <div className="mt-4">
+      <label className="flex items-center gap-3 text-sm">
+        <span className="flex-1 font-medium">
+          Inviertes al mes
+          <Info texto="Lo que metes cada mes en inversiones, de lo que ahorras. Si lo dejas vacío se usa la media de tus últimos meses. Si sabes que en el futuro invertirás otra cantidad, añádelo en «Tus planes» con «Cambias lo que inviertes»." />
+        </span>
+        <input
+          inputMode="decimal"
+          aria-label="Inviertes al mes"
+          placeholder={eur(mediaInv, { dash: false })}
+          value={texto}
+          onChange={(e) => setTexto(e.target.value)}
+          onBlur={guardar}
+          onKeyDown={(e) => e.key === 'Enter' && guardar()}
+          className={cx('num w-32 shrink-0 rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-right text-[15px] outline-none focus:border-marino dark:border-white/15 dark:bg-white/5', mal && 'border-red-400')}
+        />
+      </label>
+      <p className="mt-1 text-xs text-slate-500">
+        {mal ? 'Escribe una cantidad, por ejemplo 1.200.'
+          : guardada != null ? <>Usas la cantidad que has escrito. <button type="button" className="underline" onClick={() => { setTexto(''); actualizarConfig({ inversion_mensual: null }) }}>Usar la media ({eur(mediaInv, { dash: false })})</button></>
+            : `Vacío: la media de tus últimos meses (${eur(mediaInv, { dash: false })}).`}
       </p>
     </div>
   )

@@ -185,7 +185,8 @@ Debe responder `OK` en todas las tablas: sin sesión no se lee nada y el registr
 - **Futuro** (en *Más*): proyección del patrimonio a 5, 10, 20 y 30 años partiendo de lo que tienes y de tu
   ahorro medio de los últimos 12 meses. Las inversiones crecen con la rentabilidad que elijas (5 % por
   defecto) menos las comisiones de tus fondos (0,2 %), la cuenta remunerada con tu TAE y el resto se queda en
-  la cuenta de gastos. Lo que ahorras sube cada año (2 % por defecto, como el sueldo). La gráfica enseña lo
+  la cuenta de gastos. Lo que va a inversiones es la media de tus últimos meses (nunca más de lo que ahorras, para
+  que un traspaso puntual no se cuente como ahorro de cada mes) o lo que escribas en «Inviertes al mes». Lo que ahorras sube cada año (2 % por defecto, como el sueldo). La gráfica enseña lo
   más probable y la banda donde caen 8 de cada 10 de 300 futuros simulados con años buenos y malos (según los
   «altibajos» de tus inversiones, 15 % por defecto), o, en «De dónde sale», lo que tienes hoy, lo que pondrás
   tú y lo que rinde; al tocarla se ve cada momento por cuentas. Opciones «en euros de hoy» (descuenta la
@@ -194,12 +195,12 @@ Debe responder `OK` en todas las tablas: sin sesión no se lee nada y el registr
   hucha, tus planes y la libertad financiera.
 - **Tus planes** (en *Futuro*): tu año de nacimiento (para verlo todo por edad, «a los 52») y cambios que ya
   sabes que van a pasar: una compra o un ingreso puntual, un gasto nuevo al mes, dejar de pagar algo (el fin de
-  la hipoteca), un cambio de sueldo o una pensión o renta. Los importes van en euros de hoy y se actualizan con
+  la hipoteca), un cambio de sueldo, una pensión o renta, o un cambio en lo que inviertes al mes. Los importes van en euros de hoy y se actualizan con
   la inflación; cambian la proyección y la libertad financiera desde su fecha.
 - **Libertad financiera** (en *Futuro*): tu número = lo que gastas al año (más los impuestos de sacarlo, si se
   cuentan) ÷ lo que sacarías cada año (4 % por defecto), el porcentaje que llevas, cuándo llegarías (y a qué
   edad) y, con años buenos y malos, cuándo llegas la mitad de las veces y 9 de cada 10. Se pueden quitar los
-  gastos que entonces no tendrías. Necesita las migraciones `0015_futuro.sql` y `0019_futuro_planes.sql` para
+  gastos que entonces no tendrías. Necesita las migraciones `0015_futuro.sql`, `0019_futuro_planes.sql` y `0020_inversion_mensual.sql` para
   guardar estos ajustes.
 - **Rachas y logros** (en *Más*): rachas de meses seguidos ahorrando, gastando menos de lo que entra, sin
   pasarse de ningún presupuesto y cerrando los meses (el mes en curso suma cuando se cumple y mientras tanto
@@ -294,6 +295,7 @@ vez** en *Supabase → SQL Editor*, en orden. Se pueden repetir sin problema.
 | `0017_pago_intereses.sql` | Cuándo paga el banco los intereses (el día 1 del mes siguiente o a final de mes) |
 | `0018_saldo_real_remunerada.sql` | Saldo real de la cuenta remunerada en cada mes (ajusta la diferencia con lo calculado) |
 | `0019_futuro_planes.sql` | Más ajustes de Futuro (subida del ahorro, comisiones, impuestos, altibajos), año de nacimiento y tus planes |
+| `0020_inversion_mensual.sql` | Lo que inviertes al mes, si lo escribes tú en Futuro |
 
 ## Cuenta compartida (opcional)
 

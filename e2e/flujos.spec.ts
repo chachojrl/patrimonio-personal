@@ -266,6 +266,22 @@ test('Futuro: edad, tus planes, invertir lo que sobra y el coste de una compra',
   await expect(app.getByText('+900,00 € al mes')).toBeVisible()
   await expect.poll(async () => (await guardado(app)).config.eventos_futuro.map((e) => e.tipo)).toEqual(['pension'])
   await expect.poll(llegada).not.toBe(antes)
+  // Lo que inviertes al mes, escrito a mano, y un plan para invertir menos más adelante
+  await app.getByLabel('Inviertes al mes').fill('1200')
+  await app.getByLabel('Inviertes al mes').press('Enter')
+  await expect.poll(async () => (await guardado(app)).config.inversion_mensual).toBe(120000)
+  await expect(app.getByText(/1\.200,00 € van a inversiones \(lo que has escrito\)/)).toBeVisible()
+  await app.getByRole('button', { name: 'Añadir cambio' }).click()
+  await form.getByLabel('Tipo de cambio').selectOption('inversion')
+  await form.getByLabel('Nombre del cambio').fill('Invertir menos')
+  await form.getByLabel('Importe del cambio').fill('500')
+  await form.getByLabel('Desde').fill('2029-01')
+  await form.getByRole('button', { name: 'Guardar cambio' }).click()
+  await expect(app.getByText('500,00 € al mes a inversiones')).toBeVisible()
+  await app.getByRole('button', { name: 'Quitar «Invertir menos»' }).click()
+  // Con 1.200 € al mes ya no sobra nada en la cuenta de gastos; con la media, sí
+  await app.getByRole('button', { name: /^Usar la media/ }).click()
+  await expect.poll(async () => (await guardado(app)).config.inversion_mensual).toBeNull()
   // Invertir lo que sobra en la cuenta de gastos
   await app.getByRole('button', { name: 'Probar a invertirlo' }).click()
   await expect(app.getByText(/Estás probando a/)).toBeVisible()
