@@ -8,7 +8,7 @@ import { centsToDecimal, toCents, toCentsOrNull } from '../lib/money'
 // Campos que son importes (céntimos en la app, NUMERIC(12,2) en la BD)
 const CAMPOS_DINERO = new Set([
   'importe', 'presupuesto', 'saldo_real_cuenta', 'valor_real_inversiones', 'intereses_cuenta_rem', 'saldo_real_remunerada', 'objetivo', 'aportacion_mensual',
-  'ajuste_cuenta_gastos_inicial', 'inversiones_iniciales', 'aportado_inicial_inversiones', 'cuenta_remunerada_inicial',
+  'ajuste_cuenta_gastos_inicial', 'inversiones_iniciales', 'aportado_inicial_inversiones', 'cuenta_remunerada_inicial', 'inversion_mensual',
 ])
 // Columnas que la app escribe en cada tabla (lo demás no se envía).
 // aportacion_de / aportacion_cuenta no están: las gestiona el servidor.
@@ -39,7 +39,7 @@ function aBD(tabla: Tabla | 'config', obj: Record<string, unknown>): Record<stri
 type Fila = Record<string, unknown>
 
 /** Ajustes que añadieron migraciones posteriores a la 0009 (pueden faltar en la BD). */
-const CONFIG_NUEVOS = ['clasificacion', 'tae_cuenta_rem', 'retencion_intereses', 'pago_intereses', 'rentabilidad_inversiones', 'inflacion', 'pct_retirada', 'fire_excluidos', 'no_suscripciones', 'crecimiento_ahorro', 'comision_inversiones', 'impuestos_futuro', 'volatilidad', 'anio_nacimiento', 'eventos_futuro']
+const CONFIG_NUEVOS = ['clasificacion', 'tae_cuenta_rem', 'retencion_intereses', 'pago_intereses', 'rentabilidad_inversiones', 'inflacion', 'pct_retirada', 'fire_excluidos', 'no_suscripciones', 'crecimiento_ahorro', 'comision_inversiones', 'impuestos_futuro', 'volatilidad', 'anio_nacimiento', 'eventos_futuro', 'inversion_mensual']
 function sinCamposNuevos<T extends object>(patch: T, campos: string[]): Partial<T> {
   return Object.fromEntries(Object.entries(patch).filter(([k]) => !campos.includes(k))) as Partial<T>
 }
@@ -146,6 +146,7 @@ export function mapConfig(cfg: Fila): Config {
     volatilidad: cfg.volatilidad == null ? 15 : Number(cfg.volatilidad),
     anio_nacimiento: cfg.anio_nacimiento == null ? null : Number(cfg.anio_nacimiento),
     eventos_futuro: Array.isArray(cfg.eventos_futuro) ? (cfg.eventos_futuro as Config['eventos_futuro']) : [],
+    inversion_mensual: toCentsOrNull(cfg.inversion_mensual as string),
   }
 }
 

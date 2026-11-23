@@ -256,3 +256,45 @@ describe('Futuro: lo que cuesta una compra', () => {
     expect(plazos.retraso!).toBeGreaterThan(0)
   })
 })
+
+describe('Futuro: lo que inviertes al mes', () => {
+  const d = datosIniciales()
+  const c = calcular(d)
+
+  it('nunca es negativo ni, con la remunerada, más de lo que ahorras', () => {
+    const b = base(c, d)
+    expect(b.aInversiones).toBeGreaterThanOrEqual(0)
+    expect(b.aRemunerada).toBeGreaterThanOrEqual(0)
+    expect(b.aInversiones + b.aRemunerada).toBeLessThanOrEqual(Math.max(0, b.netoMedio))
+    expect(b.inversionManual).toBe(false)
+  })
+
+  it('un traspaso puntual de la remunerada a la cuenta de gastos para invertir no se repite cada mes', () => {
+    const conTraspaso = { ...d, savings: [...d.savings,
+      { id: 't1', month_id: d.months[1].id, fecha: null, importe: 800000, tipo: 'Cuenta de gastos' as const, origen: 'Cuenta remunerada' as const },
+      { id: 't2', month_id: d.months[1].id, fecha: null, importe: 800000, tipo: 'Inversiones' as const, origen: 'Ingresos mensuales' as const },
+    ] }
+    const b = base(calcular(conTraspaso), conTraspaso)
+    expect(b.aRemunerada).toBeGreaterThanOrEqual(0)
+    expect(b.aInversiones + b.aRemunerada).toBeLessThanOrEqual(Math.max(0, b.netoMedio))
+    const p = proyectar(b, conTraspaso.config, { rentabilidad: 0, extra: 0, inflacion: 0 }, 120)
+    expect(p.every((x) => x.remunerada >= 0)).toBe(true)
+  })
+
+  it('si lo escribes tú, se usa esa cantidad', () => {
+    const manual = { ...d, config: { ...d.config, inversion_mensual: 120000 } }
+    const b = base(c, manual)
+    expect(b.aInversiones).toBe(120000)
+    expect(b.inversionManual).toBe(true)
+  })
+
+  it('«Cambias lo que inviertes» cambia la aportación desde su fecha (lo que deja de invertirse se queda en la cuenta de gastos)', () => {
+    const b: Base = { ...b0, netoMedio: 150000, aInversiones: 120000, aRemunerada: 0 }
+    const plan = [ev({ tipo: 'inversion', importe: 50000, desde: '2027-12-01' })]
+    const p = proyectar(b, cfg, { ...p0, eventos: plan }, 24)
+    expect(p[12].inversiones - p[11].inversiones).toBe(120000)
+    expect(p[13].inversiones - p[12].inversiones).toBe(50000)
+    expect(p[13].gastos - p[12].gastos).toBe(100000)
+    expect(p[24].total - p[0].total).toBe(24 * 150000) // ahorras lo mismo, solo cambia dónde va
+  })
+})

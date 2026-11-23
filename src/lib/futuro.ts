@@ -27,6 +27,8 @@ export interface Base {
   aRemunerada: Cents
   /** Meses con los que se han hecho las medias. */
   mesesMedia: number
+  /** ¿Lo que va a inversiones lo escribiste tú (true) o es la media de los últimos meses? */
+  inversionManual?: boolean
 }
 
 function ultimosConMovimientos(calc: Calculo, n = MESES_MEDIA): MesCalculado[] {
@@ -35,21 +37,37 @@ function ultimosConMovimientos(calc: Calculo, n = MESES_MEDIA): MesCalculado[] {
 
 const media = (xs: number[]) => (xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : 0)
 
-/** Punto de partida: lo que tienes hoy en cada cuenta y lo que sueles ahorrar al mes. */
+/**
+ * Punto de partida: lo que tienes hoy en cada cuenta y lo que sueles ahorrar al mes.
+ * Lo que va a inversiones y a la remunerada es la media de los últimos meses, pero nunca negativa ni, entre las dos,
+ * más de lo que ahorras (ingresos − gastos): un traspaso puntual (sacar de la remunerada para invertir) no es ahorro
+ * que se repita cada mes. Si escribiste lo que inviertes al mes (config.inversion_mensual), se usa eso.
+ */
 export function base(calc: Calculo, d: Pick<Datos, 'config'>): Base {
   const u = calc.meses[calc.meses.length - 1]
   const ult = ultimosConMovimientos(calc)
+  const netoMedio = media(ult.map((m) => m.neto))
+  let aInv = Math.max(0, media(ult.map((m) => m.invMes)))
+  // Lo que entra en la remunerada desde la cuenta de gastos (sin contar lo que pasa de la remunerada a inversiones)
+  let aRem = Math.max(0, media(ult.map((m) => m.ctaRemMes - m.invDesdeCtaRem)))
+  const tope = Math.max(0, netoMedio)
+  if (aInv + aRem > tope) {
+    const k = aInv + aRem > 0 ? tope / (aInv + aRem) : 0
+    aInv = Math.round(aInv * k)
+    aRem = Math.round(aRem * k)
+  }
+  const manual = d.config.inversion_mensual
   return {
     desde: u ? fechaDesdeIndice(indiceMes(u.mes.fecha) + 1) : d.config.mes_inicio,
     gastos: u ? u.saldoDisponible : d.config.ajuste_cuenta_gastos_inicial,
     remunerada: calc.kpis.totalCuentaRem,
     inversiones: calc.kpis.totalInversiones,
     costeInversiones: calc.kpis.totalInvertido,
-    netoMedio: media(ult.map((m) => m.neto)),
-    aInversiones: media(ult.map((m) => m.invMes)),
-    // Lo que entra en la remunerada desde la cuenta de gastos (sin contar lo que pasa de la remunerada a inversiones)
-    aRemunerada: media(ult.map((m) => m.ctaRemMes - m.invDesdeCtaRem)),
+    netoMedio,
+    aInversiones: manual != null && manual >= 0 ? manual : aInv,
+    aRemunerada: aRem,
     mesesMedia: ult.length,
+    inversionManual: manual != null && manual >= 0,
   }
 }
 
@@ -64,6 +82,7 @@ export const TIPOS_EVENTO: Record<TipoEvento, { texto: string; mensual: boolean;
   gasto_fin: { texto: 'Dejas de pagar algo', mensual: true, ejemplo: 'Fin de la hipoteca…' },
   sueldo: { texto: 'Cambio de sueldo', mensual: true, ejemplo: 'Subida, media jornada (en negativo)…' },
   pension: { texto: 'Pensión o renta', mensual: true, ejemplo: 'Pensión pública, alquiler que cobras…' },
+  inversion: { texto: 'Cambias lo que inviertes', mensual: true, ejemplo: 'Invertir menos, de 1.200 € a 500 €…' },
 }
 
 const activo = (e: EventoFuturo, fecha: string) => e.desde <= fecha && (e.hasta == null || fecha <= e.hasta)
@@ -72,10 +91,17 @@ const activo = (e: EventoFuturo, fecha: string) => e.desde <= fecha && (e.hasta 
 function cambioAhorroMes(eventos: EventoFuturo[], fecha: string): Cents {
   let x = 0
   for (const e of eventos) {
-    if (!TIPOS_EVENTO[e.tipo]?.mensual || !activo(e, fecha) || e.fijo) continue
+    if (!TIPOS_EVENTO[e.tipo]?.mensual || e.tipo === 'inversion' || !activo(e, fecha) || e.fijo) continue
     x += e.tipo === 'gasto_nuevo' ? -e.importe : e.importe
   }
   return x
+}
+
+/** Lo que pasas a invertir cada mes según tus planes (en euros de hoy); null si ningún plan lo cambia ese mes. El más reciente manda. */
+function inversionPlaneada(eventos: EventoFuturo[], fecha: string): Cents | null {
+  let elegido: EventoFuturo | null = null
+  for (const e of eventos) if (e.tipo === 'inversion' && activo(e, fecha) && (!elegido || e.desde >= elegido.desde)) elegido = e
+  return elegido ? Math.max(0, elegido.importe) : null
 }
 
 /** Cuotas fijas (sin inflación) de ese mes. */
@@ -195,7 +221,8 @@ function prepararFlujos(b: Base, cfg: Pick<Config, 'tae_cuenta_rem' | 'retencion
     // Intereses netos de un mes sobre 1 céntimo (como interesesEstimados)
     f.tasaRem[k] = interesesEstimados(1e9, taeDelMes(cfg, fecha), cfg.retencion_intereses) / 1e9
     f.neto[k] = Math.round(b.netoMedio * cre) + (eventos.length ? Math.round(cambioAhorroMes(eventos, fecha) * inf) - cuotasFijas(eventos, fecha) : 0)
-    f.aInv[k] = Math.round(b.aInversiones * cre)
+    const plan = eventos.length ? inversionPlaneada(eventos, fecha) : null
+    f.aInv[k] = plan !== null ? Math.round(plan * inf) : Math.round(b.aInversiones * cre)
     f.aRem[k] = Math.round(b.aRemunerada * cre)
     f.extra[k] = Math.round(p.extra * cre)
     f.puntual[k] = eventos.length ? Math.round(puntualesMes(eventos, fecha) * inf) : 0
@@ -219,6 +246,8 @@ function correr(b: Base, f: Flujos, meses: number, invertirSobrante: boolean, re
     const resto = f.neto[k] - f.aInv[k] - f.aRem[k]
     e.inversiones += f.aInv[k] + f.extra[k]; e.coste += f.aInv[k] + f.extra[k]
     e.remunerada += f.aRem[k]
+    // La remunerada no puede quedar en negativo: lo que falte sale de la cuenta de gastos
+    if (e.remunerada < 0) { e.gastos += e.remunerada; e.remunerada = 0 }
     if (invertirSobrante && resto > 0) { e.inversiones += resto; e.coste += resto } else e.gastos += resto
     const puntual = f.puntual[k]
     e.aportado += f.neto[k] + f.extra[k] + puntual

@@ -49,12 +49,14 @@ export interface Config {
   anio_nacimiento: number | null
   /** Futuro: cambios que ya sabes que van a pasar (importes en céntimos, en euros de hoy). */
   eventos_futuro: EventoFuturo[]
+  /** Futuro: lo que inviertes al mes (céntimos), si lo escribes tú; null = la media de los últimos meses. */
+  inversion_mensual: Cents | null
 }
 
 export interface EventoFuturo {
   id: string
   nombre: string
-  tipo: 'gasto_unico' | 'ingreso_unico' | 'gasto_nuevo' | 'gasto_fin' | 'sueldo' | 'pension'
+  tipo: 'gasto_unico' | 'ingreso_unico' | 'gasto_nuevo' | 'gasto_fin' | 'sueldo' | 'pension' | 'inversion'
   importe: Cents
   desde: string
   hasta: string | null
@@ -271,6 +273,7 @@ export const CONFIG_INICIAL: Config = {
   volatilidad: 15,
   anio_nacimiento: null,
   eventos_futuro: [],
+  inversion_mensual: null,
 }
 
 export function datosVacios(): Datos {
@@ -298,6 +301,7 @@ export function normalizarDatos(d: Datos): Datos {
       volatilidad: d.config?.volatilidad ?? 15,
       anio_nacimiento: d.config?.anio_nacimiento ?? null,
       eventos_futuro: d.config?.eventos_futuro ?? [],
+      inversion_mensual: d.config?.inversion_mensual ?? null,
     },
     months: d.months.map((m) => ({ ...m, intereses_cuenta_rem: m.intereses_cuenta_rem ?? null, saldo_real_remunerada: m.saldo_real_remunerada ?? null })),
     expenses: d.expenses.map((g) => ({ ...g, fijo: g.fijo ?? false, presupuesto: g.presupuesto ?? null })),

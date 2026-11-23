@@ -66,7 +66,7 @@ migrar 0001_esquema.sql 0002_usuarios_nuevos_en_blanco.sql 0003_fijos_presupuest
 cargar_datos_previos
 # shellcheck disable=SC2046
 migrar $(posteriores)
-migrar 0008_tiempo_real.sql 0009_historial_compra_viajes.sql 0010_clasificacion_reparto.sql 0011_traspasos.sql 0012_historial_tres_meses.sql 0013_intereses_cuenta_remunerada.sql 0014_huchas.sql 0015_futuro.sql 0016_suscripciones.sql 0017_pago_intereses.sql 0018_saldo_real_remunerada.sql 0019_futuro_planes.sql # otra vez: se pueden repetir
+migrar 0008_tiempo_real.sql 0009_historial_compra_viajes.sql 0010_clasificacion_reparto.sql 0011_traspasos.sql 0012_historial_tres_meses.sql 0013_intereses_cuenta_remunerada.sql 0014_huchas.sql 0015_futuro.sql 0016_suscripciones.sql 0017_pago_intereses.sql 0018_saldo_real_remunerada.sql 0019_futuro_planes.sql 0020_inversion_mensual.sql # otra vez: se pueden repetir
 ow_psql -f "$T/ayudas.sql" >/dev/null
 ejecutar 01_cuentas_compartidas.sql
 ejecutar 02_borrar_cuenta.sql
@@ -81,6 +81,7 @@ ejecutar 11_suscripciones.sql
 ejecutar 12_pago_intereses.sql
 ejecutar 13_saldo_real_remunerada.sql
 ejecutar 14_futuro_planes.sql
+ejecutar 15_inversion_mensual.sql
 
 # La copia semanal tiene que incluir TODAS las tablas de datos (si añades una, añádela allí)
 lista_copia=$(grep -m1 -E '^\s*for t in config ' .github/workflows/backup.yml)

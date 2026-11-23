@@ -633,6 +633,7 @@ export const GUIA: GrupoGuia[] = [
             titulo: 'Juega con los números',
             pasos: [
               '«Ahorro extra al mes»: mira qué cambiaría si ahorrases algo más (ese extra se invierte).',
+              '«Inviertes al mes»: escribe lo que metes cada mes en inversiones si la media de tus últimos meses no lo refleja (por ejemplo, porque un mes moviste dinero de la remunerada para invertir). Vacío, usa la media.',
               '«Rentabilidad de las inversiones»: prueba otra; se guarda para la próxima vez.',
               '«Comisiones de tus fondos»: lo que te cobran al año; se resta de la rentabilidad.',
               '«Subida de tu ahorro cada año»: con los años el sueldo sube y sueles ahorrar más.',
@@ -643,7 +644,7 @@ export const GUIA: GrupoGuia[] = [
             titulo: 'Tus planes',
             pasos: [
               'Pon tu año de nacimiento para verlo todo por edad («a los 52»).',
-              'Con «Añadir cambio» apunta lo que ya sabes que va a pasar: una compra o un ingreso puntual, un gasto nuevo al mes, dejar de pagar algo (el fin de la hipoteca), un cambio de sueldo o una pensión.',
+              'Con «Añadir cambio» apunta lo que ya sabes que va a pasar: una compra o un ingreso puntual, un gasto nuevo al mes, dejar de pagar algo (el fin de la hipoteca), un cambio de sueldo, una pensión o un cambio en lo que inviertes al mes (por ejemplo, pasar de 1.200 € a 500 €).',
               'Los importes van en euros de hoy y se actualizan solos con la inflación. Cambian la proyección y la libertad financiera desde su fecha.',
             ],
           },

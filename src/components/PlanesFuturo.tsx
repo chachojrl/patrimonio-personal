@@ -10,7 +10,7 @@ import { uid } from '../lib/operaciones'
 import { TIPOS_EVENTO, edadEn, type EventoFuturo, type TipoEvento } from '../lib/futuro'
 
 const ICONO: Record<TipoEvento, NombreIcono> = {
-  gasto_unico: 'carrito', ingreso_unico: 'regalo', gasto_nuevo: 'calendario', gasto_fin: 'casa', sueldo: 'billete', pension: 'sol',
+  gasto_unico: 'carrito', ingreso_unico: 'regalo', gasto_nuevo: 'calendario', gasto_fin: 'casa', sueldo: 'billete', pension: 'sol', inversion: 'tendencia',
 }
 
 const bordeCampo = 'min-w-0 rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-[15px] outline-none focus:border-marino dark:border-white/15 dark:bg-white/5'
@@ -33,6 +33,7 @@ export function PlanesFuturo() {
   const anioMal = anioTxt.trim() !== '' && !(Number.isInteger(Number(anioTxt)) && Number(anioTxt) >= 1900 && Number(anioTxt) <= anioActual)
 
   const importeTexto = (e: EventoFuturo) => {
+    if (e.tipo === 'inversion') return `${eur(e.importe, { dash: false })} al mes a inversiones`
     const signo = e.tipo === 'gasto_unico' || e.tipo === 'gasto_nuevo' ? '−' : e.importe < 0 ? '−' : '+'
     return `${signo}${eur(Math.abs(e.importe), { dash: false })}${TIPOS_EVENTO[e.tipo].mensual ? ' al mes' : ''}`
   }
@@ -112,7 +113,7 @@ function FormularioEvento({ onGuardar, onCerrar }: { onGuardar: (e: EventoFuturo
   const edad = /^\d{4}-\d{2}$/.test(desde) ? edadEn(datos.config, `${desde}-01`) : null
   const error =
     !nombre.trim() ? 'Ponle un nombre.'
-      : importe === null || importe === 0 ? 'Escribe el importe.'
+      : importe === null || (importe === 0 && tipo !== 'inversion') ? 'Escribe el importe.'
         : importe < 0 && tipo !== 'sueldo' ? 'El importe va en positivo (solo el sueldo puede bajar).'
           : !/^\d{4}-\d{2}$/.test(desde) ? 'Elige el mes.'
             : info.mensual && hasta && hasta < desde ? 'El final tiene que ser después del principio.'
@@ -139,8 +140,8 @@ function FormularioEvento({ onGuardar, onCerrar }: { onGuardar: (e: EventoFuturo
           <input aria-label="Nombre del cambio" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder={info.ejemplo} maxLength={60} className={campo} />
         </label>
         <label className="block text-sm">
-          <span className="mb-1 block font-medium">{info.mensual ? 'Importe al mes' : 'Importe'}</span>
-          <input aria-label="Importe del cambio" inputMode="decimal" value={importeTxt} onChange={(e) => setImporteTxt(e.target.value)} placeholder={tipo === 'sueldo' ? '300 € o −500 €' : '650 €'} className={cx(campo, 'num text-right')} />
+          <span className="mb-1 block font-medium">{tipo === 'inversion' ? 'Inviertes al mes' : info.mensual ? 'Importe al mes' : 'Importe'}</span>
+          <input aria-label="Importe del cambio" inputMode="decimal" value={importeTxt} onChange={(e) => setImporteTxt(e.target.value)} placeholder={tipo === 'sueldo' ? '300 € o −500 €' : tipo === 'inversion' ? 'Lo nuevo: 500 €' : '650 €'} className={cx(campo, 'num text-right')} />
         </label>
         <label className="block text-sm">
           <span className="mb-1 block font-medium">{info.mensual ? 'Desde' : 'Cuándo'}{edad !== null && <span className="font-normal text-slate-500"> · a los {edad}</span>}</span>
