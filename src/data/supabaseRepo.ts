@@ -39,7 +39,7 @@ function aBD(tabla: Tabla | 'config', obj: Record<string, unknown>): Record<stri
 type Fila = Record<string, unknown>
 
 /** Ajustes que añadieron migraciones posteriores a la 0009 (pueden faltar en la BD). */
-const CONFIG_NUEVOS = ['clasificacion', 'tae_cuenta_rem', 'retencion_intereses', 'pago_intereses', 'rentabilidad_inversiones', 'inflacion', 'pct_retirada', 'fire_excluidos', 'no_suscripciones']
+const CONFIG_NUEVOS = ['clasificacion', 'tae_cuenta_rem', 'retencion_intereses', 'pago_intereses', 'rentabilidad_inversiones', 'inflacion', 'pct_retirada', 'fire_excluidos', 'no_suscripciones', 'crecimiento_ahorro', 'comision_inversiones', 'impuestos_futuro', 'volatilidad', 'anio_nacimiento', 'eventos_futuro']
 function sinCamposNuevos<T extends object>(patch: T, campos: string[]): Partial<T> {
   return Object.fromEntries(Object.entries(patch).filter(([k]) => !campos.includes(k))) as Partial<T>
 }
@@ -140,6 +140,12 @@ export function mapConfig(cfg: Fila): Config {
     pct_retirada: cfg.pct_retirada == null ? 4 : Number(cfg.pct_retirada),
     fire_excluidos: Array.isArray(cfg.fire_excluidos) ? (cfg.fire_excluidos as string[]) : [],
     no_suscripciones: Array.isArray(cfg.no_suscripciones) ? (cfg.no_suscripciones as string[]) : [],
+    crecimiento_ahorro: cfg.crecimiento_ahorro == null ? 2 : Number(cfg.crecimiento_ahorro),
+    comision_inversiones: cfg.comision_inversiones == null ? 0.2 : Number(cfg.comision_inversiones),
+    impuestos_futuro: cfg.impuestos_futuro == null ? true : Boolean(cfg.impuestos_futuro),
+    volatilidad: cfg.volatilidad == null ? 15 : Number(cfg.volatilidad),
+    anio_nacimiento: cfg.anio_nacimiento == null ? null : Number(cfg.anio_nacimiento),
+    eventos_futuro: Array.isArray(cfg.eventos_futuro) ? (cfg.eventos_futuro as Config['eventos_futuro']) : [],
   }
 }
 

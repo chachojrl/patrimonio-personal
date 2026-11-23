@@ -598,6 +598,7 @@ export const GUIA: GrupoGuia[] = [
             titulo: 'Qué te dice',
             pasos: [
               'Si te lo puedes permitir, cómo quedaría tu colchón (la entrada sí lo baja), cuántos meses de ahorro supone y qué parte de tu patrimonio es.',
+              '«Y en tu futuro»: cuánto valdría ese dinero si lo invirtieras, a 10 y 20 años (en euros de hoy), y cuántos meses retrasa tu libertad financiera.',
               'Usa tus medias de los últimos 6 meses. Es orientativo.',
             ],
           },
@@ -613,16 +614,19 @@ export const GUIA: GrupoGuia[] = [
           {
             titulo: 'La gráfica',
             pasos: [
-              'Elige el plazo (5, 10, 20 o 30 años). Ves tres escenarios: normal (con tu rentabilidad), pesimista (2 puntos menos) y optimista (2 puntos más).',
-              'Arriba, la frase te dice cuánto tendrías, cuánto pondrías tú y cuánto sería rentabilidad e intereses.',
-              '«En euros de hoy» descuenta la inflación para que las cifras del futuro no engañen.',
+              'Elige el plazo (5, 10, 20 o 30 años). La línea es lo más probable; la banda, dónde quedarías 8 de cada 10 veces contando años buenos y malos (se simulan 300 futuros posibles).',
+              '«De dónde sale» cambia la gráfica: lo que tienes hoy, lo que pondrás tú y lo que rinde (el interés compuesto).',
+              'Toca la gráfica para ver ese momento por cuentas, los impuestos si lo vendieras y cuánto es tuyo y cuánto rentabilidad.',
+              'Arriba, la frase te dice cuánto tendrías (y con qué edad, si pusiste tu año de nacimiento).',
+              '«En euros de hoy» descuenta la inflación para que las cifras del futuro no engañen; «Descontar impuestos al vender» resta el IRPF del ahorro de las ganancias.',
             ],
           },
           {
             titulo: 'De dónde salen los números',
             pasos: [
               'Parte de lo que tienes hoy en cada cuenta y de tu ahorro medio de los últimos 12 meses (ingresos menos gastos), repartido como sueles repartirlo.',
-              'Las inversiones crecen con la rentabilidad que elijas (5 % por defecto); la cuenta remunerada, con tu TAE; lo demás se queda en la cuenta de gastos.',
+              'Las inversiones crecen con la rentabilidad que elijas (5 % por defecto) menos las comisiones; la cuenta remunerada, con tu TAE; lo demás se queda en la cuenta de gastos.',
+              'Si cada mes se queda dinero parado en la cuenta de gastos, te avisa de cuánto ganarías invirtiéndolo y puedes probarlo con un botón.',
             ],
           },
           {
@@ -630,14 +634,25 @@ export const GUIA: GrupoGuia[] = [
             pasos: [
               '«Ahorro extra al mes»: mira qué cambiaría si ahorrases algo más (ese extra se invierte).',
               '«Rentabilidad de las inversiones»: prueba otra; se guarda para la próxima vez.',
+              '«Comisiones de tus fondos»: lo que te cobran al año; se resta de la rentabilidad.',
+              '«Subida de tu ahorro cada año»: con los años el sueldo sube y sueles ahorrar más.',
+              '«Altibajos de las inversiones»: cuánto suben y bajan; cuanto más, más ancha la banda.',
+            ],
+          },
+          {
+            titulo: 'Tus planes',
+            pasos: [
+              'Pon tu año de nacimiento para verlo todo por edad («a los 52»).',
+              'Con «Añadir cambio» apunta lo que ya sabes que va a pasar: una compra o un ingreso puntual, un gasto nuevo al mes, dejar de pagar algo (el fin de la hipoteca), un cambio de sueldo o una pensión.',
+              'Los importes van en euros de hoy y se actualizan solos con la inflación. Cambian la proyección y la libertad financiera desde su fecha.',
             ],
           },
           {
             titulo: 'Hitos',
-            pasos: ['Cuándo llegarías a la siguiente cifra redonda, a llenar cada hucha y a la libertad financiera.'],
+            pasos: ['Cuándo llegarías a la siguiente cifra redonda, a llenar cada hucha, a cada uno de tus planes y a la libertad financiera.'],
           },
         ],
-        consejo: 'Es una estimación: las rentabilidades pasadas no garantizan las futuras y no incluye impuestos sobre las ganancias.',
+        consejo: 'Es una estimación: las rentabilidades pasadas no garantizan las futuras, y los impuestos se calculan con los tramos actuales.',
         ir: { texto: 'Ir a Futuro', to: '/futuro' },
       },
       {
@@ -656,7 +671,8 @@ export const GUIA: GrupoGuia[] = [
           {
             titulo: 'Qué ves',
             pasos: [
-              'Qué porcentaje llevas, con su barra, y cuándo llegarías según la proyección (en euros de hoy).',
+              'Qué porcentaje llevas, con su barra, y cuándo llegarías según la proyección (en euros de hoy), y con años buenos y malos: cuándo llegas la mitad de las veces y 9 de cada 10.',
+              'Si cuentas los impuestos, el número sube: hay que sacar algo más para que, tras pagar a Hacienda por las ganancias, te quede lo que gastas.',
               '«Lo que sacarías al año» (del 2,5 % al 6 %): cuanto menos, más tarda pero más seguro es.',
               '«Inflación»: para pasar las cifras a euros de hoy (el objetivo del Banco Central Europeo es el 2 %).',
             ],
@@ -664,7 +680,8 @@ export const GUIA: GrupoGuia[] = [
           {
             titulo: 'Afinar',
             pasos: [
-              'En «Quitar gastos que entonces no tendrías» desmarca, por ejemplo, la hipoteca si ya estará pagada o la comida de la oficina: el número baja.',
+              'En «Quitar gastos que entonces no tendrías» desmarca, por ejemplo, la comida de la oficina: el número baja.',
+              'Lo que se acaba en una fecha (la hipoteca) o una pensión que cobrarás, mejor en «Tus planes»: el número baja justo desde entonces.',
             ],
           },
         ],

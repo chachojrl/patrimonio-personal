@@ -182,15 +182,25 @@ Debe responder `OK` en todas las tablas: sin sesión no se lee nada y el registr
   y salió, el mejor mes, dónde más se fue el dinero, los apuntes y los viajes. Toca a la derecha para
   avanzar, a la izquierda para volver y mantén pulsado para pararlo; al final se puede compartir como
   texto. Se abre desde *Resumen* y, en diciembre y enero, desde Inicio.
-- **Futuro** (en *Más*): proyección del patrimonio a 5, 10, 20 y 30 años en tres escenarios (pesimista,
-  normal y optimista: 2 puntos menos y más de rentabilidad), partiendo de lo que tienes y de tu ahorro medio
-  de los últimos 12 meses. Las inversiones crecen con la rentabilidad que elijas (5 % por defecto), la
-  cuenta remunerada con tu TAE y el resto se queda en la cuenta de gastos. Controles para probar «ahorro X €
-  más al mes» y otra rentabilidad, opción «en euros de hoy» (descuenta la inflación, 2 % por defecto) e hitos
-  (una cifra redonda, cada hucha, la libertad financiera).
-- **Libertad financiera** (en *Futuro*): tu número = lo que gastas al año ÷ lo que sacarías cada año (4 % por
-  defecto), el porcentaje que llevas y cuándo llegarías. Se pueden quitar los gastos que entonces no tendrías
-  (por ejemplo, la hipoteca pagada). Necesita la migración `0015_futuro.sql` para guardar estos ajustes.
+- **Futuro** (en *Más*): proyección del patrimonio a 5, 10, 20 y 30 años partiendo de lo que tienes y de tu
+  ahorro medio de los últimos 12 meses. Las inversiones crecen con la rentabilidad que elijas (5 % por
+  defecto) menos las comisiones de tus fondos (0,2 %), la cuenta remunerada con tu TAE y el resto se queda en
+  la cuenta de gastos. Lo que ahorras sube cada año (2 % por defecto, como el sueldo). La gráfica enseña lo
+  más probable y la banda donde caen 8 de cada 10 de 300 futuros simulados con años buenos y malos (según los
+  «altibajos» de tus inversiones, 15 % por defecto), o, en «De dónde sale», lo que tienes hoy, lo que pondrás
+  tú y lo que rinde; al tocarla se ve cada momento por cuentas. Opciones «en euros de hoy» (descuenta la
+  inflación, 2 % por defecto) y «descontar impuestos al vender» (IRPF del ahorro por tramos). Avisa de lo que
+  se queda parado cada mes en la cuenta de gastos y deja probar a invertirlo. Hitos: una cifra redonda, cada
+  hucha, tus planes y la libertad financiera.
+- **Tus planes** (en *Futuro*): tu año de nacimiento (para verlo todo por edad, «a los 52») y cambios que ya
+  sabes que van a pasar: una compra o un ingreso puntual, un gasto nuevo al mes, dejar de pagar algo (el fin de
+  la hipoteca), un cambio de sueldo o una pensión o renta. Los importes van en euros de hoy y se actualizan con
+  la inflación; cambian la proyección y la libertad financiera desde su fecha.
+- **Libertad financiera** (en *Futuro*): tu número = lo que gastas al año (más los impuestos de sacarlo, si se
+  cuentan) ÷ lo que sacarías cada año (4 % por defecto), el porcentaje que llevas, cuándo llegarías (y a qué
+  edad) y, con años buenos y malos, cuándo llegas la mitad de las veces y 9 de cada 10. Se pueden quitar los
+  gastos que entonces no tendrías. Necesita las migraciones `0015_futuro.sql` y `0019_futuro_planes.sql` para
+  guardar estos ajustes.
 - **Rachas y logros** (en *Más*): rachas de meses seguidos ahorrando, gastando menos de lo que entra, sin
   pasarse de ningún presupuesto y cerrando los meses (el mes en curso suma cuando se cumple y mientras tanto
   no rompe la racha), y logros con su fecha: primer mes cerrado, 3/6/12 meses ahorrando, el 20 % al ahorro,
@@ -203,8 +213,9 @@ Debe responder `OK` en todas las tablas: sin sesión no se lee nada y el registr
   plazos (6, 12, 24 meses u «Otro», hasta 480). A plazos puedes poner la **entrada** y la **TAE**: la
   cuota se calcula como un préstamo normal (sistema francés) y te dice los intereses y el total que
   pagarás. Te dice si te lo puedes permitir, cómo quedaría tu colchón (la entrada sí lo baja), cuántos
-  meses de ahorro supone y qué parte de tu patrimonio es. Usa tus medias de los últimos 6 meses; es
-  orientativo.
+  meses de ahorro supone y qué parte de tu patrimonio es. En «Y en tu futuro», cuánto valdría ese dinero
+  invertido a 10 y 20 años (en euros de hoy) y cuántos meses retrasa la libertad financiera, con los
+  ajustes de *Futuro*. Usa tus medias de los últimos 6 meses; es orientativo.
 
 ### Más herramientas
 
@@ -282,6 +293,7 @@ vez** en *Supabase → SQL Editor*, en orden. Se pueden repetir sin problema.
 | `0016_suscripciones.sql` | Gastos marcados como «no es una suscripción» |
 | `0017_pago_intereses.sql` | Cuándo paga el banco los intereses (el día 1 del mes siguiente o a final de mes) |
 | `0018_saldo_real_remunerada.sql` | Saldo real de la cuenta remunerada en cada mes (ajusta la diferencia con lo calculado) |
+| `0019_futuro_planes.sql` | Más ajustes de Futuro (subida del ahorro, comisiones, impuestos, altibajos), año de nacimiento y tus planes |
 
 ## Cuenta compartida (opcional)
 
