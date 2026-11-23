@@ -37,6 +37,28 @@ export interface Config {
   fire_excluidos: string[]
   /** Gastos (clave normalizada) que marcaste como «no es una suscripción». */
   no_suscripciones: string[]
+  /** Futuro: cuánto sube al año lo que ahorras cada mes (%). */
+  crecimiento_ahorro: number
+  /** Futuro: comisiones anuales de tus fondos (%). */
+  comision_inversiones: number
+  /** Futuro: descontar el IRPF del ahorro al vender las inversiones y al vivir de ellas. */
+  impuestos_futuro: boolean
+  /** Futuro: cuánto suben y bajan las inversiones de un año a otro (volatilidad, %). */
+  volatilidad: number
+  /** Futuro: año de nacimiento, para ver las cosas por edad (null = sin poner). */
+  anio_nacimiento: number | null
+  /** Futuro: cambios que ya sabes que van a pasar (importes en céntimos, en euros de hoy). */
+  eventos_futuro: EventoFuturo[]
+}
+
+export interface EventoFuturo {
+  id: string
+  nombre: string
+  tipo: 'gasto_unico' | 'ingreso_unico' | 'gasto_nuevo' | 'gasto_fin' | 'sueldo' | 'pension'
+  importe: Cents
+  desde: string
+  hasta: string | null
+  fijo?: boolean
 }
 
 export type PagoIntereses = 'mes-siguiente' | 'mismo-mes'
@@ -241,6 +263,12 @@ export const CONFIG_INICIAL: Config = {
   pct_retirada: 4,
   fire_excluidos: [],
   no_suscripciones: [],
+  crecimiento_ahorro: 2,
+  comision_inversiones: 0.2,
+  impuestos_futuro: true,
+  volatilidad: 15,
+  anio_nacimiento: null,
+  eventos_futuro: [],
 }
 
 export function datosVacios(): Datos {
@@ -262,6 +290,12 @@ export function normalizarDatos(d: Datos): Datos {
       pct_retirada: d.config?.pct_retirada ?? 4,
       fire_excluidos: d.config?.fire_excluidos ?? [],
       no_suscripciones: d.config?.no_suscripciones ?? [],
+      crecimiento_ahorro: d.config?.crecimiento_ahorro ?? 2,
+      comision_inversiones: d.config?.comision_inversiones ?? 0.2,
+      impuestos_futuro: d.config?.impuestos_futuro ?? true,
+      volatilidad: d.config?.volatilidad ?? 15,
+      anio_nacimiento: d.config?.anio_nacimiento ?? null,
+      eventos_futuro: d.config?.eventos_futuro ?? [],
     },
     months: d.months.map((m) => ({ ...m, intereses_cuenta_rem: m.intereses_cuenta_rem ?? null })),
     expenses: d.expenses.map((g) => ({ ...g, fijo: g.fijo ?? false, presupuesto: g.presupuesto ?? null })),

@@ -1,4 +1,4 @@
-import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, ComposedChart, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { formatEUR } from '../lib/money'
 import { OCULTO, useDiscreto } from '../lib/discreto'
 
@@ -95,32 +95,96 @@ export function LineaDineroTotal({ datos }: { datos: { mes: string; valor: numbe
 
 export interface PuntoFuturo {
   etiqueta: string
-  Pesimista: number
+  /** Para el tooltip: «noviembre de 2036 · 45 años». */
+  titulo: string
+  /** Proyección normal (ya en euros de hoy y sin impuestos, si toca). */
   Normal: number
-  Optimista: number
+  /** De cada 10 simulaciones, 8 quedan entre estos dos valores. */
+  rango: [number, number]
+  gastos: number
+  remunerada: number
+  inversiones: number
+  impuestos: number
+  /** Desglose: lo que ya tienes hoy, lo que pondrás tú y lo que rinde. */
+  hoy: number
+  puesto: number
+  rentabilidad: number
 }
 
-/** Proyección del patrimonio: tres escenarios y, si se indica, la línea de la libertad financiera. */
-export function LineaProyeccion({ datos, meta }: { datos: PuntoFuturo[]; meta?: number | null }) {
-  const f = useFormatos()
-  const max = Math.max(...datos.map((d) => d.Optimista))
-  const verMeta = meta != null && meta > 0 && meta <= max * 1.15
+const SERIES_DESGLOSE = [
+  { clave: 'hoy', nombre: 'Lo que tienes hoy', color: COL.saldo },
+  { clave: 'puesto', nombre: 'Lo que pondrás tú', color: COL.cuentaRem },
+  { clave: 'rentabilidad', nombre: 'Lo que rinde', color: COL.inversiones },
+] as const
+
+function TooltipFuturo({ active, payload, f }: { active?: boolean; payload?: readonly { payload?: PuntoFuturo }[]; f: ReturnType<typeof useFormatos> }) {
+  const p = payload?.[0]?.payload
+  if (!active || !p) return null
+  const fila = (texto: string, v: number, fuerte = false) => (
+    <div className={fuerte ? 'flex justify-between gap-4 font-semibold' : 'flex justify-between gap-4'}><span>{texto}</span><span className="num">{f.largo(v)}</span></div>
+  )
   return (
-    <div className="h-72 w-full" role="img" aria-label="Gráfica de la proyección de tu patrimonio en tres escenarios">
+    <div className="min-w-[13rem] space-y-1.5 rounded-[10px] border border-[var(--grid)] bg-[var(--surface)] p-2.5 text-[12px] shadow-lg">
+      <div className="text-[13px] font-semibold">{p.titulo}</div>
+      <div>
+        {fila('Lo más probable', p.Normal, true)}
+        <div className="text-slate-500">8 de cada 10 veces, entre {f.largo(p.rango[0])} y {f.largo(p.rango[1])}</div>
+      </div>
+      <div className="border-t border-[var(--grid)] pt-1.5">
+        {fila('Cuenta de gastos', p.gastos)}
+        {fila('Cuenta remunerada', p.remunerada)}
+        {fila('Inversiones', p.inversiones)}
+        {p.impuestos > 0 && fila('Impuestos al vender', -p.impuestos)}
+      </div>
+      <div className="border-t border-[var(--grid)] pt-1.5">
+        {fila('Lo que tienes hoy', p.hoy)}
+        {fila('Lo que pondrás tú', p.puesto)}
+        {fila('Lo que rinde', p.rentabilidad)}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Proyección del patrimonio. «escenarios»: la línea normal y la banda donde caen 8 de cada 10 simulaciones;
+ * «desglose»: áreas apiladas con lo que tienes hoy, lo que pondrás tú y lo que rinde (el interés compuesto).
+ */
+export function LineaProyeccion({ datos, meta, modo = 'escenarios' }: { datos: PuntoFuturo[]; meta?: number | null; modo?: 'escenarios' | 'desglose' }) {
+  const f = useFormatos()
+  const max = Math.max(...datos.map((d) => (modo === 'escenarios' ? d.rango[1] : d.hoy + d.puesto + d.rentabilidad)))
+  const verMeta = meta != null && meta > 0 && meta <= max * 1.15
+  const lineaMeta = verMeta && (
+    <ReferenceLine y={meta!} stroke="var(--serie-inversiones)" strokeDasharray="4 4" label={{ value: 'Libertad financiera', position: 'insideTopLeft', fontSize: 11, fill: 'var(--text-secondary)' }} />
+  )
+  const comun = (
+    <>
+      <CartesianGrid vertical={false} stroke="var(--grid)" />
+      <XAxis dataKey="etiqueta" tick={eje} axisLine={false} tickLine={false} minTickGap={24} />
+      <YAxis tickFormatter={f.corto} tick={eje} axisLine={false} tickLine={false} width={60} domain={[0, 'auto']} />
+      <Tooltip content={(props) => <TooltipFuturo active={props.active} payload={props.payload as never} f={f} />} cursor={{ stroke: 'var(--grid)', strokeWidth: 1 }} />
+    </>
+  )
+  return (
+    <div className="h-72 w-full" role="img" aria-label={modo === 'escenarios' ? 'Gráfica de la proyección de tu patrimonio, con el margen entre años buenos y malos' : 'Gráfica de lo que tienes hoy, lo que pondrás tú y lo que rinde'}>
       <ResponsiveContainer>
-        <LineChart data={datos} margin={{ top: 12, right: 12, left: 0, bottom: 0 }}>
-          <CartesianGrid vertical={false} stroke="var(--grid)" />
-          <XAxis dataKey="etiqueta" tick={eje} axisLine={false} tickLine={false} minTickGap={24} />
-          <YAxis tickFormatter={f.corto} tick={eje} axisLine={false} tickLine={false} width={60} domain={[0, 'auto']} />
-          <Tooltip {...estiloTooltip} formatter={f.largo} />
-          {verMeta && (
-            <ReferenceLine y={meta!} stroke="var(--serie-inversiones)" strokeDasharray="4 4" label={{ value: 'Libertad financiera', position: 'insideTopLeft', fontSize: 11, fill: 'var(--text-secondary)' }} />
-          )}
-          <Line type="monotone" dataKey="Optimista" stroke={COL.inversiones} strokeWidth={1.5} strokeDasharray="5 4" dot={false} isAnimationActive={false} />
-          <Line type="monotone" dataKey="Normal" stroke={COL.total} strokeWidth={2.5} dot={false} isAnimationActive={false} />
-          <Line type="monotone" dataKey="Pesimista" stroke={COL.cuentaRem} strokeWidth={1.5} strokeDasharray="5 4" dot={false} isAnimationActive={false} />
-          <Legend content={() => <LeyendaSeries series={[{ nombre: 'Optimista', color: COL.inversiones }, { nombre: 'Normal', color: COL.total }, { nombre: 'Pesimista', color: COL.cuentaRem }]} />} />
-        </LineChart>
+        {modo === 'escenarios' ? (
+          <ComposedChart data={datos} margin={{ top: 12, right: 12, left: 0, bottom: 0 }}>
+            {comun}
+            {lineaMeta}
+            <Area type="monotone" dataKey="rango" stroke="none" fill={COL.inversiones} fillOpacity={0.22} isAnimationActive={false} activeDot={false} />
+            <Line type="monotone" dataKey="Normal" stroke={COL.total} strokeWidth={2.5} dot={false} isAnimationActive={false} />
+            <Legend content={() => <LeyendaSeries series={[{ nombre: 'Lo más probable', color: COL.total }, { nombre: '8 de cada 10 veces', color: COL.inversiones }]} />} />
+          </ComposedChart>
+        ) : (
+          <AreaChart data={datos} margin={{ top: 12, right: 12, left: 0, bottom: 0 }}>
+            {comun}
+            {lineaMeta}
+            {SERIES_DESGLOSE.map((x) => (
+              <Area key={x.clave} type="monotone" dataKey={x.clave} name={x.nombre} stackId="d" stroke={x.color} fill={x.color} fillOpacity={0.75} isAnimationActive={false} />
+            ))}
+            <Legend content={() => <LeyendaSeries series={SERIES_DESGLOSE.map((x) => ({ nombre: x.nombre, color: x.color }))} />} />
+          </AreaChart>
+        )}
       </ResponsiveContainer>
     </div>
   )

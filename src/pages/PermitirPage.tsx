@@ -1,8 +1,10 @@
 // «¿Me lo puedo permitir?»: escribes un importe y te dice cómo quedarían tu colchón y tus ahorros.
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useStore } from '../data/store'
 import { useCuentas } from '../data/cuentas'
 import { simular, type Veredicto } from '../lib/permitir'
+import { costeFuturo } from '../lib/futuro'
 import { parseImporte } from '../lib/money'
 import { useEur } from '../lib/discreto'
 import { Fila, Grupo, Icono, type NombreIcono } from '../components/ios'
@@ -21,7 +23,7 @@ const ASPECTO: Record<Veredicto, { titulo: string; icono: NombreIcono; color: st
 const meses = (n: number) => `${n.toLocaleString('es-ES', { maximumFractionDigits: 1 })} ${n >= 0.95 && n < 1.05 ? 'mes' : 'meses'}`
 
 export function PermitirPage() {
-  const { calc } = useStore()
+  const { calc, datos } = useStore()
   const compartida = useCuentas().activa?.tipo === 'compartida'
   const eur = useEur()
   const [texto, setTexto] = useState('')
@@ -43,6 +45,12 @@ export function PermitirPage() {
           : null
   const valido = importe !== null && importe > 0 && !errorPago
   const s = valido ? simular(calc, importe, plazos, { tae, entrada }) : null
+  // Qué supone para tu futuro (con los ajustes de Futuro); se calcula solo cuando cambia la compra
+  const clave = s ? `${s.importe}|${s.plazos}|${s.entrada}|${s.cuota}` : ''
+  const fut = useMemo(
+    () => (s ? costeFuturo(calc, datos, s.plazos > 1 ? { pagoAhora: s.entrada, cuota: s.cuota, plazos: s.plazos } : { pagoAhora: s.importe }) : null),
+    [clave, calc, datos], // eslint-disable-line react-hooks/exhaustive-deps
+  )
   const campoDerecha = 'num min-w-0 flex-1 bg-transparent text-right text-[17px] text-slate-600 outline-none placeholder:text-slate-300 dark:text-slate-300 dark:placeholder:text-slate-600'
   const sinDatos = calc.meses.length === 0
 
@@ -181,6 +189,20 @@ export function PermitirPage() {
           <p className="-mt-6 mb-8 px-4 text-[13px] leading-snug text-slate-500 dark:text-slate-400">
             Es una orientación con tus medias de los últimos meses, no un consejo financiero. Las inversiones no cuentan como dinero disponible.
           </p>
+
+          {fut && (
+            <Grupo titulo="Y en tu futuro" pie={<>En euros de hoy, con la rentabilidad, las comisiones y la inflación de <Link to="/futuro" className="underline">Futuro</Link>.</>}>
+              <Fila titulo="Invertido, en 10 años" sub="Lo que pagas, si en vez de gastarlo lo invirtieras" valor={eur(fut.en10, { dash: false })} />
+              <Fila titulo="Invertido, en 20 años" valor={eur(fut.en20, { dash: false })} />
+              {!compartida && fut.retraso !== null && (
+                <Fila
+                  titulo="Libertad financiera"
+                  sub={fut.retraso > 0 ? 'Lo que se retrasa el día en que podrías vivir de tus ahorros' : 'Apenas cambia el día en que podrías vivir de tus ahorros'}
+                  valor={fut.retraso > 0 ? `+${meses(fut.retraso)}` : 'Igual'}
+                />
+              )}
+            </Grupo>
+          )}
         </>
       )}
     </div>

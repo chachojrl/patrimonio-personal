@@ -226,7 +226,7 @@ test('Futuro: proyección, ahorro extra y libertad financiera', async ({ app }) 
   await expect(app.getByText(/En 10 años \(.+\) tendrías unos/)).toBeVisible()
   const antes = await app.locator('strong', { hasText: '€' }).first().textContent()
   await app.getByRole('tab', { name: '30 años' }).click()
-  await expect(app.getByText(/En 30 años/)).toBeVisible()
+  await expect(app.getByText(/En 30 años \(.+\) tendrías unos/)).toBeVisible()
   // Ahorrar más da más patrimonio
   await app.getByRole('tab', { name: '10 años' }).click()
   await app.getByLabel('Ahorro extra al mes').fill('500')
@@ -243,6 +243,46 @@ test('Futuro: proyección, ahorro extra y libertad financiera', async ({ app }) 
   await expect.poll(numero).toBeLessThan(n1)
   await expect.poll(async () => (await guardado(app)).config.fire_excluidos.length).toBe(1)
   if (esMovil(app)) expect(await app.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(app.viewportSize()!.width)
+})
+
+test('Futuro: edad, tus planes, invertir lo que sobra y el coste de una compra', async ({ app }) => {
+  await app.goto('/#/futuro')
+  await expect(app.getByText(/8 de cada 10 veces tendrías entre/)).toBeVisible()
+  // Edad
+  await app.getByLabel('Año en que naciste').fill('1990')
+  await app.getByLabel('Año en que naciste').press('Enter')
+  await expect(app.getByText(/En 10 años \(.+, con \d+ años\)/)).toBeVisible()
+  await expect.poll(async () => (await guardado(app)).config.anio_nacimiento).toBe(1990)
+  // Un plan: una pensión que adelanta la libertad financiera
+  const llegada = async () => (await app.getByText(/^Llegarías en /).textContent()) ?? ''
+  const antes = await llegada()
+  await app.getByRole('button', { name: 'Añadir cambio' }).click()
+  const form = app.getByRole('group', { name: 'Nuevo cambio' })
+  await form.getByLabel('Tipo de cambio').selectOption('pension')
+  await form.getByLabel('Nombre del cambio').fill('Alquiler del piso')
+  await form.getByLabel('Importe del cambio').fill('900')
+  await form.getByLabel('Desde').fill('2028-01')
+  await form.getByRole('button', { name: 'Guardar cambio' }).click()
+  await expect(app.getByText('+900,00 € al mes')).toBeVisible()
+  await expect.poll(async () => (await guardado(app)).config.eventos_futuro.map((e) => e.tipo)).toEqual(['pension'])
+  await expect.poll(llegada).not.toBe(antes)
+  // Invertir lo que sobra en la cuenta de gastos
+  await app.getByRole('button', { name: 'Probar a invertirlo' }).click()
+  await expect(app.getByText(/Estás probando a/)).toBeVisible()
+  // La gráfica: el desglose
+  await app.getByRole('tab', { name: 'De dónde sale' }).click()
+  await expect(app.getByText('Lo que pondrás tú')).toBeVisible()
+  expect(await app.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(app.viewportSize()!.width)
+  // Quitar el plan
+  await app.getByRole('button', { name: 'Quitar «Alquiler del piso»' }).click()
+  await expect.poll(async () => (await guardado(app)).config.eventos_futuro).toEqual([])
+
+  // «¿Me lo puedo permitir?» cuenta lo que supone para el futuro
+  await app.goto('/#/permitir')
+  await app.getByLabel('Importe').fill('5000')
+  await expect(app.getByText('Y en tu futuro')).toBeVisible()
+  await expect(app.getByText('Invertido, en 20 años')).toBeVisible()
+  await expect(app.getByText('Libertad financiera')).toBeVisible()
 })
 
 test('Logros: rachas, logros conseguidos y aviso de uno nuevo', async ({ app }) => {
