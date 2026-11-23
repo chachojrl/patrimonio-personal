@@ -131,7 +131,9 @@ Debe responder `OK` en todas las tablas: sin sesión no se lee nada y el registr
   y usa ↑ / ↓.
 - **Cuadrar con el banco** (opcional, en cada mes): si rellenas el saldo real en cuenta, la diferencia con el
   saldo calculado se apunta sola como ingreso extra o como gasto no registrado. Ahí también puedes
-  escribir el **valor real de las inversiones** (el total de la cartera, no la ganancia); en Inicio,
+  escribir el **saldo real de la cuenta remunerada** (la diferencia con lo calculado se ajusta sola y los meses
+  siguientes parten de ahí; necesita la migración `0018_saldo_real_remunerada.sql`) y el **valor real de las
+  inversiones** (el total de la cartera, no la ganancia); en Inicio,
   el lápiz de la fila «Inversiones» hace lo mismo con el último mes.
 - **Ahorro y traspasos:** cada fila mueve dinero **Desde** una cuenta **Hacia** otra: cuenta de
   gastos, cuenta remunerada o inversiones. «Ahorro» crea una fila de la cuenta de gastos a
@@ -197,7 +199,7 @@ Debe responder `OK` en todas las tablas: sin sesión no se lee nada y el registr
 - **Libertad financiera** (en *Futuro*): tu número = lo que gastas al año (más los impuestos de sacarlo, si se
   cuentan) ÷ lo que sacarías cada año (4 % por defecto), el porcentaje que llevas, cuándo llegarías (y a qué
   edad) y, con años buenos y malos, cuándo llegas la mitad de las veces y 9 de cada 10. Se pueden quitar los
-  gastos que entonces no tendrías. Necesita las migraciones `0015_futuro.sql` y `0018_futuro_planes.sql` para
+  gastos que entonces no tendrías. Necesita las migraciones `0015_futuro.sql` y `0019_futuro_planes.sql` para
   guardar estos ajustes.
 - **Rachas y logros** (en *Más*): rachas de meses seguidos ahorrando, gastando menos de lo que entra, sin
   pasarse de ningún presupuesto y cerrando los meses (el mes en curso suma cuando se cumple y mientras tanto
@@ -290,7 +292,8 @@ vez** en *Supabase → SQL Editor*, en orden. Se pueden repetir sin problema.
 | `0015_futuro.sql` | Ajustes de la proyección y la libertad financiera (rentabilidad, inflación, % de retirada y gastos que no tendrías) |
 | `0016_suscripciones.sql` | Gastos marcados como «no es una suscripción» |
 | `0017_pago_intereses.sql` | Cuándo paga el banco los intereses (el día 1 del mes siguiente o a final de mes) |
-| `0018_futuro_planes.sql` | Más ajustes de Futuro (subida del ahorro, comisiones, impuestos, altibajos), año de nacimiento y tus planes |
+| `0018_saldo_real_remunerada.sql` | Saldo real de la cuenta remunerada en cada mes (ajusta la diferencia con lo calculado) |
+| `0019_futuro_planes.sql` | Más ajustes de Futuro (subida del ahorro, comisiones, impuestos, altibajos), año de nacimiento y tus planes |
 
 ## Cuenta compartida (opcional)
 

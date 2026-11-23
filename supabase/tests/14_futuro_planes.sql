@@ -1,4 +1,4 @@
--- Futuro: planes (0018). Se ejecuta después de 10.
+-- Futuro: planes (0019). Se ejecuta después de 13.
 \set ON_ERROR_STOP 1
 \set QUIET 1
 
@@ -27,4 +27,4 @@ do $$ begin
 exception when check_violation then raise notice 'OK  las comisiones no pueden ser negativas';
 end $$;
 reset role;
-\echo '=== 0018 OK'
+\echo '=== 0019 OK'

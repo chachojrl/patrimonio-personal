@@ -1,5 +1,5 @@
 -- =====================================================================
--- 0018 · Futuro: proyección más realista y tus planes.
+-- 0019 · Futuro: proyección más realista y tus planes.
 --
 -- Ajustes de cada cuenta (la proyección se sigue calculando en la app):
 -- - crecimiento_ahorro: cuánto sube al año lo que ahorras cada mes (%).

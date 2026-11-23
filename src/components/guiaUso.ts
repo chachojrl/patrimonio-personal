@@ -298,13 +298,22 @@ export const GUIA: GrupoGuia[] = [
         titulo: 'Cuadrar con el banco e inversiones',
         icono: 'balanza',
         color: COLOR.grafito,
-        resumen: 'Ajustar el saldo y el valor real de tu cartera (opcional).',
+        resumen: 'Ajustar los saldos y el valor de tu cartera a lo que dice el banco (opcional).',
         secciones: [
           {
             titulo: 'Saldo real en cuenta',
             pasos: [
               'En «Cuadrar con el banco», escribe lo que de verdad tienes en la cuenta de gastos según tu banco.',
               'Si no coincide con el saldo calculado, la diferencia se apunta sola: como ingreso extra si tienes más, o como gasto no apuntado si tienes menos («Ajuste automático»).',
+            ],
+          },
+          {
+            titulo: 'Saldo real de la cuenta remunerada',
+            pasos: [
+              'En «Saldo real remunerada», escribe lo que te dice el banco que hay en la cuenta remunerada a final de ese mes.',
+              'Si no coincide con lo calculado (por ejemplo, porque se sumaron unos intereses que aún no tienes), la diferencia se ajusta sola. Debajo de «Cuenta remunerada» verás «Ajustada −30,85 € con el banco».',
+              'Los meses siguientes parten de esa cifra. No es un ingreso ni un gasto: solo corrige la cuenta remunerada y tu dinero total.',
+              'También lo puedes escribir al cerrar el mes, y aunque el mes esté cerrado.',
             ],
           },
           {
@@ -425,7 +434,7 @@ export const GUIA: GrupoGuia[] = [
             pasos: [
               'Al final de la hoja del mes, «Cerrar mes…» abre un repaso por pasos:',
               'El saldo real del banco y el valor de tus inversiones (opcionales).',
-              'Los intereses que te ha pagado el banco ese mes, si tienes TAE.',
+              'La cuenta remunerada: los intereses que te ha pagado el banco ese mes (si tienes TAE) y, si quieres, su saldo real.',
               'Las aportaciones a tus huchas: te propone la aportación mensual de cada una, marcada con su importe. Cámbiala o desmárcala; se aparta al cerrar.',
               'Lo pendiente: presupuestos que te has pasado, avisos y lo que te deben.',
               'El resumen del mes comparado con el anterior.',
@@ -1083,6 +1092,7 @@ export const GUIA: GrupoGuia[] = [
             pasos: [
               'Suele ser un gasto o un ingreso que no has apuntado, o un traspaso que falta.',
               'Si no lo encuentras, escribe el saldo real en «Cuadrar con el banco»: la diferencia se apunta sola como ajuste y todo vuelve a cuadrar.',
+              'Con la cuenta remunerada igual: escribe lo que dice el banco en «Saldo real remunerada» y la diferencia (por ejemplo, unos intereses que aún no te han pagado) se ajusta sola.',
             ],
           },
         ],

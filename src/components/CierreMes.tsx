@@ -107,20 +107,34 @@ export function CierreMes({
           </Paso>
         )}
 
-        {!compartida && c.tae > 0 && (
-          <Paso n={3} hecho={mes.intereses_cuenta_rem !== null} titulo="Intereses de la cuenta remunerada">
-            <p className="text-xs text-slate-500">
-              Lo que te ha pagado el banco este mes{(datos.config.pago_intereses ?? 'mes-siguiente') === 'mes-siguiente' ? ' (los intereses del mes anterior, cobrados el día 1)' : ''}, ya sin la retención.
-              En blanco se usa la estimación con el {formatTae(c.tae)} TAE{c.interesesReales ? '' : ` (${eur(c.interesesCtaRem, { dash: false })})`}.
-            </p>
+        {!compartida && (
+          <Paso n={3} hecho={mes.saldo_real_remunerada !== null || mes.intereses_cuenta_rem !== null} titulo="Cuenta remunerada">
+            {c.tae > 0 && (
+              <>
+                <p className="text-xs text-slate-500">
+                  Intereses que te ha pagado el banco este mes{(datos.config.pago_intereses ?? 'mes-siguiente') === 'mes-siguiente' ? ' (los del mes anterior, cobrados el día 1)' : ''}, ya sin la retención.
+                  En blanco se usa la estimación con el {formatTae(c.tae)} TAE{c.interesesReales ? '' : ` (${eur(c.interesesCtaRem, { dash: false })})`}.
+                </p>
+                <CeldaImporte
+                  ariaLabel="Intereses cuenta remunerada"
+                  valor={mes.intereses_cuenta_rem}
+                  permitirVacio
+                  placeholder="Intereses del mes"
+                  className="campo mb-2 mt-1 text-left"
+                  onCambio={(v) => actualizar('months', mes.id, { intereses_cuenta_rem: v })}
+                />
+              </>
+            )}
+            <p className="text-xs text-slate-500">Lo que te dice el banco que hay en la cuenta remunerada. En blanco se usa lo calculado ({eur(c.cuentaRemCalculada, { dash: false })}).</p>
             <CeldaImporte
-              ariaLabel="Intereses cuenta remunerada"
-              valor={mes.intereses_cuenta_rem}
+              ariaLabel="Saldo real de la cuenta remunerada"
+              valor={mes.saldo_real_remunerada}
               permitirVacio
-              placeholder="Intereses del mes"
+              placeholder="Saldo de la cuenta remunerada"
               className="campo mt-1 text-left"
-              onCambio={(v) => actualizar('months', mes.id, { intereses_cuenta_rem: v })}
+              onCambio={(v) => actualizar('months', mes.id, { saldo_real_remunerada: v })}
             />
+            {c.ajusteCtaRem !== 0 && <p className="mt-1 text-xs">Ajuste: <Dinero c={c.ajusteCtaRem} verde />.</p>}
           </Paso>
         )}
 
@@ -157,7 +171,7 @@ export function CierreMes({
           </Paso>
         )}
 
-        <Paso n={compartida ? 2 : c.tae > 0 ? 4 : 3} hecho={pasados.length === 0 && avisos.length === 0 && pendientesDeuda.length === 0} titulo="Pendientes">
+        <Paso n={compartida ? 2 : 4} hecho={pasados.length === 0 && avisos.length === 0 && pendientesDeuda.length === 0} titulo="Pendientes">
           <ul className="space-y-1 text-sm">
             {pasados.length === 0 && avisos.length === 0 && pendientesDeuda.length === 0 && <li className="text-slate-500">Nada pendiente.</li>}
             {pasados.map(({ g, e }) => (
@@ -177,7 +191,7 @@ export function CierreMes({
           </ul>
         </Paso>
 
-        <Paso n={compartida ? 3 : c.tae > 0 ? 5 : 4} hecho titulo="Resumen del mes">
+        <Paso n={compartida ? 3 : 5} hecho titulo="Resumen del mes">
           <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
             <dt className="text-slate-500">Ingresos</dt><dd className="text-right"><Dinero c={c.ingresosTotales} dash={false} /></dd>
             <dt className="text-slate-500">Gastos</dt>
