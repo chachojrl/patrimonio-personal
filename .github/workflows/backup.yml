@@ -4,7 +4,8 @@ name: Copia de seguridad semanal (y mantener Supabase activo)
 # Este workflow hace una petición cada semana (lo mantiene activo) y guarda una copia
 # CIFRADA de todos los datos como artefacto del workflow (90 días).
 # Secretos necesarios (Settings → Secrets and variables → Actions → Secrets):
-#   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, BACKUP_PASSPHRASE
+#   SUPABASE_URL (la «Project URL»: https://xxxx.supabase.co), SUPABASE_SERVICE_ROLE_KEY (la clave «service_role»),
+#   BACKUP_PASSPHRASE (la contraseña con la que se cifra la copia)
 
 on:
   schedule:
@@ -38,6 +39,22 @@ jobs:
           KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           set -euo pipefail
+          # La URL del proyecto sin barra final ni «/rest/v1» (por si el secreto los lleva)
+          URL="${URL%%[[:space:]]}"; URL="${URL%/}"; URL="${URL%/rest/v1}"; URL="${URL%/}"
+          case "$URL" in https://*) ;; *) echo "::error::SUPABASE_URL tiene que empezar por https:// (la «Project URL» de Supabase → Project Settings → API)."; exit 1 ;; esac
+          # Primero, comprobar que la URL y la clave valen
+          codigo=$(curl -sS -o respuesta.json -w '%{http_code}' "$URL/rest/v1/config?select=user_id&limit=1" -H "apikey: $KEY" -H "Authorization: Bearer $KEY" || echo 000)
+          if [ "$codigo" != 200 ]; then
+            motivo=$(jq -r '.message // .msg // .error // empty' respuesta.json 2>/dev/null || true)
+            case "$codigo" in
+              000) echo "::error::No se puede conectar con SUPABASE_URL. ¿Está bien escrita? ¿El proyecto está pausado?" ;;
+              401|403) echo "::error::Supabase rechaza la clave ($codigo). SUPABASE_SERVICE_ROLE_KEY tiene que ser la «service_role» (Project Settings → API), no la «anon». ${motivo}" ;;
+              404) echo "::error::Supabase responde 404. SUPABASE_URL tiene que ser la «Project URL» (https://xxxx.supabase.co), sin nada detrás. ${motivo}" ;;
+              *) echo "::error::Supabase responde $codigo. ${motivo}" ;;
+            esac
+            exit 1
+          fi
+          rm -f respuesta.json
           mkdir -p copia
           # Supabase devuelve como máximo 1.000 filas por petición: se descarga por páginas
           for t in config months incomes expenses expense_entries savings debts cuentas cuenta_miembros lista_compra viajes viaje_gastos huchas hucha_movimientos cambios; do
@@ -45,11 +62,14 @@ jobs:
             offset=0
             clave=id; [ "$t" = config ] && clave=user_id
             while :; do
-              if ! curl -sSf "$URL/rest/v1/$t?select=*&order=$clave.asc&limit=1000&offset=$offset" \
-                -H "apikey: $KEY" -H "Authorization: Bearer $KEY" > pagina.json; then
-                # debts (0004), cuentas (0005) y las de la 0009 llegan con migraciones: si aún no existen, se sigue sin ellas
-                case "$t" in debts|cuentas|cuenta_miembros|lista_compra|viajes|viaje_gastos|cambios) ;; *) exit 1 ;; esac
-                echo "::warning::No existe la tabla $t (ejecuta la migración que la crea)."
+              codigo=$(curl -sS -o pagina.json -w '%{http_code}' "$URL/rest/v1/$t?select=*&order=$clave.asc&limit=1000&offset=$offset" \
+                -H "apikey: $KEY" -H "Authorization: Bearer $KEY" || echo 000)
+              if [ "$codigo" != 200 ]; then
+                # Las tablas que llegan con migraciones posteriores pueden no existir aún: se sigue sin ellas
+                case "$t" in debts|cuentas|cuenta_miembros|lista_compra|viajes|viaje_gastos|huchas|hucha_movimientos|cambios) ;;
+                  *) echo "::error::No se pudo leer la tabla $t ($codigo): $(jq -r '.message // empty' pagina.json 2>/dev/null || true)"; exit 1 ;;
+                esac
+                echo "::warning::No se pudo leer la tabla $t ($codigo); ¿falta ejecutar la migración que la crea?"
                 echo "[]" > pagina.json
               fi
               n=$(jq length pagina.json)
